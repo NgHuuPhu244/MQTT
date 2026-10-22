@@ -74,6 +74,24 @@
     
     .step-box { background-color: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
     .step-box h4 { color: var(--accent-blue); font-size: 0.95rem; margin-bottom: 0.5rem; }
+
+    /* --- Công cụ vẽ nâng cao --- */
+    .tool-label { font-size: 0.8rem; color: var(--text-muted); display: block; margin: 0.25rem 0 0.35rem; }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-bottom: 0.6rem; }
+    .tool-grid-5 { grid-template-columns: repeat(5, 1fr); }
+    .tool-btn { background: #0f172a; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 0.45rem 0.2rem; cursor: pointer; font-size: 1.05rem; display: flex; flex-direction: column; align-items: center; gap: 0.15rem; transition: all 0.15s; }
+    .tool-btn span { font-size: 0.68rem; color: var(--text-muted); }
+    .tool-btn:hover { border-color: var(--accent-blue); transform: translateY(-1px); }
+    .tool-btn.active { background: rgba(56, 189, 248, 0.15); border-color: var(--accent-blue); box-shadow: 0 0 0 1px var(--accent-blue) inset; }
+    .tool-btn.active span { color: var(--accent-blue); }
+    .fill-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem; cursor: pointer; }
+    .color-picker { flex-wrap: wrap; }
+    .color-custom { width: 32px; height: 32px; border: 2px dashed var(--border-color); border-radius: 50%; padding: 0; background: none; cursor: pointer; }
+    .color-custom::-webkit-color-swatch-wrapper { padding: 2px; }
+    .color-custom::-webkit-color-swatch { border: none; border-radius: 50%; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .btn-ghost { background-color: #334155; color: #fff; }
+    .btn-success { background-color: var(--accent-green); color: #04260f; }
   </style>
 </head>
 <body>
@@ -219,21 +237,53 @@
           </div>
 
           <div class="card">
-            <div class="card-title"><span>Công Cụ Vẽ</span></div>
+            <div class="card-title">
+              <span>Công Cụ Vẽ</span>
+              <span class="badge badge-blue" title="Phím tắt: B Bút, E Tẩy, L Đường, A Mũi tên, R Chữ nhật, C Tròn">Phím tắt</span>
+            </div>
+
+            <label class="tool-label">Công cụ:</label>
+            <div class="tool-grid">
+              <button class="tool-btn active" id="tool-pen" data-tool="pen" onclick="setTool('pen')" title="Bút vẽ (B)">✏️<span>Bút</span></button>
+              <button class="tool-btn" id="tool-eraser" data-tool="eraser" onclick="setTool('eraser')" title="Cục tẩy (E)">🧽<span>Tẩy</span></button>
+              <button class="tool-btn" id="tool-line" data-tool="line" onclick="setTool('line')" title="Đường thẳng (L)">📏<span>Đường</span></button>
+              <button class="tool-btn" id="tool-arrow" data-tool="arrow" onclick="setTool('arrow')" title="Mũi tên (A)">➜<span>Mũi tên</span></button>
+              <button class="tool-btn" id="tool-rect" data-tool="rect" onclick="setTool('rect')" title="Hình chữ nhật (R)">▭<span>Chữ nhật</span></button>
+              <button class="tool-btn" id="tool-circle" data-tool="circle" onclick="setTool('circle')" title="Hình tròn (C)">◯<span>Tròn</span></button>
+            </div>
+            <label class="fill-toggle"><input type="checkbox" id="fillShape" onchange="fillShape = this.checked"> Tô đặc hình chữ nhật / hình tròn</label>
+
+            <label class="tool-label">Biểu tượng mạng (chọn rồi bấm lên bảng):</label>
+            <div class="tool-grid tool-grid-5">
+              <button class="tool-btn" id="tool-router" data-tool="router" onclick="setTool('router')" title="Router">📡<span>Router</span></button>
+              <button class="tool-btn" id="tool-switch" data-tool="switch" onclick="setTool('switch')" title="Switch">🔀<span>Switch</span></button>
+              <button class="tool-btn" id="tool-server" data-tool="server" onclick="setTool('server')" title="Server">🗄️<span>Server</span></button>
+              <button class="tool-btn" id="tool-pc" data-tool="pc" onclick="setTool('pc')" title="Máy tính">💻<span>PC</span></button>
+              <button class="tool-btn" id="tool-cloud" data-tool="cloud" onclick="setTool('cloud')" title="Internet">☁️<span>Internet</span></button>
+            </div>
+
             <div style="margin-bottom: 0.75rem;">
-              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Màu sắc nét cọ:</label>
+              <label class="tool-label">Màu sắc nét cọ:</label>
               <div class="color-picker">
                 <div class="color-btn active" style="background-color: #0f172a;" onclick="setColor('#0f172a', this)"></div>
                 <div class="color-btn" style="background-color: #ef4444;" onclick="setColor('#ef4444', this)"></div>
                 <div class="color-btn" style="background-color: #22c55e;" onclick="setColor('#22c55e', this)"></div>
                 <div class="color-btn" style="background-color: #38bdf8;" onclick="setColor('#38bdf8', this)"></div>
+                <div class="color-btn" style="background-color: #f59e0b;" onclick="setColor('#f59e0b', this)"></div>
+                <div class="color-btn" style="background-color: #a855f7;" onclick="setColor('#a855f7', this)"></div>
+                <input type="color" id="customColor" class="color-custom" value="#ec4899" title="Chọn màu tuỳ ý" oninput="setCustomColor(this.value)">
               </div>
             </div>
             <div style="margin-bottom: 1rem;">
               <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Độ dày: <span id="sizeVal">4</span>px</label>
               <input type="range" id="brushSize" min="1" max="20" value="4" style="width: 100%; accent-color: var(--accent-blue);" oninput="document.getElementById('sizeVal').textContent=this.value">
             </div>
-            <button class="btn btn-danger" onclick="clearBoard()">Xóa Sạch Bảng Chung</button>
+            <div class="btn-row">
+              <button class="btn btn-ghost" id="btnUndo" onclick="undo()" title="Ctrl + Z">↶ Hoàn tác</button>
+              <button class="btn btn-ghost" id="btnRedo" onclick="redo()" title="Ctrl + Y">↷ Làm lại</button>
+            </div>
+            <button class="btn btn-success" id="btnExport" onclick="exportPNG()">💾 Tải ảnh bảng vẽ (PNG)</button>
+            <button class="btn btn-danger" id="btnClear" onclick="clearBoard()">Xóa Sạch Bảng Chung</button>
           </div>
 
           <div class="card">
@@ -245,7 +295,7 @@
         <div class="card" style="display: flex; flex-direction: column;">
           <div class="card-title">
             <span>Bảng Vẽ Phân Tán (Hỗ trợ PC & Điện thoại cuộn trang)</span>
-            <span class="badge badge-green">Optimized Touch</span>
+            <span id="toolBadge" class="badge badge-green">Bút vẽ</span>
           </div>
           <div class="canvas-container" style="flex: 1; margin-bottom: 0;">
             <canvas id="whiteboard" class="drawing-canvas" width="1000" height="600" style="height: 560px;"></canvas>
@@ -527,7 +577,11 @@
       document.getElementById('connStatus').className = 'badge badge-green';
 
       client.subscribe([topicName, presenceTopic], (err) => {
-        if (!err) logNet(`Đã Subscribe vào các Topic chính.`);
+        if (!err) {
+          logNet(`Đã Subscribe vào các Topic chính.`);
+          // Xin lịch sử bảng vẽ từ các thành viên đang online (cho người vào sau)
+          publishBoard({ type: 'sync_req' });
+        }
       });
 
       setInterval(() => {
@@ -546,73 +600,271 @@
           }
         } else if (topic === topicName) {
           if (data.sender === myId) return;
-
-          if (data.type === 'draw') {
-            drawLine(data.x1, data.y1, data.x2, data.y2, data.color, data.size);
-            logNet(`[${data.sender}] Vẽ nét x(${Math.round(data.x1)}->${Math.round(data.x2)})`);
-          } else if (data.type === 'clear') {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            logNet(`[${data.sender}] Xóa sạch bảng`);
-          }
+          handleBoardMessage(data);
         }
       } catch (e) {
         console.error(e);
       }
     });
 
+    // ================== BẢNG VẼ NÂNG CAO ==================
+    // Mỗi thao tác (nét bút, hình, biểu tượng) là một "op" có id riêng
+    // => hỗ trợ Hoàn tác / Làm lại đồng bộ qua MQTT và đồng bộ lịch sử cho người vào sau.
+    let boardOps = [];
+    let redoStack = [];
+    let currentTool = 'pen';
+    let fillShape = false;
+    let currentOp = null;
+    let startX = 0, startY = 0;
+    let snapshot = null;
+    let synced = false;
+    const pendingSync = {};
+
+    const TOOL_NAMES = { pen: 'Bút vẽ', eraser: 'Cục tẩy', line: 'Đường thẳng', arrow: 'Mũi tên', rect: 'Hình chữ nhật', circle: 'Hình tròn', router: 'Router', switch: 'Switch', server: 'Server', pc: 'PC', cloud: 'Internet' };
+    const ICON_COLORS = { router: '#38bdf8', switch: '#22c55e', server: '#a855f7', pc: '#f59e0b', cloud: '#cbd5e1' };
+    const ICON_TOOLS = Object.keys(ICON_COLORS);
+
+    function newId() { return myId + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function getSize() { return Number(document.getElementById('brushSize').value); }
+    function publishBoard(msg) {
+      if (client.connected) client.publish(topicName, JSON.stringify(Object.assign({ sender: myId }, msg)));
+    }
+
+    function handleBoardMessage(data) {
+      switch (data.type) {
+        case 'seg': { // một đoạn nét bút / tẩy đang vẽ realtime
+          let op = boardOps.find(o => o.id === data.id);
+          if (!op) {
+            op = { id: data.id, sender: data.sender, kind: 'stroke', mode: data.mode, color: data.color, size: data.size, points: [[data.x1, data.y1]] };
+            boardOps.push(op);
+            logNet(`[${data.sender}] Đang dùng ${TOOL_NAMES[data.mode]}`);
+          }
+          op.points.push([data.x2, data.y2]);
+          drawSegment(ctx, op, data.x1, data.y1, data.x2, data.y2);
+          break;
+        }
+        case 'op': { // thêm nguyên một đối tượng (hình, icon, chấm, làm lại)
+          const idx = boardOps.findIndex(o => o.id === data.op.id);
+          if (idx >= 0) { boardOps[idx] = data.op; redrawAll(); }
+          else { boardOps.push(data.op); drawOp(ctx, data.op); }
+          logNet(`[${data.sender}] Thêm ${TOOL_NAMES[data.op.shape || data.op.icon || data.op.mode] || 'đối tượng'}`);
+          break;
+        }
+        case 'undo':
+          boardOps = boardOps.filter(o => o.id !== data.id);
+          redrawAll();
+          logNet(`[${data.sender}] Hoàn tác 1 thao tác`);
+          break;
+        case 'clear':
+          boardOps = []; redoStack = [];
+          redrawAll();
+          logNet(`[${data.sender}] Xóa sạch bảng`);
+          break;
+        case 'sync_req': // có người mới vào => gửi lịch sử (chỉ 1 người gửi nhờ delay ngẫu nhiên)
+          if (boardOps.length === 0) return;
+          pendingSync[data.sender] = setTimeout(() => {
+            publishBoard({ type: 'sync_res', to: data.sender, ops: boardOps });
+            delete pendingSync[data.sender];
+          }, 200 + Math.random() * 800);
+          break;
+        case 'sync_res':
+          if (pendingSync[data.to]) { clearTimeout(pendingSync[data.to]); delete pendingSync[data.to]; }
+          if (data.to === myId && !synced) {
+            synced = true;
+            const ids = new Set((data.ops || []).map(o => o.id));
+            boardOps = (data.ops || []).concat(boardOps.filter(o => !ids.has(o.id)));
+            redrawAll();
+            logNet(`Đã đồng bộ ${data.ops.length} thao tác từ [${data.sender}]`);
+          }
+          break;
+      }
+    }
+
+    // ---------- Hàm vẽ ----------
+    function drawSegment(c, op, x1, y1, x2, y2) {
+      c.save();
+      c.globalCompositeOperation = op.mode === 'eraser' ? 'destination-out' : 'source-over';
+      c.strokeStyle = op.color; c.lineWidth = op.size; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      c.restore();
+    }
+
+    function drawOp(c, op) {
+      c.save();
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      if (op.kind === 'stroke') {
+        c.globalCompositeOperation = op.mode === 'eraser' ? 'destination-out' : 'source-over';
+        c.strokeStyle = op.color; c.fillStyle = op.color; c.lineWidth = op.size;
+        const p = op.points;
+        c.beginPath();
+        if (p.length === 1) { c.arc(p[0][0], p[0][1], op.size / 2, 0, Math.PI * 2); c.fill(); }
+        else { c.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) c.lineTo(p[i][0], p[i][1]); c.stroke(); }
+      } else if (op.kind === 'shape') {
+        drawShape(c, op);
+      } else if (op.kind === 'icon') {
+        drawIcon(c, op.icon, op.x, op.y, op.color);
+      }
+      c.restore();
+    }
+
+    function drawShape(c, op) {
+      const { x1, y1, x2, y2 } = op;
+      c.strokeStyle = op.color; c.fillStyle = op.color; c.lineWidth = op.size;
+      c.beginPath();
+      if (op.shape === 'line' || op.shape === 'arrow') {
+        c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+        if (op.shape === 'arrow') {
+          const ang = Math.atan2(y2 - y1, x2 - x1);
+          const head = 12 + op.size * 2;
+          c.beginPath();
+          c.moveTo(x2, y2);
+          c.lineTo(x2 - head * Math.cos(ang - Math.PI / 7), y2 - head * Math.sin(ang - Math.PI / 7));
+          c.lineTo(x2 - head * Math.cos(ang + Math.PI / 7), y2 - head * Math.sin(ang + Math.PI / 7));
+          c.closePath(); c.fill();
+        }
+      } else if (op.shape === 'rect') {
+        c.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+        op.fill ? c.fill() : c.stroke();
+      } else if (op.shape === 'circle') {
+        c.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, Math.PI * 2);
+        op.fill ? c.fill() : c.stroke();
+      }
+    }
+
+    function roundRect(c, x, y, w, h, r) {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+      c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r);
+      c.closePath();
+    }
+
+    // Vẽ biểu tượng thiết bị mạng bằng vector (đồng nhất trên mọi máy, không phụ thuộc font emoji)
+    function drawIcon(c, type, x, y, color) {
+      c.save();
+      c.lineWidth = 2.5; c.strokeStyle = '#0f172a'; c.fillStyle = color;
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      if (type === 'router') {
+        c.beginPath(); c.arc(x, y, 26, 0, Math.PI * 2); c.fill(); c.stroke();
+        c.strokeStyle = '#fff'; c.lineWidth = 3;
+        for (let i = 0; i < 4; i++) {
+          const a = Math.PI / 4 + i * Math.PI / 2;
+          const ex = x + Math.cos(a) * 17, ey = y + Math.sin(a) * 17;
+          c.beginPath();
+          c.moveTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); c.lineTo(ex, ey);
+          c.moveTo(ex, ey); c.lineTo(ex - 6 * Math.cos(a - 0.6), ey - 6 * Math.sin(a - 0.6));
+          c.moveTo(ex, ey); c.lineTo(ex - 6 * Math.cos(a + 0.6), ey - 6 * Math.sin(a + 0.6));
+          c.stroke();
+        }
+      } else if (type === 'switch') {
+        roundRect(c, x - 38, y - 16, 76, 32, 6); c.fill(); c.stroke();
+        c.strokeStyle = '#fff'; c.lineWidth = 2.5;
+        c.beginPath();
+        c.moveTo(x - 22, y - 6); c.lineTo(x + 22, y - 6); c.moveTo(x + 22, y - 6); c.lineTo(x + 16, y - 11); c.moveTo(x + 22, y - 6); c.lineTo(x + 16, y - 1);
+        c.moveTo(x + 22, y + 6); c.lineTo(x - 22, y + 6); c.moveTo(x - 22, y + 6); c.lineTo(x - 16, y + 1); c.moveTo(x - 22, y + 6); c.lineTo(x - 16, y + 11);
+        c.stroke();
+      } else if (type === 'server') {
+        roundRect(c, x - 22, y - 30, 44, 60, 5); c.fill(); c.stroke();
+        for (let i = 0; i < 3; i++) {
+          const sy = y - 16 + i * 16;
+          c.strokeStyle = '#fff'; c.lineWidth = 3;
+          c.beginPath(); c.moveTo(x - 13, sy); c.lineTo(x + 5, sy); c.stroke();
+          c.fillStyle = '#22c55e'; c.beginPath(); c.arc(x + 12, sy, 3, 0, Math.PI * 2); c.fill();
+        }
+      } else if (type === 'pc') {
+        roundRect(c, x - 28, y - 26, 56, 38, 4); c.fill(); c.stroke();
+        c.fillStyle = '#e0f2fe'; c.fillRect(x - 23, y - 21, 46, 28);
+        c.beginPath(); c.moveTo(x, y + 12); c.lineTo(x, y + 20); c.moveTo(x - 14, y + 21); c.lineTo(x + 14, y + 21); c.stroke();
+      } else if (type === 'cloud') {
+        c.beginPath();
+        c.arc(x - 16, y + 4, 14, Math.PI * 0.5, Math.PI * 1.5);
+        c.arc(x - 1, y - 9, 18, Math.PI * 1.05, Math.PI * 1.9);
+        c.arc(x + 18, y + 3, 13, Math.PI * 1.4, Math.PI * 0.5);
+        c.closePath(); c.fill(); c.stroke();
+      }
+      c.fillStyle = '#0f172a'; c.font = 'bold 12px Segoe UI, sans-serif'; c.textAlign = 'center';
+      c.fillText(TOOL_NAMES[type], x, y + 46);
+      c.restore();
+    }
+
+    function redrawAll() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      boardOps.forEach(op => drawOp(ctx, op));
+    }
+
+    // ---------- Xử lý chuột / cảm ứng ----------
+    // Quy đổi toạ độ màn hình -> toạ độ thật của canvas (1000x600) để mọi thiết bị vẽ trùng khớp
     function getCursorPos(e) {
       const rect = canvas.getBoundingClientRect();
-      let clientX, clientY;
-      if (e.touches && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
+      const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
       return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
+        x: Math.round((t.clientX - rect.left) * (canvas.width / rect.width)),
+        y: Math.round((t.clientY - rect.top) * (canvas.height / rect.height))
       };
+    }
+
+    function makeShapeOp(pos) {
+      return { id: newId(), sender: myId, kind: 'shape', shape: currentTool, color: currentColor, size: getSize(), fill: fillShape, x1: startX, y1: startY, x2: pos.x, y2: pos.y };
     }
 
     function startPosition(e) {
       e.preventDefault();
-      painting = true;
       const pos = getCursorPos(e);
-      lastX = pos.x;
-      lastY = pos.y;
+
+      if (ICON_TOOLS.includes(currentTool)) { // đặt biểu tượng mạng
+        const op = { id: newId(), sender: myId, kind: 'icon', icon: currentTool, x: pos.x, y: pos.y, color: ICON_COLORS[currentTool] };
+        boardOps.push(op); redoStack = [];
+        drawOp(ctx, op);
+        publishBoard({ type: 'op', op });
+        return;
+      }
+
+      painting = true;
+      startX = lastX = pos.x;
+      startY = lastY = pos.y;
+
+      if (currentTool === 'pen' || currentTool === 'eraser') {
+        const isEraser = currentTool === 'eraser';
+        currentOp = { id: newId(), sender: myId, kind: 'stroke', mode: currentTool, color: isEraser ? '#000' : currentColor, size: isEraser ? getSize() * 3 : getSize(), points: [[pos.x, pos.y]] };
+        boardOps.push(currentOp); redoStack = [];
+        drawOp(ctx, currentOp);
+      } else {
+        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height); // để xem trước hình khi kéo
+      }
     }
 
     function drawPosition(e) {
       if (!painting) return;
       e.preventDefault();
       const pos = getCursorPos(e);
-      const currentX = pos.x;
-      const currentY = pos.y;
-      const size = document.getElementById('brushSize').value;
 
-      drawLine(lastX, lastY, currentX, currentY, currentColor, size);
-
-      if (client.connected) {
-        const packet = JSON.stringify({
-          sender: myId,
-          type: 'draw',
-          x1: lastX, y1: lastY,
-          x2: currentX, y2: currentY,
-          color: currentColor,
-          size: size
-        });
-        client.publish(topicName, packet);
+      if (currentOp) {
+        currentOp.points.push([pos.x, pos.y]);
+        drawSegment(ctx, currentOp, lastX, lastY, pos.x, pos.y);
+        publishBoard({ type: 'seg', id: currentOp.id, mode: currentOp.mode, color: currentOp.color, size: currentOp.size, x1: lastX, y1: lastY, x2: pos.x, y2: pos.y });
+        lastX = pos.x; lastY = pos.y;
+      } else if (snapshot) {
+        ctx.putImageData(snapshot, 0, 0);
+        drawOp(ctx, makeShapeOp(pos));
       }
-
-      lastX = currentX;
-      lastY = currentY;
     }
 
     function endPosition(e) {
       if (!painting) return;
       painting = false;
+
+      if (currentOp) {
+        if (currentOp.points.length === 1) publishBoard({ type: 'op', op: currentOp }); // chỉ chấm 1 điểm
+        currentOp = null;
+      } else if (snapshot) {
+        const pos = getCursorPos(e);
+        snapshot = null;
+        if (Math.hypot(pos.x - startX, pos.y - startY) < 3) { redrawAll(); return; }
+        const op = makeShapeOp(pos);
+        boardOps.push(op); redoStack = [];
+        redrawAll();
+        publishBoard({ type: 'op', op });
+      }
     }
 
     canvas.addEventListener('mousedown', startPosition);
@@ -624,30 +876,84 @@
     canvas.addEventListener('touchmove', drawPosition, { passive: false });
     canvas.addEventListener('touchend', endPosition);
 
-    function drawLine(x1, y1, x2, y2, color, size) {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = size;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-      ctx.closePath();
+    // ---------- Thanh công cụ ----------
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+      document.getElementById('toolBadge').textContent = TOOL_NAMES[tool];
+      canvas.style.cursor = tool === 'eraser' ? 'cell' : (ICON_TOOLS.includes(tool) ? 'copy' : 'crosshair');
     }
 
     function setColor(color, element) {
       currentColor = color;
       document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
       element.classList.add('active');
+      if (currentTool === 'eraser') setTool('pen');
+    }
+
+    function setCustomColor(color) {
+      currentColor = color;
+      document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+      if (currentTool === 'eraser') setTool('pen');
+    }
+
+    function undo() {
+      for (let i = boardOps.length - 1; i >= 0; i--) {
+        if (boardOps[i].sender === myId) { // chỉ hoàn tác thao tác của chính mình
+          const [op] = boardOps.splice(i, 1);
+          redoStack.push(op);
+          redrawAll();
+          publishBoard({ type: 'undo', id: op.id });
+          logNet('Bạn đã hoàn tác 1 thao tác.');
+          return;
+        }
+      }
+      logNet('Không còn thao tác nào của bạn để hoàn tác.');
+    }
+
+    function redo() {
+      const op = redoStack.pop();
+      if (!op) return;
+      boardOps.push(op);
+      drawOp(ctx, op);
+      publishBoard({ type: 'op', op });
+      logNet('Bạn đã làm lại 1 thao tác.');
+    }
+
+    function exportPNG() {
+      const tmp = document.createElement('canvas');
+      tmp.width = canvas.width; tmp.height = canvas.height;
+      const t = tmp.getContext('2d');
+      t.fillStyle = '#ffffff'; t.fillRect(0, 0, tmp.width, tmp.height); // nền trắng (vùng tẩy là trong suốt)
+      t.drawImage(canvas, 0, 0);
+      const a = document.createElement('a');
+      a.download = `whiteboard-nhom-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+      a.href = tmp.toDataURL('image/png');
+      a.click();
+      logNet('Đã tải ảnh bảng vẽ về máy (PNG).');
     }
 
     function clearBoard() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (client.connected) {
-        client.publish(topicName, JSON.stringify({ sender: myId, type: 'clear' }));
-      }
+      if (!confirm('Xóa sạch bảng vẽ của cả nhóm?')) return;
+      boardOps = []; redoStack = [];
+      redrawAll();
+      publishBoard({ type: 'clear' });
       logNet('Bạn đã gửi lệnh xóa toàn bộ bảng vẽ.');
     }
+
+    // Phím tắt: Ctrl+Z / Ctrl+Y và chọn nhanh công cụ
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+      if (!document.getElementById('tab3').classList.contains('active')) return;
+      const k = e.key.toLowerCase();
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+      else if (!mod && !e.altKey) {
+        const map = { b: 'pen', e: 'eraser', l: 'line', a: 'arrow', r: 'rect', c: 'circle' };
+        if (map[k]) setTool(map[k]);
+      }
+    });
 
     setInterval(() => {
       const now = Date.now();
