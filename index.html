@@ -197,8 +197,11 @@
               <span>Trạng Thái Kết Nối MQTT</span>
               <span id="connStatus" class="badge badge-amber">Đang kết nối...</span>
             </div>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem;">
               Broker: <code class="inline-code">broker.hivemq.com:8884</code>
+            </p>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+              Kênh nhóm riêng: <code class="inline-code">nghuuphu244/whiteboard</code>
             </p>
             <p style="font-size: 0.75rem; color: var(--text-muted);">
               Mã nhận diện Client: <strong id="myClientId" style="color: var(--accent-blue);">--</strong>
@@ -483,8 +486,9 @@
     const myId = 'Client_' + Math.floor(Math.random() * 9000 + 1000);
     document.getElementById('myClientId').textContent = myId;
 
-    const topicName = "netprog/class/whiteboard/room_master";
-    const presenceTopic = "netprog/class/whiteboard/presence";
+    // Kênh MQTT riêng biệt độc quyền của Phú và nhóm (không ai vẽ đè lên được)
+    const topicName = "nghuuphu244/whiteboard/room_phu";
+    const presenceTopic = "nghuuphu244/whiteboard/presence";
 
     const activeClients = new Map();
     activeClients.set(myId, { id: myId, status: 'Đang hoạt động', lastSeen: Date.now() });
