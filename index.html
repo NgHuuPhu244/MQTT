@@ -75,12 +75,12 @@
     .step-box { background-color: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
     .step-box h4 { color: var(--accent-blue); font-size: 0.95rem; margin-bottom: 0.5rem; }
 
-    /* --- Công cụ vẽ nâng cao --- */
+    /* --- Công cụ vẽ nâng cao & UI/UX mới --- */
     .tool-label { font-size: 0.8rem; color: var(--text-muted); display: block; margin: 0.25rem 0 0.35rem; }
-    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-bottom: 0.6rem; }
+    .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-bottom: 0.6rem; }
     .tool-grid-5 { grid-template-columns: repeat(5, 1fr); }
     .tool-btn { background: #0f172a; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 0.45rem 0.2rem; cursor: pointer; font-size: 1.05rem; display: flex; flex-direction: column; align-items: center; gap: 0.15rem; transition: all 0.15s; }
-    .tool-btn span { font-size: 0.68rem; color: var(--text-muted); }
+    .tool-btn span { font-size: 0.65rem; color: var(--text-muted); }
     .tool-btn:hover { border-color: var(--accent-blue); transform: translateY(-1px); }
     .tool-btn.active { background: rgba(56, 189, 248, 0.15); border-color: var(--accent-blue); box-shadow: 0 0 0 1px var(--accent-blue) inset; }
     .tool-btn.active span { color: var(--accent-blue); }
@@ -92,6 +92,260 @@
     .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
     .btn-ghost { background-color: #334155; color: #fff; }
     .btn-success { background-color: var(--accent-green); color: #04260f; }
+
+    /* Canvas Stage Container & Fullscreen */
+    .canvas-stage {
+      position: relative;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #090d16;
+      border: 1px solid var(--border-color);
+      user-select: none;
+    }
+    .canvas-stage:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #000;
+    }
+    .canvas-stage:fullscreen canvas.drawing-canvas,
+    .canvas-stage:fullscreen canvas.laser-canvas {
+      height: 100vh !important;
+      max-height: 100vh;
+    }
+
+    /* Laser Pointer Canvas */
+    canvas.laser-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Live Remote Cursors (Figma Style) */
+    .cursor-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .remote-cursor {
+      position: absolute;
+      transform: translate(0, 0);
+      transition: left 0.08s linear, top 0.08s linear, opacity 0.3s ease;
+      z-index: 20;
+      display: flex;
+      align-items: flex-start;
+      pointer-events: none;
+    }
+    .remote-cursor svg {
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .remote-cursor .cursor-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-left: -2px;
+      margin-top: 14px;
+      white-space: nowrap;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* Inline Text Tool Input */
+    .canvas-text-input {
+      position: absolute;
+      z-index: 30;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-weight: 600;
+      border: 2px dashed var(--accent-blue);
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(6px);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      outline: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      min-width: 160px;
+    }
+
+    /* Network HUD Overlay */
+    .canvas-hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.75rem;
+      color: #f8fafc;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      flex-wrap: wrap;
+    }
+    .hud-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .hud-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px currentColor;
+      display: inline-block;
+      animation: pulseDot 2s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .hud-divider {
+      width: 1px;
+      height: 16px;
+      background-color: var(--border-color);
+    }
+    .hud-select {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: #f8fafc;
+      padding: 3px 6px;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .hud-btn {
+      background: #334155;
+      color: #f8fafc;
+      border: none;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .hud-btn:hover { opacity: 0.85; }
+
+    /* Reaction Dock (Bottom Center) */
+    .reaction-dock {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 30px;
+      padding: 4px 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .reaction-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-right: 2px;
+    }
+    .reaction-btn {
+      background: none;
+      border: none;
+      font-size: 1.15rem;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 6px;
+      transition: transform 0.15s, background-color 0.15s;
+    }
+    .reaction-btn:hover {
+      transform: scale(1.35) translateY(-2px);
+      background-color: rgba(255,255,255,0.1);
+    }
+    .reaction-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Floating Reactions Layer */
+    .reaction-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 25;
+      overflow: hidden;
+    }
+    .floating-reaction {
+      position: absolute;
+      bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: floatUp 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      pointer-events: none;
+    }
+    .floating-reaction .emoji {
+      font-size: 2.2rem;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    }
+    .floating-reaction .user-pill {
+      font-size: 0.65rem;
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--accent-blue);
+      padding: 1px 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      margin-top: -4px;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(0.6); opacity: 0; }
+      12% { transform: translateY(-30px) scale(1.2); opacity: 1; }
+      75% { opacity: 0.9; }
+      100% { transform: translateY(-360px) scale(1); opacity: 0; }
+    }
+
+    /* Nền Canvas & Chủ đề Lưới */
+    canvas.drawing-canvas.theme-white {
+      background-color: #ffffff;
+    }
+    canvas.drawing-canvas.theme-dots {
+      background-color: #ffffff;
+      background-image: radial-gradient(#94a3b8 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+    }
+    canvas.drawing-canvas.theme-grid {
+      background-color: #f8fafc;
+      background-image: linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
+      background-size: 25px 25px;
+    }
+    canvas.drawing-canvas.theme-dark {
+      background-color: #0f172a;
+      background-image: radial-gradient(#334155 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+    }
   </style>
 </head>
 <body>
@@ -221,9 +475,17 @@
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem;">
               Kênh nhóm riêng: <code class="inline-code">nghuuphu244/whiteboard</code>
             </p>
-            <p style="font-size: 0.75rem; color: var(--text-muted);">
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
               Mã nhận diện Client: <strong id="myClientId" style="color: var(--accent-blue);">--</strong>
             </p>
+            <div style="padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+              <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Tên hiển thị & Màu con trỏ của bạn:</label>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <span id="myColorDot" style="width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex-shrink: 0;" title="Màu con trỏ chuột"></span>
+                <input type="text" id="myCustomNameInput" maxlength="18" style="flex: 1; background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.8rem;" placeholder="Nhập tên của bạn...">
+                <button class="btn" style="width: auto; margin-top: 0; padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="saveCustomName()">Lưu</button>
+              </div>
+            </div>
           </div>
 
           <div class="card">
@@ -239,17 +501,19 @@
           <div class="card">
             <div class="card-title">
               <span>Công Cụ Vẽ</span>
-              <span class="badge badge-blue" title="Phím tắt: B Bút, E Tẩy, L Đường, A Mũi tên, R Chữ nhật, C Tròn">Phím tắt</span>
+              <span class="badge badge-blue" title="Phím tắt: B Bút, E Tẩy, T Chữ, K Laser, L Đường, A Mũi tên, R Chữ nhật, C Tròn, F Toàn màn hình">Phím tắt</span>
             </div>
 
-            <label class="tool-label">Công cụ:</label>
+            <label class="tool-label">Công cụ chính:</label>
             <div class="tool-grid">
-              <button class="tool-btn active" id="tool-pen" data-tool="pen" onclick="setTool('pen')" title="Bút vẽ (B)">✏️<span>Bút</span></button>
-              <button class="tool-btn" id="tool-eraser" data-tool="eraser" onclick="setTool('eraser')" title="Cục tẩy (E)">🧽<span>Tẩy</span></button>
-              <button class="tool-btn" id="tool-line" data-tool="line" onclick="setTool('line')" title="Đường thẳng (L)">📏<span>Đường</span></button>
-              <button class="tool-btn" id="tool-arrow" data-tool="arrow" onclick="setTool('arrow')" title="Mũi tên (A)">➜<span>Mũi tên</span></button>
-              <button class="tool-btn" id="tool-rect" data-tool="rect" onclick="setTool('rect')" title="Hình chữ nhật (R)">▭<span>Chữ nhật</span></button>
-              <button class="tool-btn" id="tool-circle" data-tool="circle" onclick="setTool('circle')" title="Hình tròn (C)">◯<span>Tròn</span></button>
+              <button class="tool-btn active" id="tool-pen" data-tool="pen" onclick="setTool('pen')" title="Bút vẽ (B)">✏️<span>Bút (B)</span></button>
+              <button class="tool-btn" id="tool-eraser" data-tool="eraser" onclick="setTool('eraser')" title="Cục tẩy (E)">🧽<span>Tẩy (E)</span></button>
+              <button class="tool-btn" id="tool-text" data-tool="text" onclick="setTool('text')" title="Gõ chữ (T)">🔤<span>Chữ (T)</span></button>
+              <button class="tool-btn" id="tool-laser" data-tool="laser" onclick="setTool('laser')" title="Bút Laser thuyết trình (K)">🔴<span>Laser (K)</span></button>
+              <button class="tool-btn" id="tool-line" data-tool="line" onclick="setTool('line')" title="Đường thẳng (L)">📏<span>Đường (L)</span></button>
+              <button class="tool-btn" id="tool-arrow" data-tool="arrow" onclick="setTool('arrow')" title="Mũi tên (A)">➜<span>Mũi tên (A)</span></button>
+              <button class="tool-btn" id="tool-rect" data-tool="rect" onclick="setTool('rect')" title="Hình chữ nhật (R)">▭<span>Chữ nhật (R)</span></button>
+              <button class="tool-btn" id="tool-circle" data-tool="circle" onclick="setTool('circle')" title="Hình tròn (C)">◯<span>Tròn (C)</span></button>
             </div>
             <label class="fill-toggle"><input type="checkbox" id="fillShape" onchange="fillShape = this.checked"> Tô đặc hình chữ nhật / hình tròn</label>
 
@@ -263,7 +527,7 @@
             </div>
 
             <div style="margin-bottom: 0.75rem;">
-              <label class="tool-label">Màu sắc nét cọ:</label>
+              <label class="tool-label">Màu sắc nét cọ / chữ:</label>
               <div class="color-picker">
                 <div class="color-btn active" style="background-color: #0f172a;" onclick="setColor('#0f172a', this)"></div>
                 <div class="color-btn" style="background-color: #ef4444;" onclick="setColor('#ef4444', this)"></div>
@@ -275,7 +539,7 @@
               </div>
             </div>
             <div style="margin-bottom: 1rem;">
-              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Độ dày: <span id="sizeVal">4</span>px</label>
+              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Độ dày / Cỡ chữ: <span id="sizeVal">4</span>px</label>
               <input type="range" id="brushSize" min="1" max="20" value="4" style="width: 100%; accent-color: var(--accent-blue);" oninput="document.getElementById('sizeVal').textContent=this.value">
             </div>
             <div class="btn-row">
@@ -294,11 +558,55 @@
 
         <div class="card" style="display: flex; flex-direction: column;">
           <div class="card-title">
-            <span>Bảng Vẽ Phân Tán (Hỗ trợ PC & Điện thoại cuộn trang)</span>
+            <span>Bảng Vẽ Phân Tán (Hỗ trợ PC & Điện thoại)</span>
             <span id="toolBadge" class="badge badge-green">Bút vẽ</span>
           </div>
-          <div class="canvas-container" style="flex: 1; margin-bottom: 0;">
-            <canvas id="whiteboard" class="drawing-canvas" width="1000" height="600" style="height: 560px;"></canvas>
+          <div class="canvas-stage" id="canvasStage">
+            <!-- HUD Network & Quick Controls -->
+            <div class="canvas-hud">
+              <div class="hud-item" title="Độ trễ tới MQTT Broker theo thời gian thực">
+                <span class="hud-dot" id="pingDot"></span>
+                <span>Ping: <strong id="pingVal">--</strong> ms</span>
+              </div>
+              <div class="hud-divider"></div>
+              <div class="hud-item" title="Số lượng gói tin Broadcast đã gửi (TX) và nhận (RX)">
+                <span>📡 TX: <strong id="txCount">0</strong> | RX: <strong id="rxCount">0</strong></span>
+              </div>
+              <div class="hud-divider"></div>
+              <select id="canvasThemeSelect" onchange="setCanvasTheme(this.value)" class="hud-select" title="Đổi kiểu nền bảng">
+                <option value="dots">📐 Lưới Chấm Bi</option>
+                <option value="grid">📏 Lưới Kỹ Thuật</option>
+                <option value="white">⚪ Trắng Tinh</option>
+                <option value="dark">🌑 Bảng Đen Cyber</option>
+              </select>
+              <button class="hud-btn" onclick="toggleCanvasFullscreen()" title="Toàn màn hình trình chiếu (F)">⛶ Toàn màn hình</button>
+            </div>
+
+            <!-- Bảng vẽ chính -->
+            <canvas id="whiteboard" class="drawing-canvas theme-dots" width="1000" height="600" style="height: 560px;"></canvas>
+
+            <!-- Lớp vẽ tia laser neon (tự tan biến sau 1s) -->
+            <canvas id="laserCanvas" class="laser-canvas" width="1000" height="600"></canvas>
+
+            <!-- Lớp hiển thị con trỏ trực tiếp của bạn bè -->
+            <div id="cursorOverlay" class="cursor-overlay"></div>
+
+            <!-- Khung nhập chữ tại chỗ cho công cụ Text -->
+            <input type="text" id="canvasTextInput" class="canvas-text-input" placeholder="Gõ chữ & nhấn Enter..." style="display: none;">
+
+            <!-- Lớp hiệu ứng biểu cảm bay lượn -->
+            <div id="reactionOverlay" class="reaction-overlay"></div>
+
+            <!-- Thanh thả biểu cảm thời gian thực -->
+            <div class="reaction-dock">
+              <span class="reaction-label">Thả tương tác:</span>
+              <button class="reaction-btn" onclick="sendReaction('👍')" title="Tuyệt vời">👍</button>
+              <button class="reaction-btn" onclick="sendReaction('❤️')" title="Yêu thích">❤️</button>
+              <button class="reaction-btn" onclick="sendReaction('🔥')" title="Đỉnh">🔥</button>
+              <button class="reaction-btn" onclick="sendReaction('💡')" title="Ý tưởng hay">💡</button>
+              <button class="reaction-btn" onclick="sendReaction('🚀')" title="Xuất sắc">🚀</button>
+              <button class="reaction-btn" onclick="sendReaction('🎯')" title="Chính xác">🎯</button>
+            </div>
           </div>
         </div>
       </div>
@@ -526,22 +834,59 @@
       draw();
     }
 
-    // --- TAB 3: WHITEBOARD & TOUCH FIX ---
+    // --- TAB 3: WHITEBOARD NÂNG CAO (COLLABORATIVE REALTIME) ---
     const canvas = document.getElementById('whiteboard');
     const ctx = canvas.getContext('2d');
+    const laserCanvas = document.getElementById('laserCanvas');
+    const laserCtx = laserCanvas ? laserCanvas.getContext('2d') : null;
+
     let painting = false;
     let currentColor = '#0f172a';
     let lastX = 0, lastY = 0;
 
+    // Màu & Danh xưng cá nhân hoá cho con trỏ trực tiếp
+    const CURSOR_COLORS = ['#38bdf8', '#22c55e', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4', '#f97316', '#10b981'];
+    const myCursorColor = CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
     const myId = 'Client_' + Math.floor(Math.random() * 9000 + 1000);
-    document.getElementById('myClientId').textContent = myId;
+    let myDisplayName = localStorage.getItem('whiteboard_user_name') || myId;
 
-    // Kênh MQTT riêng biệt độc quyền của Phú và nhóm (không ai vẽ đè lên được)
+    document.getElementById('myClientId').textContent = myId;
+    const myDot = document.getElementById('myColorDot');
+    if (myDot) myDot.style.backgroundColor = myCursorColor;
+    const nameInput = document.getElementById('myCustomNameInput');
+    if (nameInput) nameInput.value = myDisplayName;
+
+    function saveCustomName() {
+      const val = document.getElementById('myCustomNameInput').value.trim();
+      if (!val) return;
+      myDisplayName = val;
+      localStorage.setItem('whiteboard_user_name', val);
+      logNet(`Đã đổi tên hiển thị thành: <b>${val}</b>`);
+      activeClients.set(myId, { id: myId, name: myDisplayName, color: myCursorColor, status: 'Đang hoạt động', lastSeen: Date.now() });
+      updateClientListUI();
+    }
+
+    // Kênh MQTT riêng biệt độc quyền
     const topicName = "nghuuphu244/whiteboard/room_phu";
     const presenceTopic = "nghuuphu244/whiteboard/presence";
+    const pingTopic = "nghuuphu244/whiteboard/ping";
+
+    // Thống kê gói tin & Telemetry HUD
+    let txCount = 0;
+    let rxCount = 0;
+    function incTX() {
+      txCount++;
+      const el = document.getElementById('txCount');
+      if (el) el.textContent = txCount;
+    }
+    function incRX() {
+      rxCount++;
+      const el = document.getElementById('rxCount');
+      if (el) el.textContent = rxCount;
+    }
 
     const activeClients = new Map();
-    activeClients.set(myId, { id: myId, status: 'Đang hoạt động', lastSeen: Date.now() });
+    activeClients.set(myId, { id: myId, name: myDisplayName, color: myCursorColor, status: 'Đang hoạt động', lastSeen: Date.now() });
 
     function logNet(msg) {
       const logs = document.getElementById('netLogs');
@@ -561,8 +906,13 @@
       activeClients.forEach((client, id) => {
         const item = document.createElement('div');
         item.className = 'client-item';
+        const cColor = client.color || '#38bdf8';
+        const dName = client.name || id;
         item.innerHTML = `
-          <span><b>${id}</b> ${id === myId ? '(Bạn)' : ''}</span>
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${cColor}; display: inline-block;"></span>
+            <b>${dName}</b> ${id === myId ? '<i style="color:var(--text-muted);font-size:0.75rem;">(Bạn)</i>' : ''}
+          </span>
           <span class="badge badge-green">${client.status}</span>
         `;
         container.appendChild(item);
@@ -576,7 +926,7 @@
       document.getElementById('connStatus').textContent = 'Đã kết nối';
       document.getElementById('connStatus').className = 'badge badge-green';
 
-      client.subscribe([topicName, presenceTopic], (err) => {
+      client.subscribe([topicName, presenceTopic, pingTopic], (err) => {
         if (!err) {
           logNet(`Đã Subscribe vào các Topic chính.`);
           // Xin lịch sử bảng vẽ từ các thành viên đang online (cho người vào sau)
@@ -584,18 +934,39 @@
         }
       });
 
+      // Gửi heartbeat hiện diện định kỳ
       setInterval(() => {
-        client.publish(presenceTopic, JSON.stringify({ id: myId, status: 'Active' }));
+        client.publish(presenceTopic, JSON.stringify({ id: myId, name: myDisplayName, color: myCursorColor, status: 'Active' }));
       }, 3000);
+
+      // Đo độ trễ (Ping / RTT) định kỳ
+      setInterval(measurePing, 4000);
+      measurePing();
     });
+
+    function measurePing() {
+      if (!client || !client.connected) return;
+      client.publish(pingTopic, JSON.stringify({ sender: myId, t: Date.now() }));
+    }
 
     client.on('message', (topic, payload) => {
       try {
         const data = JSON.parse(payload.toString());
+        incRX();
 
-        if (topic === presenceTopic) {
+        if (topic === pingTopic) {
+          if (data.sender === myId) {
+            const rtt = Math.max(1, Date.now() - data.t);
+            const pVal = document.getElementById('pingVal');
+            const pDot = document.getElementById('pingDot');
+            if (pVal) pVal.textContent = rtt;
+            if (pDot) {
+              pDot.style.backgroundColor = rtt < 80 ? 'var(--accent-green)' : (rtt < 220 ? 'var(--accent-amber)' : 'var(--accent-red)');
+            }
+          }
+        } else if (topic === presenceTopic) {
           if (data.id && data.id !== myId) {
-            activeClients.set(data.id, { id: data.id, status: 'Trực tuyến', lastSeen: Date.now() });
+            activeClients.set(data.id, { id: data.id, name: data.name || data.id, color: data.color || '#38bdf8', status: 'Trực tuyến', lastSeen: Date.now() });
             updateClientListUI();
           }
         } else if (topic === topicName) {
@@ -608,8 +979,6 @@
     });
 
     // ================== BẢNG VẼ NÂNG CAO ==================
-    // Mỗi thao tác (nét bút, hình, biểu tượng) là một "op" có id riêng
-    // => hỗ trợ Hoàn tác / Làm lại đồng bộ qua MQTT và đồng bộ lịch sử cho người vào sau.
     let boardOps = [];
     let redoStack = [];
     let currentTool = 'pen';
@@ -620,47 +989,78 @@
     let synced = false;
     const pendingSync = {};
 
-    const TOOL_NAMES = { pen: 'Bút vẽ', eraser: 'Cục tẩy', line: 'Đường thẳng', arrow: 'Mũi tên', rect: 'Hình chữ nhật', circle: 'Hình tròn', router: 'Router', switch: 'Switch', server: 'Server', pc: 'PC', cloud: 'Internet' };
+    const TOOL_NAMES = {
+      pen: 'Bút vẽ',
+      eraser: 'Cục tẩy',
+      text: 'Gõ chữ',
+      laser: 'Bút Laser',
+      line: 'Đường thẳng',
+      arrow: 'Mũi tên',
+      rect: 'Hình chữ nhật',
+      circle: 'Hình tròn',
+      router: 'Router',
+      switch: 'Switch',
+      server: 'Server',
+      pc: 'PC',
+      cloud: 'Internet'
+    };
     const ICON_COLORS = { router: '#38bdf8', switch: '#22c55e', server: '#a855f7', pc: '#f59e0b', cloud: '#cbd5e1' };
     const ICON_TOOLS = Object.keys(ICON_COLORS);
 
     function newId() { return myId + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
     function getSize() { return Number(document.getElementById('brushSize').value); }
     function publishBoard(msg) {
-      if (client.connected) client.publish(topicName, JSON.stringify(Object.assign({ sender: myId }, msg)));
+      if (client.connected) {
+        incTX();
+        client.publish(topicName, JSON.stringify(Object.assign({ sender: myId, senderName: myDisplayName }, msg)));
+      }
     }
 
     function handleBoardMessage(data) {
       switch (data.type) {
-        case 'seg': { // một đoạn nét bút / tẩy đang vẽ realtime
+        case 'seg': { // Đoạn nét bút / tẩy realtime
           let op = boardOps.find(o => o.id === data.id);
           if (!op) {
             op = { id: data.id, sender: data.sender, kind: 'stroke', mode: data.mode, color: data.color, size: data.size, points: [[data.x1, data.y1]] };
             boardOps.push(op);
-            logNet(`[${data.sender}] Đang dùng ${TOOL_NAMES[data.mode]}`);
+            logNet(`[${data.senderName || data.sender}] Đang dùng ${TOOL_NAMES[data.mode]}`);
           }
           op.points.push([data.x2, data.y2]);
           drawSegment(ctx, op, data.x1, data.y1, data.x2, data.y2);
           break;
         }
-        case 'op': { // thêm nguyên một đối tượng (hình, icon, chấm, làm lại)
+        case 'op': { // Thêm hình, icon, text, làm lại
           const idx = boardOps.findIndex(o => o.id === data.op.id);
           if (idx >= 0) { boardOps[idx] = data.op; redrawAll(); }
           else { boardOps.push(data.op); drawOp(ctx, data.op); }
-          logNet(`[${data.sender}] Thêm ${TOOL_NAMES[data.op.shape || data.op.icon || data.op.mode] || 'đối tượng'}`);
+          logNet(`[${data.senderName || data.sender}] Thêm ${TOOL_NAMES[data.op.shape || data.op.icon || data.op.kind || data.op.mode] || 'đối tượng'}`);
           break;
         }
         case 'undo':
           boardOps = boardOps.filter(o => o.id !== data.id);
           redrawAll();
-          logNet(`[${data.sender}] Hoàn tác 1 thao tác`);
+          logNet(`[${data.senderName || data.sender}] Hoàn tác 1 thao tác`);
           break;
         case 'clear':
           boardOps = []; redoStack = [];
           redrawAll();
-          logNet(`[${data.sender}] Xóa sạch bảng`);
+          logNet(`[${data.senderName || data.sender}] Xóa sạch bảng`);
           break;
-        case 'sync_req': // có người mới vào => gửi lịch sử (chỉ 1 người gửi nhờ delay ngẫu nhiên)
+        case 'cursor':
+          renderRemoteCursor(data);
+          break;
+        case 'cursor_leave':
+          removeRemoteCursor(data.sender);
+          break;
+        case 'laser': {
+          handleIncomingLaser(data);
+          break;
+        }
+        case 'reaction':
+          spawnReaction(data.emoji, data.senderName || data.sender, data.x || 500);
+          logNet(`[${data.senderName || data.sender}] Thả biểu cảm: ${data.emoji}`);
+          break;
+        case 'sync_req':
           if (boardOps.length === 0) return;
           pendingSync[data.sender] = setTimeout(() => {
             publishBoard({ type: 'sync_res', to: data.sender, ops: boardOps });
@@ -674,13 +1074,13 @@
             const ids = new Set((data.ops || []).map(o => o.id));
             boardOps = (data.ops || []).concat(boardOps.filter(o => !ids.has(o.id)));
             redrawAll();
-            logNet(`Đã đồng bộ ${data.ops.length} thao tác từ [${data.sender}]`);
+            logNet(`Đã đồng bộ ${data.ops.length} thao tác từ [${data.senderName || data.sender}]`);
           }
           break;
       }
     }
 
-    // ---------- Hàm vẽ ----------
+    // ---------- Hàm vẽ chuẩn ----------
     function drawSegment(c, op, x1, y1, x2, y2) {
       c.save();
       c.globalCompositeOperation = op.mode === 'eraser' ? 'destination-out' : 'source-over';
@@ -703,6 +1103,11 @@
         drawShape(c, op);
       } else if (op.kind === 'icon') {
         drawIcon(c, op.icon, op.x, op.y, op.color);
+      } else if (op.kind === 'text') {
+        c.fillStyle = op.color;
+        c.font = `bold ${op.size}px 'Segoe UI', system-ui, sans-serif`;
+        c.textBaseline = 'top';
+        c.fillText(op.text, op.x, op.y);
       }
       c.restore();
     }
@@ -739,7 +1144,7 @@
       c.closePath();
     }
 
-    // Vẽ biểu tượng thiết bị mạng bằng vector (đồng nhất trên mọi máy, không phụ thuộc font emoji)
+    // Biểu tượng thiết bị mạng vector chuẩn
     function drawIcon(c, type, x, y, color) {
       c.save();
       c.lineWidth = 2.5; c.strokeStyle = '#0f172a'; c.fillStyle = color;
@@ -792,8 +1197,7 @@
       boardOps.forEach(op => drawOp(ctx, op));
     }
 
-    // ---------- Xử lý chuột / cảm ứng ----------
-    // Quy đổi toạ độ màn hình -> toạ độ thật của canvas (1000x600) để mọi thiết bị vẽ trùng khớp
+    // ---------- Xử lý chuột & toạ độ chuẩn (1000x600) ----------
     function getCursorPos(e) {
       const rect = canvas.getBoundingClientRect();
       const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
@@ -804,14 +1208,262 @@
     }
 
     function makeShapeOp(pos) {
-      return { id: newId(), sender: myId, kind: 'shape', shape: currentTool, color: currentColor, size: getSize(), fill: fillShape, x1: startX, y1: startY, x2: pos.x, y2: pos.y };
+      return {
+        id: newId(),
+        sender: myId,
+        kind: 'shape',
+        shape: currentTool,
+        color: currentColor,
+        size: getSize(),
+        fill: fillShape,
+        x1: startX,
+        y1: startY,
+        x2: pos.x,
+        y2: pos.y
+      };
     }
 
+    // ---------- Quản lý Text Tool ----------
+    let currentTextPos = null;
+    function handleTextClick(pos) {
+      currentTextPos = pos;
+      const textInput = document.getElementById('canvasTextInput');
+      if (!textInput) return;
+      textInput.style.left = `${(pos.x / 1000) * 100}%`;
+      textInput.style.top = `${(pos.y / 600) * 100}%`;
+      textInput.style.color = currentColor === '#0f172a' ? '#38bdf8' : currentColor;
+      textInput.style.fontSize = `${Math.max(15, getSize() * 2 + 10)}px`;
+      textInput.value = '';
+      textInput.style.display = 'block';
+      setTimeout(() => textInput.focus(), 10);
+    }
+
+    function commitTextInput() {
+      const textInput = document.getElementById('canvasTextInput');
+      if (!textInput || textInput.style.display === 'none') return;
+      const val = textInput.value.trim();
+      textInput.style.display = 'none';
+      if (!val || !currentTextPos) return;
+
+      const op = {
+        id: newId(),
+        sender: myId,
+        kind: 'text',
+        text: val,
+        color: currentColor,
+        size: Math.max(16, getSize() * 2 + 10),
+        x: currentTextPos.x,
+        y: currentTextPos.y
+      };
+      boardOps.push(op);
+      redoStack = [];
+      drawOp(ctx, op);
+      publishBoard({ type: 'op', op });
+      logNet(`[${myDisplayName}] Thêm chữ: "${val}"`);
+      currentTextPos = null;
+    }
+
+    const tInput = document.getElementById('canvasTextInput');
+    if (tInput) {
+      tInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commitTextInput(); }
+        else if (e.key === 'Escape') { tInput.style.display = 'none'; currentTextPos = null; }
+      });
+      tInput.addEventListener('blur', () => { commitTextInput(); });
+    }
+
+    // ---------- Quản lý Bút Laser (Tự mờ dần sau 1s) ----------
+    let laserTrails = []; // { sender, color, points: [{x, y, time}] }
+    function addLaserPoint(x, y) {
+      const now = Date.now();
+      const pt = { x, y, time: now };
+      let trail = laserTrails.find(t => t.sender === myId);
+      const lColor = currentColor === '#0f172a' ? '#ef4444' : currentColor;
+      if (!trail) {
+        trail = { sender: myId, color: lColor, points: [] };
+        laserTrails.push(trail);
+      }
+      trail.color = lColor;
+      trail.points.push(pt);
+      broadcastLaser(x, y, lColor);
+    }
+
+    let lastLaserSend = 0;
+    function broadcastLaser(x, y, color) {
+      const now = Date.now();
+      if (now - lastLaserSend < 40) return;
+      lastLaserSend = now;
+      publishBoard({ type: 'laser', x, y, color, time: now });
+    }
+
+    function handleIncomingLaser(data) {
+      const now = Date.now();
+      let trail = laserTrails.find(t => t.sender === data.sender);
+      if (!trail) {
+        trail = { sender: data.sender, color: data.color || '#ef4444', points: [] };
+        laserTrails.push(trail);
+      }
+      trail.color = data.color || '#ef4444';
+      trail.points.push({ x: data.x, y: data.y, time: data.time || now });
+    }
+
+    function animLaser() {
+      if (!laserCanvas || !laserCtx) return;
+      const now = Date.now();
+      laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
+
+      laserTrails.forEach(trail => {
+        trail.points = trail.points.filter(p => now - p.time < 1100);
+        if (trail.points.length < 2) return;
+
+        laserCtx.save();
+        laserCtx.lineCap = 'round';
+        laserCtx.lineJoin = 'round';
+        laserCtx.shadowColor = trail.color;
+        laserCtx.shadowBlur = 14;
+
+        for (let i = 1; i < trail.points.length; i++) {
+          const p1 = trail.points[i - 1];
+          const p2 = trail.points[i];
+          const age = now - p2.time;
+          const alpha = Math.max(0, 1 - age / 1100);
+
+          laserCtx.strokeStyle = trail.color;
+          laserCtx.globalAlpha = alpha;
+          laserCtx.lineWidth = 4 + (alpha * 5);
+
+          laserCtx.beginPath();
+          laserCtx.moveTo(p1.x, p1.y);
+          laserCtx.lineTo(p2.x, p2.y);
+          laserCtx.stroke();
+        }
+
+        const head = trail.points[trail.points.length - 1];
+        laserCtx.globalAlpha = 1;
+        laserCtx.fillStyle = '#ffffff';
+        laserCtx.beginPath();
+        laserCtx.arc(head.x, head.y, 4, 0, Math.PI * 2);
+        laserCtx.fill();
+        laserCtx.restore();
+      });
+
+      requestAnimationFrame(animLaser);
+    }
+    animLaser();
+
+    // ---------- Live Remote Cursors (Figma Style) ----------
+    let lastCursorSend = 0;
+    function broadcastCursor(pos) {
+      const now = Date.now();
+      if (now - lastCursorSend < 60) return;
+      lastCursorSend = now;
+      publishBoard({
+        type: 'cursor',
+        x: pos.x,
+        y: pos.y,
+        name: myDisplayName,
+        color: myCursorColor,
+        tool: currentTool,
+        drawing: painting
+      });
+    }
+
+    const remoteCursorMap = new Map();
+    function renderRemoteCursor(data) {
+      const overlay = document.getElementById('cursorOverlay');
+      if (!overlay) return;
+      let el = document.getElementById('cursor_' + data.sender);
+      const userColor = data.color || '#38bdf8';
+      const userName = data.name || data.sender;
+
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'cursor_' + data.sender;
+        el.className = 'remote-cursor';
+        el.innerHTML = `
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="${userColor}" stroke="#ffffff" stroke-width="1.5">
+            <path d="M5.65 12.37H5.46L5.32 12.5L0.5 16.88V1.2L11.78 12.37H5.65Z"/>
+          </svg>
+          <div class="cursor-tag" style="background-color: ${userColor};">
+            <span class="cursor-name">${userName}</span>
+            <span class="cursor-status"></span>
+          </div>
+        `;
+        overlay.appendChild(el);
+      }
+
+      el.style.left = `${(data.x / 1000) * 100}%`;
+      el.style.top = `${(data.y / 600) * 100}%`;
+      el.style.opacity = '1';
+
+      const statusEl = el.querySelector('.cursor-status');
+      if (statusEl) {
+        statusEl.textContent = data.drawing ? (data.tool === 'eraser' ? ' 🧽' : (data.tool === 'laser' ? ' 🔴' : ' ✏️')) : '';
+      }
+
+      remoteCursorMap.set(data.sender, { el, lastSeen: Date.now() });
+    }
+
+    function removeRemoteCursor(sender) {
+      const el = document.getElementById('cursor_' + sender);
+      if (el) {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+        remoteCursorMap.delete(sender);
+      }
+    }
+
+    // Tự động làm mờ con trỏ không hoạt động
+    setInterval(() => {
+      const now = Date.now();
+      remoteCursorMap.forEach((val, sender) => {
+        if (now - val.lastSeen > 2500) {
+          val.el.style.opacity = '0';
+        }
+        if (now - val.lastSeen > 6000) {
+          val.el.remove();
+          remoteCursorMap.delete(sender);
+        }
+      });
+    }, 1500);
+
+    // ---------- Floating Emoji Reactions ----------
+    function sendReaction(emoji) {
+      const rndX = Math.random() * 600 + 200;
+      spawnReaction(emoji, myDisplayName, rndX);
+      publishBoard({ type: 'reaction', emoji, x: rndX });
+      logNet(`[${myDisplayName}] Thả biểu cảm: ${emoji}`);
+    }
+
+    function spawnReaction(emoji, sender, x) {
+      const overlay = document.getElementById('reactionOverlay');
+      if (!overlay) return;
+      const item = document.createElement('div');
+      item.className = 'floating-reaction';
+      item.style.left = `${(x / 1000) * 100}%`;
+      item.innerHTML = `<span class="emoji">${emoji}</span><span class="user-pill">${sender}</span>`;
+      overlay.appendChild(item);
+      setTimeout(() => item.remove(), 2400);
+    }
+
+    // ---------- Sự kiện chuột & cảm ứng trên Canvas ----------
     function startPosition(e) {
       e.preventDefault();
       const pos = getCursorPos(e);
 
-      if (ICON_TOOLS.includes(currentTool)) { // đặt biểu tượng mạng
+      if (currentTool === 'text') {
+        handleTextClick(pos);
+        return;
+      }
+
+      if (currentTool === 'laser') {
+        painting = true;
+        addLaserPoint(pos.x, pos.y);
+        broadcastCursor(pos);
+        return;
+      }
+
+      if (ICON_TOOLS.includes(currentTool)) {
         const op = { id: newId(), sender: myId, kind: 'icon', icon: currentTool, x: pos.x, y: pos.y, color: ICON_COLORS[currentTool] };
         boardOps.push(op); redoStack = [];
         drawOp(ctx, op);
@@ -825,23 +1477,49 @@
 
       if (currentTool === 'pen' || currentTool === 'eraser') {
         const isEraser = currentTool === 'eraser';
-        currentOp = { id: newId(), sender: myId, kind: 'stroke', mode: currentTool, color: isEraser ? '#000' : currentColor, size: isEraser ? getSize() * 3 : getSize(), points: [[pos.x, pos.y]] };
+        currentOp = {
+          id: newId(),
+          sender: myId,
+          kind: 'stroke',
+          mode: currentTool,
+          color: isEraser ? '#000' : currentColor,
+          size: isEraser ? getSize() * 3 : getSize(),
+          points: [[pos.x, pos.y]]
+        };
         boardOps.push(currentOp); redoStack = [];
         drawOp(ctx, currentOp);
       } else {
-        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height); // để xem trước hình khi kéo
+        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
       }
+      broadcastCursor(pos);
     }
 
     function drawPosition(e) {
+      const pos = getCursorPos(e);
+      broadcastCursor(pos);
+
       if (!painting) return;
       e.preventDefault();
-      const pos = getCursorPos(e);
+
+      if (currentTool === 'laser') {
+        addLaserPoint(pos.x, pos.y);
+        return;
+      }
 
       if (currentOp) {
         currentOp.points.push([pos.x, pos.y]);
         drawSegment(ctx, currentOp, lastX, lastY, pos.x, pos.y);
-        publishBoard({ type: 'seg', id: currentOp.id, mode: currentOp.mode, color: currentOp.color, size: currentOp.size, x1: lastX, y1: lastY, x2: pos.x, y2: pos.y });
+        publishBoard({
+          type: 'seg',
+          id: currentOp.id,
+          mode: currentOp.mode,
+          color: currentOp.color,
+          size: currentOp.size,
+          x1: lastX,
+          y1: lastY,
+          x2: pos.x,
+          y2: pos.y
+        });
         lastX = pos.x; lastY = pos.y;
       } else if (snapshot) {
         ctx.putImageData(snapshot, 0, 0);
@@ -853,8 +1531,10 @@
       if (!painting) return;
       painting = false;
 
+      if (currentTool === 'laser') return;
+
       if (currentOp) {
-        if (currentOp.points.length === 1) publishBoard({ type: 'op', op: currentOp }); // chỉ chấm 1 điểm
+        if (currentOp.points.length === 1) publishBoard({ type: 'op', op: currentOp });
         currentOp = null;
       } else if (snapshot) {
         const pos = getCursorPos(e);
@@ -870,7 +1550,10 @@
     canvas.addEventListener('mousedown', startPosition);
     canvas.addEventListener('mousemove', drawPosition);
     canvas.addEventListener('mouseup', endPosition);
-    canvas.addEventListener('mouseleave', endPosition);
+    canvas.addEventListener('mouseleave', () => {
+      endPosition();
+      publishBoard({ type: 'cursor_leave' });
+    });
 
     canvas.addEventListener('touchstart', startPosition, { passive: false });
     canvas.addEventListener('touchmove', drawPosition, { passive: false });
@@ -881,7 +1564,11 @@
       currentTool = tool;
       document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
       document.getElementById('toolBadge').textContent = TOOL_NAMES[tool];
-      canvas.style.cursor = tool === 'eraser' ? 'cell' : (ICON_TOOLS.includes(tool) ? 'copy' : 'crosshair');
+      if (tool === 'eraser') canvas.style.cursor = 'cell';
+      else if (tool === 'text') canvas.style.cursor = 'text';
+      else if (tool === 'laser') canvas.style.cursor = 'crosshair';
+      else if (ICON_TOOLS.includes(tool)) canvas.style.cursor = 'copy';
+      else canvas.style.cursor = 'crosshair';
     }
 
     function setColor(color, element) {
@@ -899,7 +1586,7 @@
 
     function undo() {
       for (let i = boardOps.length - 1; i >= 0; i--) {
-        if (boardOps[i].sender === myId) { // chỉ hoàn tác thao tác của chính mình
+        if (boardOps[i].sender === myId) {
           const [op] = boardOps.splice(i, 1);
           redoStack.push(op);
           redrawAll();
@@ -920,14 +1607,51 @@
       logNet('Bạn đã làm lại 1 thao tác.');
     }
 
+    // ---------- Chuyển đổi giao diện bảng (Grid & Themes) ----------
+    function setCanvasTheme(theme) {
+      canvas.className = 'drawing-canvas theme-' + theme;
+      localStorage.setItem('whiteboard_theme', theme);
+      logNet(`Đã chuyển chủ đề bảng sang: <b>${theme}</b>`);
+    }
+
+    function toggleCanvasFullscreen() {
+      const stage = document.getElementById('canvasStage');
+      if (!document.fullscreenElement) {
+        stage.requestFullscreen().catch(err => alert('Không thể mở toàn màn hình: ' + err.message));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
     function exportPNG() {
       const tmp = document.createElement('canvas');
       tmp.width = canvas.width; tmp.height = canvas.height;
       const t = tmp.getContext('2d');
-      t.fillStyle = '#ffffff'; t.fillRect(0, 0, tmp.width, tmp.height); // nền trắng (vùng tẩy là trong suốt)
+
+      const theme = localStorage.getItem('whiteboard_theme') || 'dots';
+      if (theme === 'dark') {
+        t.fillStyle = '#0f172a';
+        t.fillRect(0, 0, tmp.width, tmp.height);
+      } else {
+        t.fillStyle = '#ffffff';
+        t.fillRect(0, 0, tmp.width, tmp.height);
+        if (theme === 'grid') {
+          t.strokeStyle = '#e2e8f0'; t.lineWidth = 1;
+          for (let x = 0; x < tmp.width; x += 25) { t.beginPath(); t.moveTo(x, 0); t.lineTo(x, tmp.height); t.stroke(); }
+          for (let y = 0; y < tmp.height; y += 25) { t.beginPath(); t.moveTo(0, y); t.lineTo(tmp.width, y); t.stroke(); }
+        } else if (theme === 'dots') {
+          t.fillStyle = '#cbd5e1';
+          for (let x = 12; x < tmp.width; x += 24) {
+            for (let y = 12; y < tmp.height; y += 24) {
+              t.beginPath(); t.arc(x, y, 1.5, 0, Math.PI * 2); t.fill();
+            }
+          }
+        }
+      }
+
       t.drawImage(canvas, 0, 0);
       const a = document.createElement('a');
-      a.download = `whiteboard-nhom-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+      a.download = `whiteboard-${myDisplayName}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
       a.href = tmp.toDataURL('image/png');
       a.click();
       logNet('Đã tải ảnh bảng vẽ về máy (PNG).');
@@ -941,17 +1665,19 @@
       logNet('Bạn đã gửi lệnh xóa toàn bộ bảng vẽ.');
     }
 
-    // Phím tắt: Ctrl+Z / Ctrl+Y và chọn nhanh công cụ
+    // Phím tắt thông minh
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
       if (!document.getElementById('tab3').classList.contains('active')) return;
       const k = e.key.toLowerCase();
       const mod = e.ctrlKey || e.metaKey;
+
       if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
       else if (!mod && !e.altKey) {
-        const map = { b: 'pen', e: 'eraser', l: 'line', a: 'arrow', r: 'rect', c: 'circle' };
+        const map = { b: 'pen', e: 'eraser', t: 'text', k: 'laser', l: 'line', a: 'arrow', r: 'rect', c: 'circle' };
         if (map[k]) setTool(map[k]);
+        if (k === 'f') toggleCanvasFullscreen();
       }
     });
 
@@ -972,6 +1698,12 @@
       startBroadcastAnim();
       startMulticastAnim();
       updateClientListUI();
+
+      // Khôi phục theme đã lưu
+      const savedTheme = localStorage.getItem('whiteboard_theme') || 'dots';
+      const select = document.getElementById('canvasThemeSelect');
+      if (select) select.value = savedTheme;
+      setCanvasTheme(savedTheme);
     };
   </script>
 </body>
