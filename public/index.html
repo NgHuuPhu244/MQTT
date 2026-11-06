@@ -7,7 +7,7 @@
   <meta name="description" content="Tra cứu từ vựng, thuật ngữ đa ngôn ngữ: Tiếng Việt, Tiếng Anh, Tiếng Pháp, Tiếng Nhật và Khoa học Máy tính.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>">
 </head>
@@ -177,16 +177,16 @@
         </div>
 
         <div class="options-grid">
-          <div class="option-card">
+          <section class="option-card">
             <label class="checkbox-container">
               <input type="checkbox" id="burn-checkbox" checked>
               <span class="checkmark"></span>
               <strong>Tự hủy sau lần đọc đầu tiên (Burn-After-Reading)</strong>
             </label>
             <p class="option-desc">Ciphertext sẽ bị xóa vĩnh viễn khỏi RAM của Server ngay khi người nhận tải về lần đầu.</p>
-          </div>
+          </section>
 
-          <div class="option-card">
+          <section class="option-card">
             <label for="ttl-select"><strong>Thời gian tồn tại tối đa (TTL):</strong></label>
             <select id="ttl-select" class="custom-select">
               <option value="300">5 phút (Tự hủy nhanh)</option>
@@ -195,7 +195,7 @@
               <option value="86400">24 giờ (1 ngày)</option>
             </select>
             <p class="option-desc">Sau thời gian này, dữ liệu sẽ tự động bốc hơi khỏi bộ nhớ đệm kể cả chưa được đọc.</p>
-          </div>
+          </section>
         </div>
 
         <div class="action-row">
@@ -308,39 +308,39 @@
       <div id="tab-audit" class="tab-pane">
         <h2 style="font-size: 1.15rem; margin-bottom: 1rem; color: var(--covert-accent);">Kiểm tra Bảo mật & Mật mã học</h2>
         <div class="audit-grid">
-          <div class="audit-card">
+          <section class="audit-card">
             <h3>1. Kiến trúc Zero-Trust & Zero-Knowledge</h3>
             <ul>
               <li><strong>Không tin tưởng Máy chủ:</strong> Máy chủ chỉ là vùng trung chuyển bytes thô (ciphertext). Plaintext và Khóa giải mã không bao giờ rời khỏi thiết bị người gửi.</li>
               <li><strong>RFC 3986 §3.5 Fragment Safety:</strong> Toàn bộ khóa giải mã được nhúng trong <code>#k=...</code>. Trình duyệt không bao giờ gửi chuỗi sau dấu thăng lên HTTP Header.</li>
             </ul>
-          </div>
+          </section>
 
-          <div class="audit-card">
+          <section class="audit-card">
             <h3>2. Lưu trữ RAM-Only & Triệt tiêu Dấu vết</h3>
             <ul>
               <li><strong>Zero Persistent Write:</strong> Không có bất kỳ lệnh ghi đĩa (disk write) nào được thực thi cho ciphertext.</li>
               <li><strong>Atomic Burn-After-Reading:</strong> Bản ghi bị xóa và giải phóng khỏi bộ nhớ đệm (RAM) ngay ở lượt đọc đầu tiên.</li>
               <li><strong>Zero-Log Policy:</strong> Vô hiệu hóa toàn bộ access log, không ghi IP người dùng, không ghi User-Agent.</li>
             </ul>
-          </div>
+          </section>
 
-          <div class="audit-card">
+          <section class="audit-card">
             <h3>3. Tiêu chuẩn Mật mã học (Cryptographic Standard)</h3>
             <ul>
               <li><strong>Thuật toán đối xứng:</strong> AES-256-GCM với IV ngẫu nhiên 96-bit (12 bytes) cho mỗi lần mã hóa và thẻ chứng thực 128-bit (Authentication Tag).</li>
               <li><strong>Bắt tay P2P:</strong> Elliptic Curve Diffie-Hellman (NIST P-256) kết hợp hàm dẫn xuất khóa HKDF-SHA256 (RFC 5869).</li>
               <li><strong>Thực thi:</strong> Web Crypto API nguyên bản của trình duyệt (W3C Standard), ngăn chặn rò rỉ qua thư viện bên thứ ba.</li>
             </ul>
-          </div>
+          </section>
 
-          <div class="audit-card">
+          <section class="audit-card">
             <h3>4. Ngụy trang Hoàn hảo (Steganography Veneer)</h3>
             <ul>
               <li><strong>Lớp vỏ vô hại:</strong> Toàn bộ hệ thống đội lốt một ứng dụng Từ Điển Đa Ngôn Ngữ với đầy đủ tính năng tra cứu từ vựng thật.</li>
               <li><strong>Đường dẫn ngụy trang:</strong> Các endpoint bí mật mượn danh nghĩa đồng bộ từ vựng (<code>/api/lexicon/cache-entry</code>).</li>
             </ul>
-          </div>
+          </section>
         </div>
       </div>
 

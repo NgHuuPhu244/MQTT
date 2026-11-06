@@ -22,7 +22,7 @@ let MARKET_PRODUCTS = [
     category: 'hardware',
     badge: 'Đấu Giá RAM',
     icon: '🔨',
-    securityLevel: 'Cấp 5 • Silent Bidding',
+    securityLevel: 'Cấp 5 • Silent Bid',
     isAuction: true,
     startingBidXMR: 0.50,
     currentBidXMR: 0.85,
@@ -39,7 +39,7 @@ let MARKET_PRODUCTS = [
     priceXMR: '0.85 XMR',
     rawPriceXMR: 0.85,
     approxUSD: '~$140 USD',
-    stock: '1 lô duy nhất trong RAM',
+    stock: '1 lô duy nhất',
     desc: 'Lô linh kiện phần cứng chip xử lý mật mã học độc lập EAL6+, chưa từng kết nối mạng, chuẩn bị cho hệ thống máy chủ air-gapped.',
     specs: {
       'Hình thức': 'Đấu giá kín ẩn danh trong RAM',
@@ -53,16 +53,16 @@ let MARKET_PRODUCTS = [
     category: 'hardware',
     badge: 'Phần cứng',
     icon: '🔑',
-    securityLevel: 'Cấp 5 • Quân sự FIPS',
+    securityLevel: 'Cấp 5 • FIPS 140-3',
     priceXMR: '0.45 XMR',
     rawPriceXMR: 0.45,
     approxUSD: '~$75 USD',
-    stock: '5 chiếc trong RAM',
+    stock: '5 chiếc',
     desc: 'Khóa vật lý USB chứa chip bảo mật chuyên dụng EAL6+, cách ly hoàn toàn (Air-gapped) khỏi mạng Internet. Tự hủy firmware khi phát hiện can thiệp vật lý.',
     specs: {
       'Tiêu chuẩn': 'FIPS 140-3 Level 4 / CC EAL6+',
       'Bảo vệ': 'Chống trích xuất vi mạch (Anti-DPA)',
-      'Bàn giao': 'Chuyển phát bưu chính không nhãn / Drop bí mật'
+      'Bàn giao': 'Bưu chính ẩn danh / Drop bí mật'
     }
   },
   {
@@ -75,7 +75,7 @@ let MARKET_PRODUCTS = [
     priceXMR: '0.15 XMR',
     rawPriceXMR: 0.15,
     approxUSD: '~$25 USD',
-    stock: 'Khả dụng tức thì',
+    stock: 'Sẵn hàng',
     desc: 'Gói cấu hình định tuyến 5 lớp ngụy trang qua giao thức Obfs4 + WireGuard kết nối qua các cụm máy chủ RAM-only không lưu nhật ký truy cập (Zero-Log).',
     specs: {
       'Giao thức': 'WireGuard Obfuscated • Tor Over VPN',
@@ -89,11 +89,11 @@ let MARKET_PRODUCTS = [
     category: 'network',
     badge: 'Mạng lưới',
     icon: '🛡️',
-    securityLevel: 'Cấp 4 • ECH Bulletproof',
+    securityLevel: 'Cấp 4 • ECH DNSSEC',
     priceXMR: '0.20 XMR',
     rawPriceXMR: 0.20,
     approxUSD: '~$35 USD',
-    stock: 'Khả dụng tức thì',
+    stock: 'Sẵn hàng',
     desc: 'Cụm tên miền và chứng chỉ wildcard SSL phát hành nặc danh, định tuyến qua hệ thống Anycast DNS chống chặn ISP và loại bỏ rò rỉ SNI (ESNI/ECH).',
     specs: {
       'Công nghệ': 'Encrypted Client Hello (ECH) • DNSSEC',
@@ -105,13 +105,13 @@ let MARKET_PRODUCTS = [
     id: 'doc-audit-04',
     name: 'Báo Cáo Nghiên Cứu Lỗ Hổng Zero-Day White-Hat Audit',
     category: 'audit',
-    badge: 'Audit & Tài liệu',
+    badge: 'Audit & PoC',
     icon: '📑',
-    securityLevel: 'Cấp 5 • Top-Secret PoC',
+    securityLevel: 'Cấp 5 • Top-Secret',
     priceXMR: '0.85 XMR',
     rawPriceXMR: 0.85,
     approxUSD: '~$140 USD',
-    stock: '2 bản lưu đệm',
+    stock: '2 bản đệm',
     desc: 'Tài liệu phân tích kỹ thuật độc quyền về kiến trúc chống nghe lén dữ liệu qua kênh bên (Side-channel attacks) và phương pháp vá lỗi cho giao thức mật mã đối xứng.',
     specs: {
       'Định dạng': 'PDF mã hóa AES-256-GCM + Khóa giải mật',
@@ -125,11 +125,11 @@ let MARKET_PRODUCTS = [
     category: 'crypto',
     badge: 'Hệ điều hành',
     icon: '💾',
-    securityLevel: 'Cấp 5 • Amnesic Zero-Trace',
+    securityLevel: 'Cấp 5 • Zero-Trace',
     priceXMR: '0.30 XMR',
     rawPriceXMR: 0.30,
     approxUSD: '~$50 USD',
-    stock: 'Khả dụng tức thì',
+    stock: 'Sẵn hàng',
     desc: 'Bản phân phối Linux bảo mật tối đa được tùy biến sâu. Tự động xóa sạch RAM khi tắt máy, định tuyến 100% lưu lượng qua Tor, vô hiệu hóa hoàn toàn ghi đĩa.',
     specs: {
       'Bảo mật': 'Amnesic RAM-Only • Chống Forensic',
@@ -143,7 +143,7 @@ let MARKET_PRODUCTS = [
     category: 'crypto',
     badge: 'Mật mã học',
     icon: '🗝️',
-    securityLevel: 'Cấp 5 • Air-Gapped Faraday',
+    securityLevel: 'Cấp 5 • Faraday Key',
     priceXMR: '0.10 XMR',
     rawPriceXMR: 0.10,
     approxUSD: '~$18 USD',
@@ -440,6 +440,16 @@ function initMarketCatalog() {
       }
     });
   }
+
+  // Quick '/' shortcut to focus market search bar
+  window.addEventListener('keydown', (e) => {
+    const tag = document.activeElement?.tagName;
+    if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      e.preventDefault();
+      switchTab('tab-market');
+      searchInput?.focus();
+    }
+  });
 }
 
 function updateCategoryPillCounts() {
@@ -561,7 +571,7 @@ function renderProducts(products) {
 
         <div class="product-title-row">
           <div class="product-icon-box">${escapeHtml(item.icon)}</div>
-          <h3 class="product-title">${escapeHtml(item.name)}</h3>
+          <h2 class="product-title">${escapeHtml(item.name)}</h2>
         </div>
 
         <p class="product-desc">${escapeHtml(item.desc)}</p>
@@ -635,7 +645,7 @@ function updateOrderPreviewCard() {
     <div class="preview-card-header">
       <div class="preview-icon-box">${escapeHtml(product.icon)}</div>
       <div>
-        <h4 class="preview-title">${escapeHtml(product.name)}</h4>
+        <h3 class="preview-title">${escapeHtml(product.name)}</h3>
         <span class="preview-badge">${escapeHtml(product.badge)} • ${escapeHtml(product.securityLevel)}</span>
       </div>
     </div>
@@ -995,7 +1005,7 @@ function displayOrderResult(order) {
 
     if (progressBar) {
       const percentage = Math.max(0, Math.min(100, (remaining / totalDuration) * 100));
-      progressBar.style.width = `${percentage}%`;
+      progressBar.style.transform = `scaleX(${percentage / 100})`;
       if (percentage < 20) {
         progressBar.style.backgroundColor = '#ef4444';
       } else if (percentage < 50) {

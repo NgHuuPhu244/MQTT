@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛍️</text></svg>">
 </head>
@@ -30,7 +30,7 @@
               <h1 class="vault-title">GHOST BAZAAR • CHỢ ẨN DANH BẢO MẬT</h1>
               <span class="vault-version-pill">RAM-VOLATILE v3.2</span>
             </div>
-            <p class="vault-subtitle">ZERO-KNOWLEDGE EPHEMERAL VAULT • Zero-Log IP • 100% RAM Khả Biến • Chat Mã Hóa E2EE • Tự Hủy & Xóa Sạch Dữ Liệu Khi Thoát</p>
+            <p class="vault-subtitle">ZERO-KNOWLEDGE EPHEMERAL VAULT • Zero-Log IP • 100% RAM Khả Biến • Mã Hóa AES-256-GCM • Tự Hủy Khi Thoát</p>
           </div>
         </div>
 
@@ -120,8 +120,9 @@
           <div class="market-filter-bar">
             <div class="market-search-row">
               <div class="market-search-wrap">
-                <input type="text" id="market-search-input" placeholder="Tìm kiếm mặt hàng bảo mật, phần cứng, gói mạng, PGP..." autocomplete="off">
                 <span class="search-icon-symbol">🔍</span>
+                <input type="text" id="market-search-input" placeholder="Tìm kiếm mặt hàng bảo mật, phần cứng, gói mạng, PGP... (Phím / để tìm nhanh)" autocomplete="off">
+                <span class="market-search-kbd" title="Nhấn phím / để tìm kiếm nhanh">/</span>
                 <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
               </div>
               <div class="market-sort-wrap">
@@ -181,7 +182,7 @@
                 </div>
                 <div>
                   <div class="peer-title-row">
-                    <h3 class="peer-name">Merchant-Node-01</h3>
+                    <h2 class="peer-name">Merchant-Node-01</h2>
                     <span class="verified-vendor-badge">✓ ĐÃ XÁC MINH PGP</span>
                   </div>
                   <div class="peer-meta-row">
@@ -249,8 +250,8 @@
           <!-- Two-Column Split Checkout Layout -->
           <div class="order-checkout-layout">
             <!-- Left Column: Order Form -->
-            <div class="order-form-col">
-              <h3 class="checkout-col-title">1. Thông Tin Đơn Hàng Bảo Mật</h3>
+            <section class="order-form-col">
+              <h2 class="checkout-col-title">1. Thông Tin Đơn Hàng Bảo Mật</h2>
               
               <div class="form-group">
                 <label for="order-product-select"><strong>Chọn mặt hàng cần mua:</strong></label>
@@ -285,11 +286,11 @@
                 </button>
                 <button type="button" id="clear-order-btn" class="secondary-btn">Xóa trường</button>
               </div>
-            </div>
+            </section>
 
             <!-- Right Column: Live Order Preview / Cart Summary -->
-            <div class="order-preview-col">
-              <h3 class="checkout-col-title">2. Xem Trước Hàng Hóa & Ký Quỹ</h3>
+            <section class="order-preview-col">
+              <h2 class="checkout-col-title">2. Xem Trước Hàng Hóa & Ký Quỹ</h2>
               <div id="live-order-preview-card" class="order-preview-card">
                 <!-- Dynamically rendered by vault.js -->
               </div>
@@ -301,7 +302,7 @@
                 </div>
                 <p>Tiền Monero được tạm khóa trong hợp đồng khả biến. Nếu bên bán không bàn giao qua Drop ID trong thời hạn TTL, giao dịch tự động bị hủy và hoàn tiền.</p>
               </div>
-            </div>
+            </section>
           </div>
 
           <!-- Order Generated Slip Result (Boarding Pass / Cyber-Receipt) -->
@@ -315,13 +316,13 @@
                   <span class="receipt-pill-status">ESCROW PENDING • CHỜ THANH TOÁN</span>
                   <span class="receipt-pill-ttl">TỰ HỦY RAM SAU: <strong id="receipt-expiry-countdown">3600s</strong></span>
                 </div>
-                <h3 class="order-receipt-title">BIÊN LAI ĐƠN HÀNG ẨN DANH</h3>
+                <h2 class="order-receipt-title">BIÊN LAI ĐƠN HÀNG ẨN DANH</h2>
               </div>
             </div>
 
             <!-- Progress countdown bar -->
             <div class="countdown-progress-track">
-              <div id="order-progress-bar" class="countdown-progress-bar" style="width: 100%;"></div>
+              <div id="order-progress-bar" class="countdown-progress-bar"></div>
             </div>
 
             <div class="order-details-grid">
@@ -383,8 +384,8 @@
           <!-- Two-Column Split Vendor Layout -->
           <div class="vendor-desk-layout">
             <!-- Left Column: Creation Form Card -->
-            <div class="vendor-form-col">
-              <h3 class="checkout-col-title">1. Khởi Tạo Mặt Hàng / Mở Phiên Đấu Giá</h3>
+            <section class="vendor-form-col">
+              <h2 class="checkout-col-title">1. Khởi Tạo Mặt Hàng / Mở Phiên Đấu Giá</h2>
 
               <!-- Listing Mode Segmented Toggle -->
               <div class="listing-mode-toggle" role="tablist">
@@ -507,31 +508,31 @@
                 </button>
                 <button type="button" id="reset-listing-btn" class="secondary-btn">Xóa Form</button>
               </div>
-            </div>
+            </section>
 
             <!-- Right Column: Live Preview & Manage Active Listings -->
             <div class="vendor-preview-col">
-              <h3 class="checkout-col-title">2. Xem Trước Trực Quan & Quản Lý</h3>
+              <h2 class="checkout-col-title">2. Xem Trước Trực Quan & Quản Lý</h2>
               
               <!-- Card: Live Product Preview -->
-              <div class="vendor-card-shell">
+              <section class="vendor-card-shell">
                 <div class="preview-section-title">
                   <span>👁️</span> Xem Trước Thẻ Trên Gian Hàng
                 </div>
                 <div id="live-vendor-preview" class="live-vendor-preview">
                   <!-- Dynamically rendered -->
                 </div>
-              </div>
+              </section>
 
               <!-- Card: My Active Listings in RAM -->
-              <div class="vendor-card-shell">
+              <section class="vendor-card-shell">
                 <div class="preview-section-title">
                   <span>📋</span> Mặt Hàng Bạn Đã Đăng Trong Phiên Này
                 </div>
                 <div id="my-listings-list" class="my-listings-list">
                   <p class="empty-listings-note">Chưa có mặt hàng nào được tạo trong phiên RAM hiện tại.</p>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         </div>
@@ -551,41 +552,41 @@
           </div>
 
           <div class="audit-grid">
-            <div class="audit-card">
+            <section class="audit-card">
               <div class="audit-card-icon">🛡️</div>
               <h3>1. Ẩn Danh Cả Người Dùng & Địa Chỉ IP</h3>
               <ul>
                 <li><strong>Zero-Log Enforced:</strong> Máy chủ hoàn toàn không ghi log địa chỉ IP, không ghi User-Agent, không tạo file access log trên ổ cứng.</li>
                 <li><strong>Phiên Ẩn Danh Ngẫu Nhiên:</strong> Mỗi lần mở trang, bạn nhận một Alias ẩn danh (ví dụ: Ghost-XXXX). Không cần tài khoản, không mật khẩu cá nhân.</li>
               </ul>
-            </div>
+            </section>
 
-            <div class="audit-card">
+            <section class="audit-card">
               <div class="audit-card-icon">🔥</div>
               <h3>2. Tin Nhắn Bảo Mật & Tự Hủy Tuyệt Đối Khi Thoát</h3>
               <ul>
                 <li><strong>Lưu trữ 100% trên RAM Trình duyệt:</strong> Tin nhắn trao đổi chỉ nằm trên bộ nhớ tạm thời của máy khách và bộ đệm RAM của socket.</li>
                 <li><strong>Purge-On-Exit Hooks:</strong> Khi bạn đóng tab, tắt trình duyệt, hoặc nhấn phím ESC, hàm <code>wipeMemory()</code> tự động kích hoạt để ghi đè số 0 vào biến nhớ và xóa sạch lịch sử.</li>
               </ul>
-            </div>
+            </section>
 
-            <div class="audit-card">
+            <section class="audit-card">
               <div class="audit-card-icon">🔐</div>
               <h3>3. Mật Mã Học Tiêu Chuẩn Quân Sự (AES-256-GCM)</h3>
               <ul>
                 <li><strong>Mã hóa đầu cuối:</strong> Dữ liệu đơn hàng và tin nhắn được mã hóa bằng khóa AES 256-bit kết hợp IV ngẫu nhiên 96-bit cho từng gói tin.</li>
                 <li><strong>Chống phân tích lưu lượng:</strong> Dữ liệu được đệm ngẫu nhiên CSPRNG theo bội số 256 bytes để ngăn kẻ nghe lén suy đoán độ dài.</li>
               </ul>
-            </div>
+            </section>
 
-            <div class="audit-card">
+            <section class="audit-card">
               <div class="audit-card-icon">🕵️</div>
               <h3>4. Màn Che Ngụy Trang Hoàn Hảo</h3>
               <ul>
                 <li><strong>Cổng vào ngụy trang:</strong> Toàn bộ trang ẩn này được che đậy hoàn hảo sau lớp vỏ Từ Điển Đa Ngôn Ngữ tại trang chủ.</li>
                 <li><strong>Nút Thoát (ESC) & Màn Che (F2):</strong> Bấm <code>ESC</code> lập tức xóa sạch mọi dữ liệu và đá về từ điển. Bấm <code>F2</code> lập tức hiển thị màn che bài báo học thuật vô hại.</li>
               </ul>
-            </div>
+            </section>
           </div>
 
           <!-- Live Volatile RAM Allocation Meter -->
