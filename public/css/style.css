@@ -2572,6 +2572,351 @@ body.vault-page {
   background: #9f1239;
 }
 
+/* ==========================================================================
+   P2P DIRECT WEBRTC CONTROL PANEL (SERVERLESS • ZERO-LOG)
+   ========================================================================== */
+
+.p2p-control-panel {
+  background: #080e1c;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.p2p-control-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #0ea5e9, #10b981, #0ea5e9);
+  opacity: 0.75;
+}
+
+.p2p-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.p2p-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.p2p-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.p2p-pulse-dot.disconnected {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.p2p-pulse-dot.waiting {
+  background: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+  animation: p2pPulse 1.4s infinite ease-in-out;
+}
+
+.p2p-pulse-dot.connected {
+  background: #10b981;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.9);
+  animation: p2pPulse 2s infinite ease-in-out;
+}
+
+@keyframes p2pPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
+}
+
+.p2p-mode-pill {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #38bdf8;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.p2p-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.p2p-setup-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.p2p-host-btn {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: 1px solid #10b981;
+  color: #ffffff;
+  padding: 0.55rem 1.15rem;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-shadow: 0 2px 10px rgba(5, 150, 105, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.p2p-host-btn:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.p2p-or-sep {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.p2p-join-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.p2p-code-input {
+  flex: 1;
+  background: #040711;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  padding: 0.52rem 0.85rem;
+  color: #f8fafc;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.p2p-code-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.p2p-code-input::placeholder {
+  color: #475569;
+}
+
+.p2p-join-btn {
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #e2e8f0;
+  padding: 0.52rem 1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.p2p-join-btn:hover {
+  background: #334155;
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.p2p-active-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.p2p-room-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.p2p-room-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+
+.p2p-room-code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 0.28rem 0.75rem;
+  border-radius: 7px;
+  letter-spacing: 0.05em;
+}
+
+.p2p-active-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.p2p-copy-link-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid #38bdf8;
+  color: #ffffff;
+  padding: 0.48rem 1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.p2p-copy-link-btn:hover {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  transform: translateY(-1px);
+}
+
+.p2p-disconnect-btn {
+  background: rgba(225, 29, 72, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fda4af;
+  padding: 0.48rem 0.95rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+}
+
+.p2p-disconnect-btn:hover {
+  background: #be123c;
+  color: #ffffff;
+  border-color: #f43f5e;
+}
+
+.p2p-hint-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 8px;
+  border: 1px dashed rgba(148, 163, 184, 0.18);
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.p2p-hint-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.p2p-hint-text strong {
+  color: #38bdf8;
+}
+
+.p2p-hint-text em {
+  color: #f1f5f9;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* System notice in chat stream */
+.chat-system-msg {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 90%;
+  margin: 0.4rem 0;
+}
+
+.system-bubble {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 8px;
+  text-align: center;
+  line-height: 1.45;
+  font-family: var(--font-sans);
+}
+
+.system-time {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-family: var(--font-mono);
+}
+
+.verified-vendor-badge.p2p-connected-badge {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  animation: p2pBadgeGlow 2.5s infinite alternate;
+}
+
+@keyframes p2pBadgeGlow {
+  0% { box-shadow: 0 0 4px rgba(16, 185, 129, 0.2); }
+  100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+}
+
 .market-chat-shell {
   background: #060a14;
   border: 1px solid var(--covert-border);

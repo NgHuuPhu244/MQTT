@@ -403,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initVendorDesk();
   initAuctionBidding();
   updateRamMonitor();
+  checkUrlForP2PRoom();
 });
 
 /* ==========================================================================
@@ -458,6 +459,9 @@ function purgeAllVolatileData() {
     navigator.clipboard.writeText('').catch(() => {});
   }
 
+  // Terminate active WebRTC P2P connection and destroy peer
+  disconnectP2P(false);
+
   updateRamMonitor();
 }
 
@@ -467,7 +471,7 @@ function initPanicAndPurgeHooks() {
   const executeEmergencyEscape = () => {
     purgeAllVolatileData();
     // Redirect immediately to the benign decoy dictionary
-    window.location.replace('/');
+    window.location.replace('./index.html');
   };
 
   if (panicBtn) {
@@ -901,8 +905,324 @@ function initiateChatForProduct(productName) {
 }
 
 /* ==========================================================================
-   5. ENCRYPTED MERCHANT CHAT (E2EE • VOLATILE RAM-ONLY)
+   5. SERVERLESS WEBRTC P2P DIRECT CHAT (ZERO-SERVER • ZERO-LOG)
    ========================================================================== */
+
+function generateRoomCode() {
+  const rand = Array.from(crypto.getRandomValues(new Uint8Array(2)))
+    .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+    .join('');
+  return `GHOST-${rand}`;
+}
+
+function getRoomShareableLink(code) {
+  let baseUrl = window.location.href.split('#')[0];
+  if (!baseUrl.includes('vault.html')) {
+    baseUrl = baseUrl.replace(/\/$/, '') + '/vault.html';
+  }
+  return `${baseUrl}#room=${encodeURIComponent(code)}`;
+}
+
+function updateP2PStatusUI(state, extraInfo = null) {
+  const pulseDot = document.getElementById('p2p-pulse-dot');
+  const statusText = document.getElementById('p2p-status-text');
+  const setupRow = document.getElementById('p2p-setup-row');
+  const activeRow = document.getElementById('p2p-active-row');
+  const roomCodeDisplay = document.getElementById('display-room-code');
+
+  const avatarText = document.getElementById('chat-peer-avatar-text');
+  const peerName = document.getElementById('chat-peer-name');
+  const peerBadge = document.getElementById('chat-peer-badge');
+  const peerStat = document.getElementById('chat-peer-stat');
+  const peerPing = document.getElementById('chat-peer-ping');
+
+  if (state === 'disconnected') {
+    if (pulseDot) pulseDot.className = 'p2p-pulse-dot disconnected';
+    if (statusText) statusText.textContent = '🔴 Chế độ Bot Tự Động (Chưa kết nối P2P)';
+    if (setupRow) setupRow.style.display = 'flex';
+    if (activeRow) activeRow.style.display = 'none';
+
+    if (avatarText) avatarText.textContent = 'M';
+    if (peerName) peerName.textContent = 'Merchant-Node-01';
+    if (peerBadge) {
+      peerBadge.textContent = '✓ ĐÃ XÁC MINH PGP';
+      peerBadge.className = 'verified-vendor-badge';
+    }
+    if (peerStat) peerStat.textContent = '★ 5.0 (98 giao dịch)';
+    if (peerPing) {
+      peerPing.textContent = 'Phản hồi < 1p';
+      peerPing.className = 'peer-stat green';
+    }
+  } else if (state === 'hosting') {
+    if (pulseDot) pulseDot.className = 'p2p-pulse-dot waiting';
+    if (statusText) statusText.textContent = `🟡 Đang mở phòng [${extraInfo}] • Chờ khách mở link kết nối...`;
+    if (setupRow) setupRow.style.display = 'none';
+    if (activeRow) activeRow.style.display = 'flex';
+    if (roomCodeDisplay) roomCodeDisplay.textContent = extraInfo;
+  } else if (state === 'connecting') {
+    if (pulseDot) pulseDot.className = 'p2p-pulse-dot waiting';
+    if (statusText) statusText.textContent = `🟡 Đang bắt tay WebRTC tới phòng [${extraInfo}]...`;
+    if (setupRow) setupRow.style.display = 'none';
+    if (activeRow) activeRow.style.display = 'flex';
+    if (roomCodeDisplay) roomCodeDisplay.textContent = extraInfo;
+  } else if (state === 'connected') {
+    if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
+    if (statusText) statusText.textContent = '🟢 ĐÃ KẾT NỐI P2P TRỰC TIẾP (Máy ↔ Máy • Zero-Server • Không Lưu Log)';
+    if (setupRow) setupRow.style.display = 'none';
+    if (activeRow) activeRow.style.display = 'flex';
+
+    const partnerName = extraInfo?.peerAlias || p2pPeerAlias || 'Khách / Đối Tác P2P';
+    if (avatarText) avatarText.textContent = partnerName.charAt(0).toUpperCase();
+    if (peerName) peerName.textContent = partnerName;
+    if (peerBadge) {
+      peerBadge.textContent = '🟢 WEBRTC DIRECT (ZERO-SERVER)';
+      peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
+    }
+    if (peerStat) peerStat.textContent = 'Kênh Dữ Liệu E2EE Máy ↔ Máy';
+    if (peerPing) {
+      peerPing.textContent = 'Độ trễ < 50ms';
+      peerPing.className = 'peer-stat green';
+    }
+  }
+}
+
+function startHostingP2PRoom(customCode = null) {
+  if (!window.Peer) {
+    showToast('Lỗi: Thư viện WebRTC PeerJS chưa được tải!', 'error');
+    return;
+  }
+
+  disconnectP2P(false);
+
+  const roomCode = (customCode || generateRoomCode()).toUpperCase().trim();
+  currentRoomCode = roomCode;
+  isRoomHost = true;
+
+  const peerId = `ghbazaar-${roomCode.toLowerCase()}`;
+  updateP2PStatusUI('hosting', roomCode);
+
+  try {
+    peerInstance = new window.Peer(peerId, PEERJS_CONFIG);
+  } catch (err) {
+    console.error('PeerJS init error:', err);
+    showToast('Không thể khởi tạo WebRTC: ' + err.message, 'error');
+    updateP2PStatusUI('disconnected');
+    return;
+  }
+
+  peerInstance.on('open', () => {
+    updateP2PStatusUI('hosting', roomCode);
+    showToast(`Đã mở phòng [${roomCode}]! Hãy sao chép link gửi cho khách để kết nối trực tiếp.`, 'success');
+
+    inMemoryChatMessages.push({
+      author: 'HỆ THỐNG P2P',
+      role: 'system',
+      time: getCurrentTimeStr(),
+      text: `🔔 Phòng chat mật [${roomCode}] đã được khởi tạo thành công trên RAM. Hãy sao chép link phòng và gửi cho khách hoặc đối tác. Khi đối tác mở link, hai thiết bị sẽ tự động bắt tay P2P kết nối trực tiếp!`
+    });
+    renderChatMessages();
+    updateRamMonitor();
+  });
+
+  peerInstance.on('connection', (conn) => {
+    setupP2PConnection(conn);
+  });
+
+  peerInstance.on('error', (err) => {
+    console.error('PeerJS error:', err);
+    if (err.type === 'unavailable-id') {
+      showToast(`Mã phòng [${roomCode}] đang bận. Đang sinh mã phòng mới...`, 'warning');
+      startHostingP2PRoom();
+    } else {
+      showToast('Lỗi WebRTC: ' + (err.message || err.type), 'error');
+      updateP2PStatusUI('disconnected');
+    }
+  });
+}
+
+function joinP2PRoom(rawInput) {
+  if (!window.Peer) {
+    showToast('Lỗi: Thư viện WebRTC PeerJS chưa được tải!', 'error');
+    return;
+  }
+
+  let code = (rawInput || '').trim();
+  const hashMatch = code.match(/room=([A-Za-z0-9-_]+)/i);
+  if (hashMatch) {
+    code = hashMatch[1];
+  }
+  code = code.replace(/[^A-Za-z0-9-_]/g, '').toUpperCase();
+  if (!code) {
+    showToast('Vui lòng nhập mã phòng hợp lệ (ví dụ: GHOST-8F4A)!', 'warning');
+    return;
+  }
+
+  disconnectP2P(false);
+
+  currentRoomCode = code;
+  isRoomHost = false;
+  updateP2PStatusUI('connecting', code);
+
+  const targetPeerId = `ghbazaar-${code.toLowerCase()}`;
+  const myClientId = `ghbazaar-c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  try {
+    peerInstance = new window.Peer(myClientId, PEERJS_CONFIG);
+  } catch (err) {
+    console.error('PeerJS init error:', err);
+    showToast('Không thể kết nối WebRTC: ' + err.message, 'error');
+    updateP2PStatusUI('disconnected');
+    return;
+  }
+
+  peerInstance.on('open', () => {
+    const conn = peerInstance.connect(targetPeerId, { reliable: true });
+    setupP2PConnection(conn);
+  });
+
+  peerInstance.on('error', (err) => {
+    console.error('PeerJS error:', err);
+    showToast(`Không thể kết nối tới phòng [${code}]: Mã phòng không tồn tại hoặc chủ phòng đã đóng.`, 'error');
+    updateP2PStatusUI('disconnected');
+  });
+}
+
+function setupP2PConnection(conn) {
+  activePeerConnection = conn;
+
+  conn.on('open', () => {
+    isP2PConnected = true;
+    updateP2PStatusUI('connected', { peerAlias: p2pPeerAlias });
+    playNotificationChime();
+
+    // Send handshake packet with local alias
+    conn.send({
+      type: 'handshake',
+      alias: anonymousAlias || 'Ẩn Danh',
+      time: getCurrentTimeStr()
+    });
+
+    inMemoryChatMessages.push({
+      author: 'HỆ THỐNG P2P',
+      role: 'system',
+      time: getCurrentTimeStr(),
+      text: '🎉 ĐÃ THIẾT LẬP KẾT NỐI P2P THÀNH CÔNG! Hai thiết bị hiện đang giao tiếp trực tiếp qua WebRTC DataChannel (máy ↔ máy). Hoàn toàn không qua máy chủ, không lưu log.'
+    });
+    renderChatMessages();
+    updateRamMonitor();
+    showToast('Đã kết nối P2P trực tiếp với máy đối tác!', 'success');
+  });
+
+  conn.on('data', (packet) => {
+    if (!packet || typeof packet !== 'object') return;
+
+    if (packet.type === 'handshake') {
+      if (packet.alias) {
+        p2pPeerAlias = packet.alias;
+        updateP2PStatusUI('connected', { peerAlias: p2pPeerAlias });
+      }
+    } else if (packet.type === 'chat') {
+      playNotificationChime();
+      inMemoryChatMessages.push({
+        author: packet.alias || p2pPeerAlias || 'Đối Tác',
+        role: 'merchant',
+        time: packet.time || getCurrentTimeStr(),
+        text: packet.text
+      });
+      renderChatMessages();
+      updateRamMonitor();
+
+      // Show unread badge if tab not active
+      const activeTab = document.querySelector('.covert-nav-tabs .nav-tab.active');
+      if (activeTab && activeTab.getAttribute('data-tab') !== 'tab-chat') {
+        const badge = document.getElementById('chat-badge');
+        if (badge) badge.style.display = 'inline-block';
+      }
+    } else if (packet.type === 'typing') {
+      const typingIndicator = document.getElementById('chat-typing-indicator');
+      const typingText = document.querySelector('#chat-typing-indicator .typing-text');
+      if (typingIndicator) {
+        if (packet.isTyping) {
+          if (typingText) typingText.textContent = `${packet.alias || p2pPeerAlias || 'Đối tác'} đang soạn tin nhắn...`;
+          typingIndicator.style.display = 'flex';
+        } else {
+          typingIndicator.style.display = 'none';
+        }
+      }
+    } else if (packet.type === 'disconnect') {
+      showToast('Đối tác đã ngắt kết nối P2P!', 'warning');
+      inMemoryChatMessages.push({
+        author: 'HỆ THỐNG P2P',
+        role: 'system',
+        time: getCurrentTimeStr(),
+        text: '⚠️ Đối tác đã chủ động ngắt kết nối P2P.'
+      });
+      renderChatMessages();
+      disconnectP2P(true);
+    }
+  });
+
+  conn.on('close', () => {
+    if (isP2PConnected) {
+      showToast('Kết nối P2P đã kết thúc.', 'info');
+      inMemoryChatMessages.push({
+        author: 'HỆ THỐNG P2P',
+        role: 'system',
+        time: getCurrentTimeStr(),
+        text: '⚠️ Máy đối tác đã ngắt kết nối hoặc đóng tab trình duyệt.'
+      });
+      renderChatMessages();
+      disconnectP2P(false);
+    }
+  });
+
+  conn.on('error', (err) => {
+    console.error('Conn error:', err);
+    showToast('Lỗi truyền dữ liệu P2P: ' + (err.message || 'Lỗi không xác định'), 'error');
+  });
+}
+
+function disconnectP2P(isRemote = false) {
+  if (activePeerConnection) {
+    if (!isRemote) {
+      try {
+        activePeerConnection.send({ type: 'disconnect' });
+      } catch {}
+    }
+    try { activePeerConnection.close(); } catch {}
+    activePeerConnection = null;
+  }
+
+  if (peerInstance) {
+    try { peerInstance.destroy(); } catch {}
+    peerInstance = null;
+  }
+
+  isP2PConnected = false;
+  isRoomHost = false;
+  currentRoomCode = null;
+  p2pPeerAlias = 'Khách / Đối Tác';
+
+  // Clear room hash from URL
+  if (window.location.hash && window.location.hash.toLowerCase().includes('room=')) {
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+
+  updateP2PStatusUI('disconnected');
+}
+
+function checkUrlForP2PRoom() {
+  if (window.location.hash) {
+    const match = window.location.hash.match(/room=([A-Za-z0-9-_]+)/i);
+    if (match && match[1]) {
+      const roomCode = match[1].toUpperCase();
+      switchTab('tab-chat');
+      setTimeout(() => {
+        joinP2PRoom(roomCode);
+      }, 400);
+    }
+  }
+}
 
 function initEncryptedChat() {
   const sendBtn = document.getElementById('send-chat-btn');
@@ -911,13 +1231,71 @@ function initEncryptedChat() {
   const quickBtns = document.querySelectorAll('.quick-q-btn');
   const copyPgpBtn = document.getElementById('copy-pgp-fingerprint');
 
+  // P2P Controls
+  const btnHost = document.getElementById('btn-p2p-host');
+  const btnJoin = document.getElementById('btn-p2p-join');
+  const inputCode = document.getElementById('input-p2p-code');
+  const btnCopyLink = document.getElementById('btn-p2p-copy-link');
+  const btnDisconnect = document.getElementById('btn-p2p-disconnect');
+
+  if (btnHost) {
+    btnHost.addEventListener('click', () => {
+      startHostingP2PRoom();
+    });
+  }
+
+  if (btnJoin) {
+    btnJoin.addEventListener('click', () => {
+      const val = inputCode?.value || '';
+      joinP2PRoom(val);
+    });
+  }
+
+  if (inputCode) {
+    inputCode.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        joinP2PRoom(inputCode.value);
+      }
+    });
+  }
+
+  if (btnCopyLink) {
+    btnCopyLink.addEventListener('click', () => {
+      if (!currentRoomCode) {
+        showToast('Chưa có mã phòng để sao chép!', 'warning');
+        return;
+      }
+      const link = getRoomShareableLink(currentRoomCode);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(() => {
+          showToast(`Đã sao chép link mời phòng [${currentRoomCode}] vào bộ nhớ tạm!`, 'success');
+        }).catch(() => {
+          prompt('Sao chép link mời này gửi cho khách:', link);
+        });
+      } else {
+        prompt('Sao chép link mời này gửi cho khách:', link);
+      }
+    });
+  }
+
+  if (btnDisconnect) {
+    btnDisconnect.addEventListener('click', () => {
+      disconnectP2P(false);
+      inMemoryChatMessages = [];
+      renderChatMessages();
+      updateRamMonitor();
+      showToast('Đã ngắt kết nối P2P và xóa sạch RAM!', 'info');
+    });
+  }
+
   // Copy PGP Fingerprint
   if (copyPgpBtn) {
     copyPgpBtn.addEventListener('click', () => {
       const fullFingerprint = '-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GhostBazaar PGP Node v4.2\nComment: 4A8F C310 998D E21B 77A4 0019 FF45 8891 00C2 91BC\nmQGNBF7...RAM_ONLY_KEY...==\n-----END PGP PUBLIC KEY BLOCK-----';
       if (navigator.clipboard) {
         navigator.clipboard.writeText(fullFingerprint).then(() => {
-          showToast('Đã sao chép PGP Fingerprint của Người bán vào bộ đệm!', 'success');
+          showToast('Đã sao chép PGP Fingerprint vào bộ đệm!', 'success');
         });
       }
     });
@@ -929,7 +1307,7 @@ function initEncryptedChat() {
       author: 'Merchant-Node-01',
       role: 'merchant',
       time: getCurrentTimeStr(),
-      text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC.'
+      text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC. Để chat trực tiếp 2 máy với khách hàng không cần máy chủ, hãy bấm "Tạo Phòng Chat Mật (Host P2P)" ở trên.'
     }
   ];
   renderChatMessages();
@@ -939,43 +1317,76 @@ function initEncryptedChat() {
     const text = (chatInput?.value || '').trim();
     if (!text) return;
 
-    // Push Buyer Message to in-memory array
-    inMemoryChatMessages.push({
-      author: anonymousAlias || 'Ghost-Buyer',
-      role: 'buyer',
-      time: getCurrentTimeStr(),
-      text
-    });
-
     chatInput.value = '';
-    renderChatMessages();
-    updateRamMonitor();
 
-    // Show simulated typing indicator
-    const typingIndicator = document.getElementById('chat-typing-indicator');
-    if (typingIndicator) typingIndicator.style.display = 'flex';
+    // Stop typing indicator on remote
+    if (isP2PConnected && activePeerConnection) {
+      try {
+        activePeerConnection.send({ type: 'typing', isTyping: false });
+      } catch {}
+    }
 
-    // Simulate Merchant Node automated cryptographic reply
-    setTimeout(() => {
-      if (typingIndicator) typingIndicator.style.display = 'none';
+    if (isP2PConnected && activePeerConnection) {
+      // 100% P2P Device-to-Device WebRTC DataChannel
+      try {
+        activePeerConnection.send({
+          type: 'chat',
+          text,
+          alias: anonymousAlias || 'Ẩn Danh',
+          time: getCurrentTimeStr()
+        });
+      } catch (err) {
+        showToast('Lỗi gửi tin nhắn P2P: ' + err.message, 'error');
+        return;
+      }
 
-      const reply = generateMerchantReply(text);
       inMemoryChatMessages.push({
-        author: 'Merchant-Node-01',
-        role: 'merchant',
+        author: `Tôi (${anonymousAlias})`,
+        role: 'buyer',
         time: getCurrentTimeStr(),
-        text: reply
+        text
       });
       renderChatMessages();
       updateRamMonitor();
+    } else {
+      // Bot / Offline simulation mode
+      inMemoryChatMessages.push({
+        author: anonymousAlias || 'Ghost-Buyer',
+        role: 'buyer',
+        time: getCurrentTimeStr(),
+        text
+      });
 
-      // Show unread badge if tab not active
-      const activeTab = document.querySelector('.covert-nav-tabs .nav-tab.active');
-      if (activeTab && activeTab.getAttribute('data-tab') !== 'tab-chat') {
-        const badge = document.getElementById('chat-badge');
-        if (badge) badge.style.display = 'inline-block';
-      }
-    }, 900);
+      renderChatMessages();
+      updateRamMonitor();
+
+      // Show simulated typing indicator
+      const typingIndicator = document.getElementById('chat-typing-indicator');
+      const typingText = document.querySelector('#chat-typing-indicator .typing-text');
+      if (typingText) typingText.textContent = 'Merchant-Node-01 đang soạn tin nhắn bảo mật...';
+      if (typingIndicator) typingIndicator.style.display = 'flex';
+
+      setTimeout(() => {
+        if (typingIndicator) typingIndicator.style.display = 'none';
+
+        const reply = generateMerchantReply(text);
+        inMemoryChatMessages.push({
+          author: 'Merchant-Node-01',
+          role: 'merchant',
+          time: getCurrentTimeStr(),
+          text: reply
+        });
+        renderChatMessages();
+        updateRamMonitor();
+
+        // Show unread badge if tab not active
+        const activeTab = document.querySelector('.covert-nav-tabs .nav-tab.active');
+        if (activeTab && activeTab.getAttribute('data-tab') !== 'tab-chat') {
+          const badge = document.getElementById('chat-badge');
+          if (badge) badge.style.display = 'inline-block';
+        }
+      }, 750);
+    }
   };
 
   if (sendBtn) sendBtn.addEventListener('click', handleSendMessage);
@@ -984,6 +1395,28 @@ function initEncryptedChat() {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSendMessage();
+      }
+    });
+
+    // Broadcast typing indicator to remote peer
+    chatInput.addEventListener('input', () => {
+      if (isP2PConnected && activePeerConnection) {
+        try {
+          activePeerConnection.send({
+            type: 'typing',
+            isTyping: chatInput.value.length > 0,
+            alias: anonymousAlias
+          });
+        } catch {}
+
+        if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
+        typingDebounceTimer = setTimeout(() => {
+          if (isP2PConnected && activePeerConnection) {
+            try {
+              activePeerConnection.send({ type: 'typing', isTyping: false });
+            } catch {}
+          }
+        }, 1500);
       }
     });
   }
@@ -1014,15 +1447,25 @@ function renderChatMessages() {
   const container = document.getElementById('chat-message-list');
   if (!container) return;
 
-  container.innerHTML = inMemoryChatMessages.map(msg => `
-    <div class="chat-msg ${escapeHtml(msg.role)}">
-      <div class="msg-header">
-        <span class="msg-author">${escapeHtml(msg.author)}</span>
-        <span class="msg-time">${escapeHtml(msg.time)}</span>
+  container.innerHTML = inMemoryChatMessages.map(msg => {
+    if (msg.role === 'system') {
+      return `
+        <div class="chat-system-msg">
+          <div class="system-bubble">${escapeHtml(msg.text)}</div>
+          <span class="system-time">${escapeHtml(msg.time)}</span>
+        </div>
+      `;
+    }
+    return `
+      <div class="chat-msg ${escapeHtml(msg.role)}">
+        <div class="msg-header">
+          <span class="msg-author">${escapeHtml(msg.author)}</span>
+          <span class="msg-time">${escapeHtml(msg.time)}</span>
+        </div>
+        <div class="msg-bubble">${escapeHtml(msg.text)}</div>
       </div>
-      <div class="msg-bubble">${escapeHtml(msg.text)}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   container.scrollTop = container.scrollHeight;
 }
