@@ -496,7 +496,7 @@ function initPanicAndPurgeHooks() {
 }
 
 /* ==========================================================================
-   2. TELEMETRY, SESSION CLOCK & EMERGENCY DECOY MASK (F2)
+   2. TELEMETRY & SESSION CLOCK
    ========================================================================== */
 
 function initTelemetryAndMask() {
@@ -519,28 +519,6 @@ function initTelemetryAndMask() {
       showToast(`Đã cấp danh tính mới: ${anonymousAlias}`, 'info');
     });
   }
-
-  // Emergency Academic Decoy Mask
-  const maskBtn = document.getElementById('decoy-mask-btn');
-  const closeMaskBtn = document.getElementById('close-mask-btn');
-  const maskOverlay = document.getElementById('decoy-mask-overlay');
-
-  const toggleMask = () => {
-    if (!maskOverlay) return;
-    const isShowing = maskOverlay.style.display === 'flex';
-    maskOverlay.style.display = isShowing ? 'none' : 'flex';
-  };
-
-  if (maskBtn) maskBtn.addEventListener('click', toggleMask);
-  if (closeMaskBtn) closeMaskBtn.addEventListener('click', toggleMask);
-
-  // F2 Shortcut for Decoy Mask
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'F2') {
-      e.preventDefault();
-      toggleMask();
-    }
-  });
 
   // QR Modal Close
   const closeQrBtn = document.getElementById('close-qr-btn');

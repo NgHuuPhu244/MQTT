@@ -35,9 +35,6 @@
         </div>
 
         <div class="vault-actions">
-          <button id="decoy-mask-btn" class="decoy-mask-btn" title="Kích hoạt màn che tài liệu học thuật vô hại (F2)">
-            <span>📄</span> Màn Che Học Thuật <kbd>F2</kbd>
-          </button>
           <button id="panic-btn" class="panic-btn" title="Thoát khẩn cấp, xóa sạch bộ đệm RAM và quay về Từ Điển (Phím ESC)">
             <span>🚨</span> THOÁT KHẨN CẤP & XÓA SẠCH <kbd>ESC</kbd>
           </button>
@@ -675,10 +672,10 @@
 
             <section class="audit-card">
               <div class="audit-card-icon">🕵️</div>
-              <h3>4. Màn Che Ngụy Trang Hoàn Hảo</h3>
+              <h3>4. Cơ Chế Thoát Khẩn Cấp Tức Thì</h3>
               <ul>
                 <li><strong>Cổng vào ngụy trang:</strong> Toàn bộ trang ẩn này được che đậy hoàn hảo sau lớp vỏ Từ Điển Đa Ngôn Ngữ tại trang chủ.</li>
-                <li><strong>Nút Thoát (ESC) & Màn Che (F2):</strong> Bấm <code>ESC</code> lập tức xóa sạch mọi dữ liệu và đá về từ điển. Bấm <code>F2</code> lập tức hiển thị màn che bài báo học thuật vô hại.</li>
+                <li><strong>Nút Thoát Khẩn Cấp (ESC):</strong> Bấm <code>ESC</code> lập tức xóa sạch mọi dữ liệu trong RAM và điều hướng ngay về giao diện từ điển.</li>
               </ul>
             </section>
           </div>
@@ -711,7 +708,7 @@
     <footer class="vault-footer">
       <p>Ghost Bazaar • Nền Tảng Chợ Ẩn Danh Khả Biến • Không Lưu Vết • Tự Hủy 100% Khi Thoát</p>
       <div class="keyboard-hints-bar">
-        <span class="hint-pill"><kbd>F2</kbd> Màn che học thuật</span>
+        <span class="hint-pill"><kbd>/</kbd> Tìm kiếm nhanh</span>
         <span class="hint-pill"><kbd>Esc</kbd> Thoát khẩn cấp & Xóa sạch</span>
       </div>
     </footer>
@@ -791,31 +788,6 @@
 
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
-
-  <!-- Emergency Academic Decoy Mask (F2) -->
-  <div id="decoy-mask-overlay" class="decoy-mask-overlay" style="display: none;">
-    <div class="academic-paper-wrapper">
-      <div class="paper-header">
-        <span class="paper-journal">TẠP CHÍ NGÔN NGỮ HỌC VÀ KHOA HỌC DỮ LIỆU • ISSN 2615-9872 • TẬP 18 - SỐ 4/2026</span>
-        <button id="close-mask-btn" class="close-mask-btn" title="Đóng màn che (F2)">✕</button>
-      </div>
-      <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 0.75rem;">
-        DOI: 10.1016/j.lingua.2026.103982 • Xuất bản trực tuyến: 14/03/2026 • Bản quyền thuộc Viện Nghiên Cứu
-      </div>
-      <h1 class="paper-title">Nghiên cứu cấu trúc ngữ nghĩa học thuật ngữ đa ngôn ngữ trong kỷ nguyên dữ liệu lớn</h1>
-      <p class="paper-authors">GS.TS. Nguyễn Văn Hùng, PGS.TS. Lê Hoàng Mai — Viện Nghiên cứu Ngôn ngữ Ứng dụng</p>
-      <div class="paper-abstract">
-        <strong>TÓM TẮT:</strong> Bài báo trình bày phương pháp phân tích ngữ nghĩa phân bố (distributional semantics) áp dụng cho các thuật ngữ kỹ thuật trong các ngôn ngữ Đông Á và phương Tây...
-      </div>
-      <div class="paper-body">
-        <h2>1. Đặt vấn đề và Tổng quan nghiên cứu</h2>
-        <p>Sự bùng nổ của các kho ngữ liệu song ngữ đặt ra thách thức lớn đối với công tác biên soạn từ điển học thuật...</p>
-      </div>
-      <div class="paper-footer">
-        <em>Nhấn <strong>F2</strong> hoặc nhấp đúp vào văn bản để quay lại bảng điều khiển</em>
-      </div>
-    </div>
-  </div>
 
   <script src="./js/peerjs.min.js"></script>
   <script type="module" src="./js/vault.js"></script>
