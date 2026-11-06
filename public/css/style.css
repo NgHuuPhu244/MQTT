@@ -2166,6 +2166,15 @@ body.vault-page {
   color: #f8fafc;
 }
 
+.quick-list-cta {
+  height: 38px;
+  padding: 0 0.95rem;
+  font-size: 0.8rem;
+  border-radius: 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .market-category-pills {
   display: flex;
   gap: 0.45rem;
@@ -2262,6 +2271,9 @@ body.vault-page {
   flex-shrink: 0;
 }
 
+.product-badge.physical { background: rgba(244, 63, 94, 0.16); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.32); }
+.product-badge.digital,
+.product-badge.service { background: rgba(6, 182, 212, 0.16); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.32); }
 .product-badge.hardware { background: rgba(59, 130, 246, 0.16); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
 .product-badge.network { background: rgba(16, 185, 129, 0.16); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
 .product-badge.crypto { background: rgba(168, 85, 247, 0.16); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.3); }
@@ -2432,7 +2444,7 @@ body.vault-page {
 
 .product-actions {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.32rem;
   align-items: center;
   flex-shrink: 0;
 }
@@ -2441,13 +2453,13 @@ body.vault-page {
   background: #047857;
   border: 1px solid rgba(52, 211, 153, 0.4);
   color: #ffffff;
-  padding: 0.46rem 0.82rem;
+  padding: 0.42rem 0.65rem;
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
   white-space: nowrap;
   transition: background-color var(--duration-base), transform var(--duration-base);
 }
@@ -2461,13 +2473,13 @@ body.vault-page {
   background: #b45309;
   border: 1px solid rgba(251, 191, 36, 0.45);
   color: #ffffff;
-  padding: 0.46rem 0.82rem;
+  padding: 0.42rem 0.65rem;
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
   white-space: nowrap;
   transition: background-color var(--duration-base), transform var(--duration-base);
 }
@@ -2481,13 +2493,13 @@ body.vault-page {
   background: #162032;
   border: 1px solid rgba(148, 163, 184, 0.24);
   color: #f8fafc;
-  padding: 0.46rem 0.72rem;
+  padding: 0.42rem 0.55rem;
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.2rem;
   white-space: nowrap;
   transition: background-color var(--duration-base);
 }
@@ -3160,10 +3172,26 @@ body.vault-page {
   border-color: rgba(52, 211, 153, 0.4);
 }
 
+.emoji-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .emoji-quick-picker {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
+  flex: 1;
+}
+
+.custom-emoji-input {
+  width: 64px !important;
+  height: 36px;
+  text-align: center;
+  padding: 0.25rem !important;
+  font-size: 1.1rem !important;
 }
 
 .emoji-opt {
@@ -3581,6 +3609,33 @@ body.vault-page {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.bid-quick-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.quick-bid-step-btn {
+  background: #141e33;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.22rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color var(--duration-base), color var(--duration-base);
+}
+
+.quick-bid-step-btn:hover {
+  background: #b45309;
+  color: #ffffff;
 }
 
 .bid-usd-approx {

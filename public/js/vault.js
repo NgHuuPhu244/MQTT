@@ -14,46 +14,177 @@ let activeOrder = null;
 let orderCountdownTimer = null;
 let currentChatInquiry = 'Tư vấn chung';
 
-// Anonymous Catalog Inventory (In-Memory Only)
+// WebRTC Peer-to-Peer State (100% Serverless, Browser-to-Browser, Zero-Log)
+let peerInstance = null;
+let activePeerConnection = null;
+let currentRoomCode = null;
+let isP2PConnected = false;
+let isRoomHost = false;
+let p2pPeerAlias = 'Khách / Đối Tác';
+let typingDebounceTimer = null;
+
+// Multi-region public STUN servers for zero-configuration P2P NAT traversal
+const PEERJS_CONFIG = {
+  debug: 0,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ]
+  }
+};
+
+/**
+ * Gentle Web Audio synthesizer chime for incoming P2P messages (Zero external asset dependency)
+ */
+function playNotificationChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(587.33, now); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch {
+    // Autoplay policy or audio unsupported
+  }
+}
+
+// Anonymous Catalog Inventory (In-Memory Only — Unrestricted Open Market & Auction)
 let MARKET_PRODUCTS = [
   {
     id: 'auction-chip-07',
     name: 'Lô 10 Chip Mật Mã HSM Air-Gapped EAL6+ Đấu Giá Kín',
     category: 'hardware',
-    badge: 'Đấu Giá RAM',
+    badge: 'Đấu Giá & Mua Ngay',
     icon: '🔨',
     securityLevel: 'Cấp 5 • Silent Bid',
+    currency: 'XMR',
     isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
     startingBidXMR: 0.50,
     currentBidXMR: 0.85,
-    minBidIncrement: 0.05,
+    buyNowPrice: 1.40,
+    minBidIncrement: 0,
     bidCount: 4,
     highestBidder: 'Ghost-9A4F',
     bids: [
-      { bidder: 'Ghost-9A4F', amount: 0.85, time: '2 phút trước' },
-      { bidder: 'Ghost-1B2C', amount: 0.80, time: '8 phút trước' },
-      { bidder: 'Ghost-5E3D', amount: 0.70, time: '15 phút trước' },
-      { bidder: 'Ghost-7A11', amount: 0.50, time: '28 phút trước' }
+      { bidder: 'Ghost-9A4F', amount: 0.85, currency: 'XMR', time: '2 phút trước' },
+      { bidder: 'Ghost-1B2C', amount: 0.80, currency: 'XMR', time: '8 phút trước' },
+      { bidder: 'Ghost-5E3D', amount: 0.70, currency: 'XMR', time: '15 phút trước' },
+      { bidder: 'Ghost-7A11', amount: 0.50, currency: 'XMR', time: '28 phút trước' }
     ],
-    auctionEndTime: Date.now() + (5400 * 1000), // ~1.5 hours remaining
+    auctionEndTime: Date.now() + (5400 * 1000),
     priceXMR: '0.85 XMR',
     rawPriceXMR: 0.85,
     approxUSD: '~$140 USD',
     stock: '1 lô duy nhất',
-    desc: 'Lô linh kiện phần cứng chip xử lý mật mã học độc lập EAL6+, chưa từng kết nối mạng, chuẩn bị cho hệ thống máy chủ air-gapped.',
+    desc: 'Lô linh kiện phần cứng chip xử lý mật mã học độc lập EAL6+, chưa từng kết nối mạng, mở đấu giá tự do hoặc mua đứt ngay.',
     specs: {
-      'Hình thức': 'Đấu giá kín ẩn danh trong RAM',
-      'Bước giá': '+0.05 XMR tối thiểu',
-      'Bàn giao': 'Mã Drop tự hủy sau khi chốt phiên'
+      'Hình thức': 'Đấu giá tự do & Mua đứt 2 chiều',
+      'Bước giá': 'Tự do không giới hạn',
+      'Bàn giao': 'Mã Drop tự hủy hoặc Ship ẩn danh'
+    }
+  },
+  {
+    id: 'lux-watch-08',
+    name: 'Đồng Hồ Cơ Patek Philippe Sưu Tầm & Vàng Khối 24K',
+    category: 'physical',
+    badge: 'Hàng Vật Lý',
+    icon: '⌚',
+    securityLevel: 'Escrow • Vật phẩm thực',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 12.00,
+    currentBidXMR: 14.50,
+    buyNowPrice: 18.00,
+    minBidIncrement: 0,
+    bidCount: 6,
+    highestBidder: 'Ghost-77FE',
+    bids: [
+      { bidder: 'Ghost-77FE', amount: 14.50, currency: 'XMR', time: '5 phút trước' },
+      { bidder: 'Ghost-3A91', amount: 13.20, currency: 'XMR', time: '19 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (10800 * 1000),
+    priceXMR: '14.50 XMR',
+    rawPriceXMR: 14.50,
+    approxUSD: '~$2,390 USD',
+    stock: '1 chiếc nguyên hộp',
+    desc: 'Vật phẩm sưu tầm thực tế ngoài đời thực, đầy đủ chứng nhận gốc, giao dịch qua hợp đồng ký quỹ ẩn danh và giao nhận Dead-Drop bảo mật.',
+    specs: {
+      'Danh mục': 'Hàng thực tế • Xa xỉ phẩm',
+      'Chế độ': 'Trả giá tự do / Mua ngay',
+      'Bàn giao': 'Hòm thư Dead-Drop / Bưu chính kín'
+    }
+  },
+  {
+    id: 'dig-domain-09',
+    name: 'Tên Miền VIP 2 Ký Tự & Kho Tài Sản Số Độc Quyền',
+    category: 'digital',
+    badge: 'Tài Sản Số',
+    icon: '💎',
+    securityLevel: 'Instant • Transfer',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 2.00,
+    currentBidXMR: 2.40,
+    buyNowPrice: 3.50,
+    minBidIncrement: 0,
+    bidCount: 3,
+    highestBidder: 'Ghost-3C1A',
+    bids: [
+      { bidder: 'Ghost-3C1A', amount: 2.40, currency: 'XMR', time: '11 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (7200 * 1000),
+    priceXMR: '2.40 XMR',
+    rawPriceXMR: 2.40,
+    approxUSD: '~$395 USD',
+    stock: 'Chuyển giao ngay',
+    desc: 'Tài sản kỹ thuật số, tên miền ngắn quý hiếm kèm mã EPP Auth-Code chuyển nhượng quyền sở hữu tức thì qua kênh mã hóa một lần.',
+    specs: {
+      'Loại tài sản': 'Tên miền & Bản quyền số',
+      'Đấu giá': 'Mở thầu tự do 24/7',
+      'Bàn giao': 'Mã EPP / Khoá chuyển nhượng RAM'
     }
   },
   {
     id: 'hw-hsm-01',
     name: 'Khóa Bảo Mật Air-Gapped HSM Token v4',
     category: 'hardware',
-    badge: 'Phần cứng',
+    badge: 'Phần Cứng',
     icon: '🔑',
     securityLevel: 'Cấp 5 • FIPS 140-3',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.35,
+    currentBidXMR: 0.45,
+    buyNowPrice: 0.45,
+    minBidIncrement: 0,
+    bidCount: 2,
+    highestBidder: 'Ghost-4D88',
+    bids: [
+      { bidder: 'Ghost-4D88', amount: 0.45, currency: 'XMR', time: '14 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (14400 * 1000),
     priceXMR: '0.45 XMR',
     rawPriceXMR: 0.45,
     approxUSD: '~$75 USD',
@@ -69,9 +200,21 @@ let MARKET_PRODUCTS = [
     id: 'net-mesh-02',
     name: 'Cấu Hình Ephemeral Multi-Hop Mesh (RAM-Only)',
     category: 'network',
-    badge: 'Mạng lưới',
+    badge: 'Mạng Lưới',
     icon: '🛰️',
     securityLevel: 'Cấp 5 • 5-Hop Obfs4',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.10,
+    currentBidXMR: 0.15,
+    buyNowPrice: 0.15,
+    minBidIncrement: 0,
+    bidCount: 1,
+    highestBidder: 'Ghost-8E02',
+    bids: [],
+    auctionEndTime: Date.now() + (18000 * 1000),
     priceXMR: '0.15 XMR',
     rawPriceXMR: 0.15,
     approxUSD: '~$25 USD',
@@ -87,9 +230,21 @@ let MARKET_PRODUCTS = [
     id: 'sec-ssl-03',
     name: 'Chứng Chỉ SSL Bulletproof & DNS Chống Giám Sát',
     category: 'network',
-    badge: 'Mạng lưới',
+    badge: 'Mạng Lưới',
     icon: '🛡️',
     securityLevel: 'Cấp 4 • ECH DNSSEC',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.15,
+    currentBidXMR: 0.20,
+    buyNowPrice: 0.20,
+    minBidIncrement: 0,
+    bidCount: 1,
+    highestBidder: 'Ghost-2A19',
+    bids: [],
+    auctionEndTime: Date.now() + (21600 * 1000),
     priceXMR: '0.20 XMR',
     rawPriceXMR: 0.20,
     approxUSD: '~$35 USD',
@@ -108,6 +263,18 @@ let MARKET_PRODUCTS = [
     badge: 'Audit & PoC',
     icon: '📑',
     securityLevel: 'Cấp 5 • Top-Secret',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.60,
+    currentBidXMR: 0.85,
+    buyNowPrice: 0.85,
+    minBidIncrement: 0,
+    bidCount: 3,
+    highestBidder: 'Ghost-5B71',
+    bids: [],
+    auctionEndTime: Date.now() + (9000 * 1000),
     priceXMR: '0.85 XMR',
     rawPriceXMR: 0.85,
     approxUSD: '~$140 USD',
@@ -123,9 +290,21 @@ let MARKET_PRODUCTS = [
     id: 'os-amnesic-05',
     name: 'Tails/Qubes Amnesic USB OS Bootable Image',
     category: 'crypto',
-    badge: 'Hệ điều hành',
+    badge: 'Hệ Điều Hành',
     icon: '💾',
     securityLevel: 'Cấp 5 • Zero-Trace',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.20,
+    currentBidXMR: 0.30,
+    buyNowPrice: 0.30,
+    minBidIncrement: 0,
+    bidCount: 2,
+    highestBidder: 'Ghost-6F04',
+    bids: [],
+    auctionEndTime: Date.now() + (12600 * 1000),
     priceXMR: '0.30 XMR',
     rawPriceXMR: 0.30,
     approxUSD: '~$50 USD',
@@ -141,9 +320,21 @@ let MARKET_PRODUCTS = [
     id: 'key-pgp-06',
     name: 'Cặp Khóa PGP 4096-bit Sinh Trong Lồng Faraday',
     category: 'crypto',
-    badge: 'Mật mã học',
+    badge: 'Mật Mã Học',
     icon: '🗝️',
     securityLevel: 'Cấp 5 • Faraday Key',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.05,
+    currentBidXMR: 0.10,
+    buyNowPrice: 0.10,
+    minBidIncrement: 0,
+    bidCount: 1,
+    highestBidder: 'Ghost-0D33',
+    bids: [],
+    auctionEndTime: Date.now() + (16200 * 1000),
     priceXMR: '0.10 XMR',
     rawPriceXMR: 0.10,
     approxUSD: '~$18 USD',
@@ -396,15 +587,31 @@ function switchTab(tabId) {
    4. ANONYMOUS PRODUCT CATALOG & FILTERING
    ========================================================================== */
 
+function formatPriceNum(val) {
+  const num = Number(val);
+  if (isNaN(num)) return '0.00';
+  if (num >= 100) return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return num.toFixed(2);
+}
+
 function initMarketCatalog() {
   const searchInput = document.getElementById('market-search-input');
   const clearSearchBtn = document.getElementById('clear-market-search-btn');
   const sortSelect = document.getElementById('market-sort-select');
   const categoryPills = document.getElementById('market-category-pills');
+  const quickOpenVendorBtn = document.getElementById('quick-open-vendor-btn');
 
   renderProducts(MARKET_PRODUCTS);
+  updateCategoryPillCounts();
   populateOrderProductSelect(MARKET_PRODUCTS);
   updateOrderPreviewCard();
+
+  if (quickOpenVendorBtn) {
+    quickOpenVendorBtn.addEventListener('click', () => {
+      switchTab('tab-vendor');
+      document.getElementById('listing-name')?.focus();
+    });
+  }
 
   if (searchInput) {
     searchInput.addEventListener('input', () => {
@@ -457,19 +664,22 @@ function updateCategoryPillCounts() {
   if (countAll) countAll.textContent = MARKET_PRODUCTS.length;
 
   const countAuction = document.getElementById('count-auction');
-  if (countAuction) countAuction.textContent = MARKET_PRODUCTS.filter(p => p.isAuction).length;
+  if (countAuction) countAuction.textContent = MARKET_PRODUCTS.filter(p => p.isAuction !== false).length;
+
+  const countPhysical = document.getElementById('count-physical');
+  if (countPhysical) countPhysical.textContent = MARKET_PRODUCTS.filter(p => p.category === 'physical').length;
+
+  const countDigital = document.getElementById('count-digital');
+  if (countDigital) countDigital.textContent = MARKET_PRODUCTS.filter(p => p.category === 'digital' || p.category === 'service').length;
 
   const countHw = document.getElementById('count-hardware');
-  if (countHw) countHw.textContent = MARKET_PRODUCTS.filter(p => p.category === 'hardware' && !p.isAuction).length;
+  if (countHw) countHw.textContent = MARKET_PRODUCTS.filter(p => p.category === 'hardware').length;
 
   const countNet = document.getElementById('count-network');
-  if (countNet) countNet.textContent = MARKET_PRODUCTS.filter(p => p.category === 'network' && !p.isAuction).length;
+  if (countNet) countNet.textContent = MARKET_PRODUCTS.filter(p => p.category === 'network').length;
 
   const countCrypto = document.getElementById('count-crypto');
-  if (countCrypto) countCrypto.textContent = MARKET_PRODUCTS.filter(p => p.category === 'crypto' && !p.isAuction).length;
-
-  const countAudit = document.getElementById('count-audit');
-  if (countAudit) countAudit.textContent = MARKET_PRODUCTS.filter(p => (p.category === 'audit' || p.category === 'zeroday') && !p.isAuction).length;
+  if (countCrypto) countCrypto.textContent = MARKET_PRODUCTS.filter(p => p.category === 'crypto' || p.category === 'audit' || p.category === 'zeroday').length;
 }
 
 function filterAndRenderProducts() {
@@ -481,15 +691,20 @@ function filterAndRenderProducts() {
   let filtered = [...MARKET_PRODUCTS];
 
   if (category === 'auction') {
-    filtered = filtered.filter(p => p.isAuction === true);
+    filtered = filtered.filter(p => p.isAuction !== false);
+  } else if (category === 'digital') {
+    filtered = filtered.filter(p => p.category === 'digital' || p.category === 'service');
+  } else if (category === 'crypto') {
+    filtered = filtered.filter(p => p.category === 'crypto' || p.category === 'audit' || p.category === 'zeroday');
   } else if (category !== 'all') {
-    filtered = filtered.filter(p => p.category === category && !p.isAuction);
+    filtered = filtered.filter(p => p.category === category);
   }
 
   if (query) {
     filtered = filtered.filter(p => 
       p.name.toLowerCase().includes(query) ||
       p.desc.toLowerCase().includes(query) ||
+      (p.badge && p.badge.toLowerCase().includes(query)) ||
       p.securityLevel.toLowerCase().includes(query) ||
       Object.values(p.specs).some(val => val.toLowerCase().includes(query))
     );
@@ -500,6 +715,8 @@ function filterAndRenderProducts() {
     filtered.sort((a, b) => a.rawPriceXMR - b.rawPriceXMR);
   } else if (sort === 'price-desc') {
     filtered.sort((a, b) => b.rawPriceXMR - a.rawPriceXMR);
+  } else if (sort === 'bids-desc') {
+    filtered.sort((a, b) => (b.bidCount || 0) - (a.bidCount || 0));
   } else if (sort === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -516,48 +733,41 @@ function renderProducts(products) {
     grid.innerHTML = `
       <div class="empty-recovery-box" style="grid-column: 1 / -1;">
         <span class="empty-icon">🔍</span>
-        <h3 class="empty-title">Không tìm thấy mặt hàng phù hợp trong RAM</h3>
-        <p class="empty-desc">Thử tìm kiếm với từ khóa khác như "phần cứng", "vpn", "pgp", "zero-day", "đấu giá"...</p>
+        <h3 class="empty-title">Không tìm thấy vật phẩm phù hợp trong RAM</h3>
+        <p class="empty-desc">Bạn có thể tìm với từ khóa khác hoặc nhấn "➕ Đăng Bán / Đấu Giá Ngay" để niêm yết bất kỳ món đồ nào bạn muốn!</p>
       </div>
     `;
     return;
   }
 
   grid.innerHTML = products.map(item => {
-    const isAuction = !!item.isAuction;
-    const badgeCategory = isAuction ? 'auction' : escapeHtml(item.category);
-    const badgeText = isAuction ? '🔨 Đấu Giá RAM' : escapeHtml(item.badge);
+    const currency = item.currency || 'XMR';
+    const badgeCategory = escapeHtml(item.category || 'auction');
+    const badgeText = escapeHtml(item.badge || 'Đấu Giá & Mua Ngay');
 
-    const topRightBadge = isAuction 
-      ? `<span class="auction-countdown-pill" data-end="${item.auctionEndTime || (Date.now() + 3600000)}">⏳ <span class="countdown-val">01:29:45</span></span>`
-      : `<span class="product-stock">Kho: ${escapeHtml(item.stock)}</span>`;
+    const endAttr = item.auctionEndTime !== undefined ? item.auctionEndTime : (Date.now() + 3600000);
+    const topRightBadge = endAttr === 0
+      ? `<span class="auction-countdown-pill" data-end="0">♾️ <span class="countdown-val">MỞ TỰ DO</span></span>`
+      : `<span class="auction-countdown-pill" data-end="${endAttr}">⏳ <span class="countdown-val">01:29:45</span></span>`;
 
-    const priceLabel = isAuction ? 'Giá thầu cao nhất:' : 'Giá Escrow (Monero):';
-    const priceDisplay = isAuction 
-      ? `${(item.currentBidXMR || item.rawPriceXMR).toFixed(2)} XMR` 
-      : escapeHtml(item.priceXMR);
-    const priceClass = isAuction ? 'product-price auction-price' : 'product-price';
-    const priceMeta = isAuction
-      ? `${item.bidCount || 0} lượt đặt • ${escapeHtml(item.highestBidder || 'Chưa có lượt')}`
-      : escapeHtml(item.approxUSD);
+    const currentVal = item.currentBidXMR ?? item.rawPriceXMR ?? 0;
+    const buyNowVal = item.buyNowPrice ?? item.rawPriceXMR ?? currentVal;
+    const priceLabel = 'Giá hiện tại / Đấu giá mở:';
+    const priceDisplay = `${formatPriceNum(currentVal)} ${escapeHtml(currency)}`;
+    const priceClass = 'product-price auction-price';
+    const priceMeta = `${item.bidCount || 0} lượt trả giá • Mua đứt: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
 
-    const actionButtons = isAuction
-      ? `
-        <button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}">
-          <span>🔨</span> Đặt Giá Thầu
-        </button>
-        <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}">
-          <span>💬</span> Hỏi Giá
-        </button>
-      `
-      : `
-        <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}">
-          <span>🛒</span> Đặt Mua
-        </button>
-        <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}">
-          <span>💬</span> Chat
-        </button>
-      `;
+    const actionButtons = `
+      <button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Đấu giá / Trả giá tự do cho vật phẩm này">
+        <span>🔨</span> Đấu Giá
+      </button>
+      <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Mua đứt ngay lập tức qua Ký quỹ RAM">
+        <span>🛒</span> Mua
+      </button>
+      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" title="Chat thương lượng trực tiếp">
+        <span>💬</span>
+      </button>
+    `;
 
     return `
       <article class="product-card" id="card-${escapeHtml(item.id)}">
@@ -1063,13 +1273,17 @@ function updateAuctionCountdowns() {
 
   pills.forEach(pill => {
     const end = parseInt(pill.getAttribute('data-end') || '0', 10);
-    const diff = Math.max(0, Math.floor((end - now) / 1000));
     const countdownVal = pill.querySelector('.countdown-val');
 
+    if (end === 0) {
+      if (countdownVal) countdownVal.textContent = 'MỞ TỰ DO';
+      return;
+    }
+
+    const diff = Math.max(0, Math.floor((end - now) / 1000));
+
     if (diff <= 0) {
-      if (countdownVal) countdownVal.textContent = 'ĐÃ KẾT THÚC';
-      pill.style.borderColor = '#ef4444';
-      pill.style.color = '#ef4444';
+      if (countdownVal) countdownVal.textContent = 'MỞ GIA HẠN';
       return;
     }
 
@@ -1082,6 +1296,15 @@ function updateAuctionCountdowns() {
   });
 }
 
+function estimateUSDString(val, currency = 'XMR') {
+  const num = Number(val) || 0;
+  if (currency === 'USD' || currency === 'USDT') return `~$${formatPriceNum(num)} USD`;
+  if (currency === 'BTC') return `~$${Math.round(num * 68000).toLocaleString('en-US')} USD`;
+  if (currency === 'ETH') return `~$${Math.round(num * 3200).toLocaleString('en-US')} USD`;
+  if (currency === 'VNĐ') return `~${Math.round(num).toLocaleString('en-US')} VNĐ`;
+  return `~$${Math.round(num * 165).toLocaleString('en-US')} USD`;
+}
+
 function initAuctionBidding() {
   if (auctionIntervalTimer) clearInterval(auctionIntervalTimer);
   auctionIntervalTimer = setInterval(updateAuctionCountdowns, 1000);
@@ -1089,8 +1312,10 @@ function initAuctionBidding() {
   const modalOverlay = document.getElementById('bid-modal-overlay');
   const closeBtn = document.getElementById('close-bid-modal-btn');
   const cancelBtn = document.getElementById('cancel-bid-modal-btn');
+  const buyoutBtn = document.getElementById('buyout-from-bid-btn');
   const submitBtn = document.getElementById('submit-bid-btn');
   const bidInput = document.getElementById('bid-amount-input');
+  const quickStepBtns = document.querySelectorAll('.quick-bid-step-btn');
 
   const closeModal = () => {
     if (modalOverlay) modalOverlay.style.display = 'none';
@@ -1106,12 +1331,37 @@ function initAuctionBidding() {
     });
   }
 
+  if (buyoutBtn) {
+    buyoutBtn.addEventListener('click', () => {
+      if (!activeBiddingProductId) return;
+      const targetId = activeBiddingProductId;
+      closeModal();
+      initiateOrderForProduct(targetId);
+    });
+  }
+
+  quickStepBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!activeBiddingProductId || !bidInput) return;
+      const product = MARKET_PRODUCTS.find(p => p.id === activeBiddingProductId);
+      if (!product) return;
+      const mult = parseFloat(btn.getAttribute('data-mult') || '1.1');
+      const base = product.currentBidXMR || product.startingBidXMR || product.rawPriceXMR || 0.1;
+      const nextVal = Math.max(0.01, base * mult);
+      bidInput.value = nextVal.toFixed(2);
+      const usdEl = document.getElementById('bid-usd-approx');
+      if (usdEl) usdEl.textContent = estimateUSDString(nextVal, product.currency || 'XMR');
+    });
+  });
+
   if (bidInput) {
     bidInput.addEventListener('input', () => {
       const val = parseFloat(bidInput.value) || 0;
+      const product = MARKET_PRODUCTS.find(p => p.id === activeBiddingProductId);
+      const currency = product?.currency || 'XMR';
       const usdEl = document.getElementById('bid-usd-approx');
       if (usdEl) {
-        usdEl.textContent = `~$${Math.round(val * 165)} USD`;
+        usdEl.textContent = estimateUSDString(val, currency);
       }
     });
   }
@@ -1120,34 +1370,49 @@ function initAuctionBidding() {
     submitBtn.addEventListener('click', () => {
       if (!activeBiddingProductId) return;
       const product = MARKET_PRODUCTS.find(p => p.id === activeBiddingProductId);
-      if (!product || !product.isAuction) return;
+      if (!product) return;
 
+      const currency = product.currency || 'XMR';
       const bidVal = parseFloat(bidInput?.value || '0');
-      const minStep = product.minBidIncrement || 0.05;
-      const minRequired = (product.currentBidXMR || product.startingBidXMR) + minStep;
+      const minStep = Number(product.minBidIncrement || 0);
+      const currentBid = Number(product.currentBidXMR ?? product.startingBidXMR ?? product.rawPriceXMR ?? 0);
 
-      if (isNaN(bidVal) || bidVal < minRequired) {
-        showToast(`Giá thầu tối thiểu phải từ ${minRequired.toFixed(2)} XMR (bước giá +${minStep} XMR)!`, 'error');
+      if (isNaN(bidVal) || bidVal <= 0) {
+        showToast('Vui lòng nhập mức giá hợp lệ lớn hơn 0!', 'error');
         return;
       }
 
-      // Record bid in RAM
-      product.currentBidXMR = bidVal;
-      product.rawPriceXMR = bidVal;
-      product.highestBidder = anonymousAlias;
+      if (minStep > 0 && bidVal < currentBid + minStep) {
+        showToast(`Mặt hàng này yêu cầu bước giá tối thiểu +${minStep} ${currency} (từ ${(currentBid + minStep).toFixed(2)} ${currency})!`, 'error');
+        return;
+      }
+
+      // Unrestricted bidding: update highest bid if higher or equal, or record free-form offer
+      product.isAuction = true;
       product.bidCount = (product.bidCount || 0) + 1;
-      product.priceXMR = `${bidVal.toFixed(2)} XMR (Dẫn đầu)`;
+
+      if (bidVal >= currentBid) {
+        product.currentBidXMR = bidVal;
+        product.rawPriceXMR = bidVal;
+        product.highestBidder = anonymousAlias;
+        product.priceXMR = `${formatPriceNum(bidVal)} ${currency}`;
+        product.approxUSD = estimateUSDString(bidVal, currency);
+      }
 
       if (!product.bids) product.bids = [];
       product.bids.unshift({
         bidder: anonymousAlias,
         amount: bidVal,
+        currency,
+        note: bidVal >= currentBid ? 'Dẫn đầu' : 'Trả giá tự do',
         time: 'Vừa xong'
       });
 
-      showToast(`Đặt giá thầu ${bidVal.toFixed(2)} XMR thành công cho "${product.name}"!`, 'success');
+      populateOrderProductSelect(MARKET_PRODUCTS);
+      showToast(`Đã ghi nhận mức giá ${formatPriceNum(bidVal)} ${currency} cho "${product.name}"!`, 'success');
       closeModal();
       filterAndRenderProducts();
+      renderMyListings();
       updateRamMonitor();
     });
   }
@@ -1161,15 +1426,19 @@ function openBidModal(productId) {
   const modalOverlay = document.getElementById('bid-modal-overlay');
   const infoBox = document.getElementById('bid-modal-item-info');
   const bidInput = document.getElementById('bid-amount-input');
+  const currencyTag = document.getElementById('bid-currency-tag');
   const hintEl = document.getElementById('bid-min-hint');
   const aliasEl = document.getElementById('bid-client-alias');
   const feedEl = document.getElementById('bid-history-feed');
 
+  const currency = product.currency || 'XMR';
   if (aliasEl) aliasEl.textContent = anonymousAlias;
+  if (currencyTag) currencyTag.textContent = currency;
 
-  const currentBid = product.currentBidXMR || product.startingBidXMR || product.rawPriceXMR;
-  const minStep = product.minBidIncrement || 0.05;
-  const nextMin = currentBid + minStep;
+  const currentBid = Number(product.currentBidXMR ?? product.startingBidXMR ?? product.rawPriceXMR ?? 0.1);
+  const buyNowVal = Number(product.buyNowPrice ?? product.rawPriceXMR ?? currentBid);
+  const minStep = Number(product.minBidIncrement || 0);
+  const suggestedBid = minStep > 0 ? (currentBid + minStep) : Number((currentBid * 1.05).toFixed(2));
 
   if (infoBox) {
     infoBox.innerHTML = `
@@ -1179,37 +1448,39 @@ function openBidModal(productId) {
       </div>
       <div class="bid-info-price-grid">
         <div class="bid-price-cell">
-          <span class="detail-label">Giá thầu hiện tại:</span>
-          <span style="font-family: var(--font-mono); font-weight: 700; color: #fbbf24;">${currentBid.toFixed(2)} XMR</span>
+          <span class="detail-label">Giá hiện tại / Cao nhất:</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: #fbbf24;">${formatPriceNum(currentBid)} ${escapeHtml(currency)}</span>
         </div>
         <div class="bid-price-cell">
-          <span class="detail-label">Đang dẫn đầu:</span>
-          <span style="font-family: var(--font-mono); font-weight: 600; color: #38bdf8;">${escapeHtml(product.highestBidder || 'Chưa có')}</span>
+          <span class="detail-label">Mua đứt ngay / Dẫn đầu:</span>
+          <span style="font-family: var(--font-mono); font-weight: 600; color: #38bdf8;">${formatPriceNum(buyNowVal)} ${escapeHtml(currency)} • ${escapeHtml(product.highestBidder || 'Mở tự do')}</span>
         </div>
       </div>
     `;
   }
 
   if (bidInput) {
-    bidInput.value = nextMin.toFixed(2);
-    bidInput.min = nextMin.toFixed(2);
+    bidInput.value = suggestedBid.toFixed(2);
+    bidInput.min = '0';
     const usdEl = document.getElementById('bid-usd-approx');
-    if (usdEl) usdEl.textContent = `~$${Math.round(nextMin * 165)} USD`;
+    if (usdEl) usdEl.textContent = estimateUSDString(suggestedBid, currency);
   }
 
   if (hintEl) {
-    hintEl.textContent = `Giá đặt tối thiểu tiếp theo: ${nextMin.toFixed(2)} XMR (Bước giá: +${minStep} XMR)`;
+    hintEl.textContent = minStep > 0
+      ? `Bước giá tối thiểu: +${minStep} ${currency} (Gợi ý: ${suggestedBid.toFixed(2)} ${currency})`
+      : `Không giới hạn bước giá — Bạn có thể nhập bất kỳ mức giá đề xuất nào bằng ${currency}!`;
   }
 
   if (feedEl) {
     const bids = product.bids || [];
     if (bids.length === 0) {
-      feedEl.innerHTML = '<div style="font-size: 0.76rem; color: #64748b; font-style: italic;">Chưa có lượt đặt giá thầu nào. Hãy là người mở bát đầu tiên!</div>';
+      feedEl.innerHTML = '<div style="font-size: 0.76rem; color: #94a3b8; font-style: italic;">Chưa có lượt trả giá nào. Bạn có thể mở bát với bất kỳ mức giá nào!</div>';
     } else {
       feedEl.innerHTML = bids.map(b => `
         <div class="bid-feed-item">
           <span class="bid-feed-bidder">${escapeHtml(b.bidder)}</span>
-          <span class="bid-feed-amount">${typeof b.amount === 'number' ? b.amount.toFixed(2) : b.amount} XMR</span>
+          <span class="bid-feed-amount">${typeof b.amount === 'number' ? formatPriceNum(b.amount) : escapeHtml(String(b.amount))} ${escapeHtml(b.currency || currency)}</span>
           <span class="bid-feed-time">${escapeHtml(b.time || 'Vừa xong')}</span>
         </div>
       `).join('');
@@ -1222,15 +1493,26 @@ function openBidModal(productId) {
 }
 
 /* ==========================================================================
-   9. VENDOR DESK: EPHEMERAL LISTING CREATION & REVOCATION
+   9. VENDOR DESK: UNRESTRICTED LISTING & AUCTION CREATION
    ========================================================================== */
 
 let myVendorListings = [];
-let currentListingMode = 'fixed';
+let currentListingMode = 'hybrid';
+
+const CATEGORY_DEFAULT_BADGES = {
+  physical: 'Hàng Vật Lý',
+  digital: 'Tài Sản Số',
+  service: 'Dịch Vụ',
+  hardware: 'Phần Cứng',
+  network: 'Mạng Lưới',
+  crypto: 'Mật Mã Học',
+  audit: 'Audit & PoC'
+};
 
 function initVendorDesk() {
-  const modeFixedBtn = document.getElementById('mode-fixed-btn');
+  const modeHybridBtn = document.getElementById('mode-hybrid-btn');
   const modeAuctionBtn = document.getElementById('mode-auction-btn');
+  const modeFixedBtn = document.getElementById('mode-fixed-btn');
   const fixedSection = document.getElementById('section-fixed-pricing');
   const auctionSection = document.getElementById('section-auction-pricing');
   const emojiPicker = document.getElementById('emoji-quick-picker');
@@ -1242,47 +1524,50 @@ function initVendorDesk() {
 
   // Input listeners for real-time live preview
   const liveInputs = [
-    'listing-name', 'listing-category', 'listing-price-xmr',
+    'listing-name', 'listing-category', 'listing-custom-badge',
+    'listing-icon-val', 'listing-currency', 'listing-price-xmr',
     'listing-stock', 'listing-start-bid', 'listing-min-step',
-    'listing-desc', 'listing-spec1-v', 'listing-spec2-v'
+    'listing-security-tag', 'listing-desc', 'listing-spec1-v', 'listing-spec2-v'
   ];
 
   liveInputs.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener('input', updateVendorLivePreview);
+    if (el) {
+      el.addEventListener('input', updateVendorLivePreview);
+      el.addEventListener('change', updateVendorLivePreview);
+    }
   });
 
-  const catSelect = document.getElementById('listing-category');
-  if (catSelect) catSelect.addEventListener('change', updateVendorLivePreview);
-
-  // Mode Toggle Handlers
-  if (modeFixedBtn && modeAuctionBtn) {
-    modeFixedBtn.addEventListener('click', () => {
-      currentListingMode = 'fixed';
-      modeFixedBtn.classList.add('active');
-      modeAuctionBtn.classList.remove('active');
+  const setListingMode = (mode) => {
+    currentListingMode = mode;
+    [modeHybridBtn, modeAuctionBtn, modeFixedBtn].forEach(b => b?.classList.remove('active'));
+    if (mode === 'hybrid') {
+      modeHybridBtn?.classList.add('active');
       if (fixedSection) fixedSection.style.display = 'block';
-      if (auctionSection) auctionSection.style.display = 'none';
-      updateVendorLivePreview();
-    });
-
-    modeAuctionBtn.addEventListener('click', () => {
-      currentListingMode = 'auction';
-      modeAuctionBtn.classList.add('active');
-      modeFixedBtn.classList.remove('active');
+      if (auctionSection) auctionSection.style.display = 'block';
+    } else if (mode === 'auction') {
+      modeAuctionBtn?.classList.add('active');
       if (fixedSection) fixedSection.style.display = 'none';
       if (auctionSection) auctionSection.style.display = 'block';
-      updateVendorLivePreview();
-    });
-  }
+    } else {
+      modeFixedBtn?.classList.add('active');
+      if (fixedSection) fixedSection.style.display = 'block';
+      if (auctionSection) auctionSection.style.display = 'none';
+    }
+    updateVendorLivePreview();
+  };
 
-  // Emoji picker
+  if (modeHybridBtn) modeHybridBtn.addEventListener('click', () => setListingMode('hybrid'));
+  if (modeAuctionBtn) modeAuctionBtn.addEventListener('click', () => setListingMode('auction'));
+  if (modeFixedBtn) modeFixedBtn.addEventListener('click', () => setListingMode('fixed'));
+
+  // Emoji picker + custom emoji input
   if (emojiPicker && iconInput) {
     emojiPicker.querySelectorAll('.emoji-opt').forEach(btn => {
       btn.addEventListener('click', () => {
         emojiPicker.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        iconInput.value = btn.getAttribute('data-icon') || '🔑';
+        iconInput.value = btn.getAttribute('data-icon') || '💎';
         updateVendorLivePreview();
       });
     });
@@ -1303,11 +1588,13 @@ function initVendorDesk() {
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       const nameInp = document.getElementById('listing-name');
+      const customBadgeInp = document.getElementById('listing-custom-badge');
       const descInp = document.getElementById('listing-desc');
       if (nameInp) nameInp.value = '';
+      if (customBadgeInp) customBadgeInp.value = '';
       if (descInp) descInp.value = '';
       updateVendorLivePreview();
-      showToast('Đã xóa trắng thông tin form đăng bán', 'info');
+      showToast('Đã làm mới biểu mẫu niêm yết tự do', 'info');
     });
   }
 
@@ -1324,50 +1611,31 @@ function updateVendorLivePreview() {
   const previewContainer = document.getElementById('live-vendor-preview');
   if (!previewContainer) return;
 
-  const name = (document.getElementById('listing-name')?.value || '').trim() || 'Tên mặt hàng bảo mật xem trước';
-  const category = document.getElementById('listing-category')?.value || 'hardware';
-  const icon = document.getElementById('listing-icon-val')?.value || '🔑';
-  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mô tả chi tiết và cam kết bảo mật sẽ hiển thị tại đây...';
-  const spec1 = document.getElementById('listing-spec1-v')?.value || 'FIPS 140-3 Level 4';
-  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Drop ID Tự Hủy RAM';
+  const name = (document.getElementById('listing-name')?.value || '').trim() || 'Bất kỳ vật phẩm / Tài sản tự do của bạn';
+  const category = document.getElementById('listing-category')?.value || 'physical';
+  const customBadge = (document.getElementById('listing-custom-badge')?.value || '').trim();
+  const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '💎';
+  const currency = document.getElementById('listing-currency')?.value || 'XMR';
+  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Escrow 2 Chiều • Không Giới Hạn';
+  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mọi mặt hàng vật lý, tài sản số, dịch vụ hoặc đồ sưu tầm đều có thể vừa bán thẳng vừa nhận đấu giá tự do...';
+  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Mới 100% / Chính chủ';
+  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Giao hàng ẩn danh / Mã Drop tự hủy';
 
-  const isAuction = currentListingMode === 'auction';
-  const badgeCategory = isAuction ? 'auction' : category;
-  const badgeTitle = isAuction ? '🔨 Đấu Giá RAM' : 'Đăng Bán';
+  const fixedPrice = parseFloat(document.getElementById('listing-price-xmr')?.value || '1.00') || 0;
+  const startBid = parseFloat(document.getElementById('listing-start-bid')?.value || '0.50') || 0;
 
-  let priceLabel = 'Giá Escrow (Monero):';
-  let priceDisplay = '0.25 XMR';
-  let priceClass = 'product-price';
-  let priceMeta = '~$40 USD';
-  let actionsHtml = `
-    <button type="button" class="buy-btn" style="pointer-events: none;"><span>🛒</span> Đặt Mua</button>
-    <button type="button" class="chat-btn" style="pointer-events: none;"><span>💬</span> Chat</button>
-  `;
-
-  if (isAuction) {
-    const startBid = parseFloat(document.getElementById('listing-start-bid')?.value || '0.30') || 0.30;
-    priceLabel = 'Giá khởi điểm:';
-    priceDisplay = `${startBid.toFixed(2)} XMR`;
-    priceClass = 'product-price auction-price';
-    priceMeta = 'Chưa có lượt đặt • Mới mở thầu';
-    actionsHtml = `
-      <button type="button" class="bid-btn" style="pointer-events: none;"><span>🔨</span> Đặt Giá Thầu</button>
-      <button type="button" class="chat-btn" style="pointer-events: none;"><span>💬</span> Hỏi Giá</button>
-    `;
-  } else {
-    const fixedPrice = parseFloat(document.getElementById('listing-price-xmr')?.value || '0.25') || 0.25;
-    priceDisplay = `${fixedPrice.toFixed(2)} XMR`;
-    priceMeta = `~$${Math.round(fixedPrice * 165)} USD`;
-  }
+  const displayPrice = currentListingMode === 'fixed' ? fixedPrice : startBid;
+  const buyNowVal = currentListingMode === 'auction' ? (startBid * 1.5) : fixedPrice;
+  const badgeTitle = customBadge || CATEGORY_DEFAULT_BADGES[category] || 'Tự Do';
 
   previewContainer.innerHTML = `
     <article class="product-card" style="box-shadow: none; margin: 0;">
       <div class="product-card-top">
         <div class="product-badge-group">
-          <span class="product-badge ${badgeCategory}">${badgeTitle}</span>
-          <span class="security-level-tag">Cấp 5 • Người bán ẩn danh</span>
+          <span class="product-badge ${escapeHtml(category)}">${escapeHtml(badgeTitle)}</span>
+          <span class="security-level-tag">${escapeHtml(secTag)}</span>
         </div>
-        <span class="product-stock">${isAuction ? '⏳ Phiên Đấu Giá RAM' : 'Kho: Khả dụng tức thì'}</span>
+        <span class="auction-countdown-pill" data-end="0">♾️ <span class="countdown-val">BÁN & ĐẤU GIÁ</span></span>
       </div>
 
       <div class="product-title-row">
@@ -1379,7 +1647,7 @@ function updateVendorLivePreview() {
 
       <div class="product-specs">
         <div class="spec-row">
-          <span class="spec-key"><span class="spec-bullet">▸</span>Tiêu chuẩn:</span>
+          <span class="spec-key"><span class="spec-bullet">▸</span>Thuộc tính:</span>
           <span class="spec-val">${escapeHtml(spec1)}</span>
         </div>
         <div class="spec-row">
@@ -1390,12 +1658,13 @@ function updateVendorLivePreview() {
 
       <div class="product-card-footer">
         <div class="product-price-block">
-          <span class="product-price-label">${priceLabel}</span>
-          <span class="${priceClass}">${priceDisplay}</span>
-          <span class="product-bid-meta">${priceMeta}</span>
+          <span class="product-price-label">Giá hiện tại / Đấu giá mở:</span>
+          <span class="product-price auction-price">${formatPriceNum(displayPrice)} ${escapeHtml(currency)}</span>
+          <span class="product-bid-meta">Mua đứt: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}</span>
         </div>
         <div class="product-actions">
-          ${actionsHtml}
+          <button type="button" class="bid-btn" style="pointer-events: none;"><span>🔨</span> Đấu Giá</button>
+          <button type="button" class="buy-btn" style="pointer-events: none;"><span>🛒</span> Mua</button>
         </div>
       </div>
     </article>
@@ -1403,97 +1672,77 @@ function updateVendorLivePreview() {
 }
 
 function handlePublishListing() {
-  const name = (document.getElementById('listing-name')?.value || '').trim();
-  if (!name) {
-    showToast('Vui lòng nhập tên mặt hàng bảo mật!', 'error');
-    document.getElementById('listing-name')?.focus();
-    return;
-  }
-
-  const category = document.getElementById('listing-category')?.value || 'hardware';
-  const icon = document.getElementById('listing-icon-val')?.value || '🔑';
-  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mặt hàng bảo mật được niêm yết bởi vendor ẩn danh trong RAM.';
-  const spec1 = document.getElementById('listing-spec1-v')?.value || 'FIPS 140-3 Level 4';
-  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Drop ID Tự Hủy RAM';
-  const vendorPubkey = (document.getElementById('listing-vendor-pubkey')?.value || '').trim();
-  const ttl = parseInt(document.getElementById('listing-ttl-val')?.value || '14400', 10);
-
-  // Generate unique IDs
   const randHex = Array.from(crypto.getRandomValues(new Uint8Array(4)))
     .map(b => b.toString(16).padStart(2, '0').toUpperCase())
     .join('');
-  const productId = `usr-${category}-${randHex}`;
 
+  const rawName = (document.getElementById('listing-name')?.value || '').trim();
+  const name = rawName || `Vật Phẩm Tự Do #${randHex.slice(0, 4)}`;
+
+  const category = document.getElementById('listing-category')?.value || 'physical';
+  const customBadge = (document.getElementById('listing-custom-badge')?.value || '').trim();
+  const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '💎';
+  const currency = document.getElementById('listing-currency')?.value || 'XMR';
+  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Escrow 2 Chiều • Tự Do';
+  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Vật phẩm tự do được niêm yết trực tiếp trên sàn RAM ẩn danh — cho phép cả trả giá đấu giá và mua đứt ngay.';
+  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Chính chủ • Đảm bảo';
+  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Giao hàng ẩn danh / Drop tự hủy';
+  const vendorPubkey = (document.getElementById('listing-vendor-pubkey')?.value || '').trim();
+
+  const productId = `usr-${category}-${randHex}`;
   const killTokenHex = Array.from(crypto.getRandomValues(new Uint8Array(6)))
     .map(b => b.toString(16).padStart(2, '0').toUpperCase())
     .join('-');
   const vendorKillToken = `KILL-${killTokenHex}`;
 
-  const isAuction = currentListingMode === 'auction';
-  let newProduct = null;
+  const fixedPriceInput = parseFloat(document.getElementById('listing-price-xmr')?.value || '1.00');
+  const startBidInput = parseFloat(document.getElementById('listing-start-bid')?.value || '0.50');
+  const minStepInput = parseFloat(document.getElementById('listing-min-step')?.value || '0');
+  const duration = parseInt(document.getElementById('listing-auction-duration')?.value || '14400', 10);
+  const stockText = (document.getElementById('listing-stock')?.value || '').trim() || 'Sẵn sàng giao ngay';
 
-  if (isAuction) {
-    const startBid = parseFloat(document.getElementById('listing-start-bid')?.value || '0.30') || 0.30;
-    const minStep = parseFloat(document.getElementById('listing-min-step')?.value || '0.05') || 0.05;
-    const duration = parseInt(document.getElementById('listing-auction-duration')?.value || '3600', 10);
+  const fixedPrice = isNaN(fixedPriceInput) ? 1.00 : Math.max(0, fixedPriceInput);
+  const startBid = isNaN(startBidInput) ? fixedPrice : Math.max(0, startBidInput);
+  const minStep = isNaN(minStepInput) ? 0 : Math.max(0, minStepInput);
 
-    newProduct = {
-      id: productId,
-      name,
-      category,
-      badge: 'Đấu Giá RAM',
-      icon,
-      securityLevel: 'Cấp 5 • Silent Bidding',
-      isAuction: true,
-      startingBidXMR: startBid,
-      currentBidXMR: startBid,
-      minBidIncrement: minStep,
-      bidCount: 0,
-      highestBidder: 'Chưa có lượt đặt',
-      bids: [],
-      auctionEndTime: Date.now() + (duration * 1000),
-      priceXMR: `${startBid.toFixed(2)} XMR (Khởi điểm)`,
-      rawPriceXMR: startBid,
-      approxUSD: `~$${Math.round(startBid * 165)} USD`,
-      stock: '1 vật phẩm duy nhất',
-      desc,
-      specs: {
-        'Tiêu chuẩn': spec1,
-        'Bàn giao': spec2,
-        'Bước giá': `+${minStep.toFixed(2)} XMR tối thiểu`,
-        'Người bán PGP': vendorPubkey ? `${vendorPubkey.slice(0, 16)}...` : 'Anonymous Vendor'
-      },
-      vendorKillToken,
-      isUserCreated: true,
-      createdAt: Date.now()
-    };
-  } else {
-    const fixedPrice = parseFloat(document.getElementById('listing-price-xmr')?.value || '0.25') || 0.25;
-    const stockText = (document.getElementById('listing-stock')?.value || '').trim() || 'Khả dụng tức thì';
+  const initialPrice = currentListingMode === 'fixed' ? fixedPrice : startBid;
+  const buyNowPrice = currentListingMode === 'auction' ? Math.max(startBid, fixedPrice || startBid) : fixedPrice;
+  const badgeTitle = customBadge || CATEGORY_DEFAULT_BADGES[category] || 'Đấu Giá & Mua Ngay';
 
-    newProduct = {
-      id: productId,
-      name,
-      category,
-      badge: 'Đăng Bán',
-      icon,
-      securityLevel: 'Cấp 5 • Người bán ẩn danh',
-      isAuction: false,
-      priceXMR: `${fixedPrice.toFixed(2)} XMR`,
-      rawPriceXMR: fixedPrice,
-      approxUSD: `~$${Math.round(fixedPrice * 165)} USD`,
-      stock: stockText,
-      desc,
-      specs: {
-        'Tiêu chuẩn': spec1,
-        'Bàn giao': spec2,
-        'Người bán PGP': vendorPubkey ? `${vendorPubkey.slice(0, 16)}...` : 'Anonymous Vendor'
-      },
-      vendorKillToken,
-      isUserCreated: true,
-      createdAt: Date.now()
-    };
-  }
+  const newProduct = {
+    id: productId,
+    name,
+    category,
+    badge: badgeTitle,
+    icon,
+    securityLevel: secTag,
+    currency,
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: initialPrice,
+    currentBidXMR: initialPrice,
+    buyNowPrice,
+    minBidIncrement: minStep,
+    bidCount: 0,
+    highestBidder: 'Mở tự do',
+    bids: [],
+    auctionEndTime: duration === 0 ? 0 : (Date.now() + (duration * 1000)),
+    priceXMR: `${formatPriceNum(initialPrice)} ${currency}`,
+    rawPriceXMR: initialPrice,
+    approxUSD: estimateUSDString(initialPrice, currency),
+    stock: stockText,
+    desc,
+    specs: {
+      'Thuộc tính': spec1,
+      'Bàn giao': spec2,
+      'Hình thức': minStep > 0 ? `Bước giá +${minStep} ${currency} & Mua ngay` : 'Trả giá tự do & Mua đứt ngay',
+      'Người bán': vendorPubkey ? `${vendorPubkey.slice(0, 14)}...` : (anonymousAlias || 'Anonymous Vendor')
+    },
+    vendorKillToken,
+    isUserCreated: true,
+    createdAt: Date.now()
+  };
 
   // Prepend to catalog inventory
   MARKET_PRODUCTS.unshift(newProduct);
@@ -1510,11 +1759,13 @@ function handlePublishListing() {
   // Reset form inputs
   const nameEl = document.getElementById('listing-name');
   if (nameEl) nameEl.value = '';
+  const customBadgeEl = document.getElementById('listing-custom-badge');
+  if (customBadgeEl) customBadgeEl.value = '';
   const descEl = document.getElementById('listing-desc');
   if (descEl) descEl.value = '';
   updateVendorLivePreview();
 
-  showToast(`🎉 Xuất bản "${name}" lên RAM Chợ Ẩn Danh thành công! Mã hủy: ${vendorKillToken}`, 'success');
+  showToast(`🎉 Đã mở bán & đấu giá "${name}" thành công! Mã thu hồi: ${vendorKillToken}`, 'success');
 }
 
 function renderMyListings() {
@@ -1522,36 +1773,39 @@ function renderMyListings() {
   if (!container) return;
 
   if (myVendorListings.length === 0) {
-    container.innerHTML = '<p class="empty-listings-note">Chưa có mặt hàng nào được đăng trong phiên RAM hiện tại.</p>';
+    container.innerHTML = '<p class="empty-listings-note">Chưa có vật phẩm nào được đăng trong phiên RAM hiện tại. Bạn có thể đăng bán hoặc đấu giá bất kỳ thứ gì ở khung bên trái!</p>';
     return;
   }
 
-  container.innerHTML = myVendorListings.map(item => `
-    <div class="my-listing-card" id="my-item-${escapeHtml(item.id)}">
-      <div class="my-listing-top">
-        <div class="my-listing-title-row">
-          <span class="my-listing-icon">${escapeHtml(item.icon)}</span>
-          <span class="my-listing-name">${escapeHtml(item.name)}</span>
+  container.innerHTML = myVendorListings.map(item => {
+    const currency = item.currency || 'XMR';
+    return `
+      <div class="my-listing-card" id="my-item-${escapeHtml(item.id)}">
+        <div class="my-listing-top">
+          <div class="my-listing-title-row">
+            <span class="my-listing-icon">${escapeHtml(item.icon)}</span>
+            <span class="my-listing-name">${escapeHtml(item.name)}</span>
+          </div>
+          <span class="product-badge ${escapeHtml(item.category)}">
+            ${escapeHtml(item.badge || '⚡ Bán & Đấu Giá')}
+          </span>
         </div>
-        <span class="product-badge ${item.isAuction ? 'auction' : escapeHtml(item.category)}">
-          ${item.isAuction ? '🔨 Đấu Giá' : '🏷️ Bán Thẳng'}
-        </span>
-      </div>
 
-      <div style="font-size: 0.8rem; font-family: var(--font-mono); color: #cbd5e1;">
-        ${item.isAuction ? `Giá thầu hiện tại: <strong style="color: #fbbf24;">${item.currentBidXMR.toFixed(2)} XMR</strong> (${item.bidCount} lượt đặt)` : `Giá niêm yết: <strong style="color: #10b981;">${item.priceXMR}</strong>`}
-      </div>
+        <div style="font-size: 0.8rem; font-family: var(--font-mono); color: #cbd5e1;">
+          Giá hiện tại: <strong style="color: #fbbf24;">${formatPriceNum(item.currentBidXMR)} ${escapeHtml(currency)}</strong> (${item.bidCount || 0} lượt trả giá) • Mua ngay: <strong style="color: #10b981;">${formatPriceNum(item.buyNowPrice)} ${escapeHtml(currency)}</strong>
+        </div>
 
-      <div class="kill-token-box">
-        <span>Vendor Kill Token: <strong class="kill-token-val">${escapeHtml(item.vendorKillToken)}</strong></span>
-        <button type="button" class="copy-mini-btn" data-token="${escapeHtml(item.vendorKillToken)}">Chép</button>
-      </div>
+        <div class="kill-token-box">
+          <span>Vendor Kill Token: <strong class="kill-token-val">${escapeHtml(item.vendorKillToken)}</strong></span>
+          <button type="button" class="copy-mini-btn" data-token="${escapeHtml(item.vendorKillToken)}">Chép</button>
+        </div>
 
-      <button type="button" class="revoke-listing-btn" data-id="${escapeHtml(item.id)}">
-        <span>🔥</span> Hủy & Xóa Khỏi RAM Tức Thì
-      </button>
-    </div>
-  `).join('');
+        <button type="button" class="revoke-listing-btn" data-id="${escapeHtml(item.id)}">
+          <span>🔥</span> Hủy & Xóa Khỏi RAM Tức Thì
+        </button>
+      </div>
+    `;
+  }).join('');
 
   // Bind copy token buttons
   container.querySelectorAll('.copy-mini-btn').forEach(btn => {

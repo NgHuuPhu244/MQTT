@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="./css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛍️</text></svg>">
 </head>
 <body class="vault-page">
@@ -110,7 +110,7 @@
           <div class="instruction-content">
             <span class="info-icon">⚡</span>
             <div>
-              <strong>Nguyên tắc Chợ Ẩn Danh:</strong> Toàn bộ danh mục hàng hóa và thao tác mua bán được xử lý thuần túy trên <strong>bộ nhớ RAM khả biến</strong>. Máy chủ <strong>tuyệt đối không lưu log IP, không yêu cầu tài khoản, không theo dấu phiên</strong>. Mọi đơn hàng và trao đổi sẽ tự hủy khi bạn thoát hoặc đóng trình duyệt.
+              <strong>Sàn Giao Dịch & Đấu Giá Tự Do Không Giới Hạn:</strong> Bất kỳ mặt hàng, tài sản vật lý, tài sản số hay dịch vụ nào cũng có thể <strong>Đăng Bán & Đem Đấu Giá Kín</strong> ngay lập tức trên <strong>RAM khả biến (Zero-Log IP)</strong>. Mọi mặt hàng trên chợ đều hỗ trợ song song cả <strong>Đặt Giá Thầu (Bid)</strong> lẫn <strong>Mua Đứt (Buy Now)</strong>.
             </div>
           </div>
           <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('market-principle-banner').style.display='none';">✕</button>
@@ -121,28 +121,33 @@
             <div class="market-search-row">
               <div class="market-search-wrap">
                 <span class="search-icon-symbol">🔍</span>
-                <input type="text" id="market-search-input" placeholder="Tìm kiếm mặt hàng bảo mật, phần cứng, gói mạng, PGP... (Phím / để tìm nhanh)" autocomplete="off">
+                <input type="text" id="market-search-input" placeholder="Tìm bất kỳ mặt hàng, tài sản đấu giá, vật phẩm, dịch vụ, phần cứng... (Phím / để tìm)" autocomplete="off">
                 <span class="market-search-kbd" title="Nhấn phím / để tìm kiếm nhanh">/</span>
                 <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
               </div>
               <div class="market-sort-wrap">
                 <label for="market-sort-select">Sắp xếp:</label>
                 <select id="market-sort-select" class="custom-select mini-select">
-                  <option value="default">Mặc định</option>
-                  <option value="price-asc">Giá XMR: Thấp → Cao</option>
-                  <option value="price-desc">Giá XMR: Cao → Thấp</option>
+                  <option value="default">Mới nhất / Nổi bật</option>
+                  <option value="price-asc">Giá: Thấp → Cao</option>
+                  <option value="price-desc">Giá: Cao → Thấp</option>
+                  <option value="bids-desc">Lượt đấu giá sôi nổi nhất</option>
                   <option value="name">Tên mặt hàng A-Z</option>
                 </select>
+                <button type="button" id="quick-open-vendor-btn" class="primary-btn quick-list-cta" title="Đăng bán hoặc đem bất kỳ mặt hàng nào lên đấu giá ngay">
+                  <span>➕</span> Đăng Bán / Đấu Giá Ngay
+                </button>
               </div>
             </div>
 
             <div class="market-category-pills" id="market-category-pills">
-              <button class="market-pill active" data-category="all">Tất cả mặt hàng <span class="pill-count" id="count-all">7</span></button>
-              <button class="market-pill" data-category="auction">🔨 Đấu Giá RAM <span class="pill-count" id="count-auction">1</span></button>
-              <button class="market-pill" data-category="hardware">Thiết bị Phần cứng <span class="pill-count" id="count-hardware">1</span></button>
-              <button class="market-pill" data-category="network">Mạng & VPN Ẩn danh <span class="pill-count" id="count-network">2</span></button>
-              <button class="market-pill" data-category="crypto">Mật mã & Khóa PGP <span class="pill-count" id="count-crypto">2</span></button>
-              <button class="market-pill" data-category="audit">Tài liệu & Audit <span class="pill-count" id="count-audit">1</span></button>
+              <button class="market-pill active" data-category="all">Tất cả mặt hàng <span class="pill-count" id="count-all">9</span></button>
+              <button class="market-pill" data-category="auction">🔨 Đang Đấu Giá <span class="pill-count" id="count-auction">9</span></button>
+              <button class="market-pill" data-category="physical">💎 Vật phẩm & Đồ hiếm <span class="pill-count" id="count-physical">2</span></button>
+              <button class="market-pill" data-category="digital">🌐 Tài sản Số & Dịch vụ <span class="pill-count" id="count-digital">2</span></button>
+              <button class="market-pill" data-category="hardware">🔑 Phần cứng & Thiết bị <span class="pill-count" id="count-hardware">2</span></button>
+              <button class="market-pill" data-category="network">🛰️ Mạng & Hạ tầng <span class="pill-count" id="count-network">1</span></button>
+              <button class="market-pill" data-category="crypto">🪙 Mật mã & Dữ liệu <span class="pill-count" id="count-crypto">2</span></button>
             </div>
           </div>
 
@@ -172,27 +177,80 @@
             </div>
           </div>
 
+          <!-- P2P Direct WebRTC (Zero-Server) Connection Bar -->
+          <div class="p2p-control-panel" id="p2p-control-panel">
+            <div class="p2p-panel-header">
+              <div class="p2p-status-indicator">
+                <span class="p2p-pulse-dot" id="p2p-pulse-dot"></span>
+                <span class="p2p-status-text" id="p2p-status-text">🔴 Chế độ Bot Tự Động (Chưa kết nối P2P)</span>
+              </div>
+              <div class="p2p-mode-pill" id="p2p-mode-pill">
+                <span>⚡</span> P2P MÁY ↔ MÁY (ZERO-SERVER)
+              </div>
+            </div>
+
+            <div class="p2p-panel-actions">
+              <!-- When disconnected: Show Host and Join controls -->
+              <div class="p2p-setup-row" id="p2p-setup-row">
+                <button type="button" id="btn-p2p-host" class="primary-btn p2p-host-btn" title="Tạo phòng chat bí mật và nhận link chia sẻ trực tiếp">
+                  <span>➕</span> Tạo Phòng Chat Mật (Host P2P)
+                </button>
+                <span class="p2p-or-sep">hoặc</span>
+                <div class="p2p-join-group">
+                  <input type="text" id="input-p2p-code" class="p2p-code-input" placeholder="Nhập mã phòng hoặc dán link mời..." autocomplete="off" spellcheck="false">
+                  <button type="button" id="btn-p2p-join" class="secondary-btn p2p-join-btn">
+                    <span>🔗</span> Vào Phòng
+                  </button>
+                </div>
+              </div>
+
+              <!-- When room is created or joined: Show Room details & Disconnect -->
+              <div class="p2p-active-row" id="p2p-active-row" style="display: none;">
+                <div class="p2p-room-badge-wrap">
+                  <span class="p2p-room-label">MÃ PHÒNG:</span>
+                  <code class="p2p-room-code" id="display-room-code">GHOST-XXXX</code>
+                </div>
+                <div class="p2p-active-btns">
+                  <button type="button" id="btn-p2p-copy-link" class="primary-btn p2p-copy-link-btn" title="Sao chép link mời gửi cho đối tác hoặc khách hàng">
+                    <span>📋</span> Sao Chép Link Gửi Khách
+                  </button>
+                  <button type="button" id="btn-p2p-disconnect" class="danger-btn p2p-disconnect-btn" title="Ngắt kết nối P2P và xóa sạch RAM">
+                    <span>🔌</span> Ngắt Kết Nối & Tự Hủy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Explanatory hint banner -->
+            <div class="p2p-hint-bar" id="p2p-hint-bar">
+              <span class="p2p-hint-icon">💡</span>
+              <span class="p2p-hint-text">
+                <strong>Chạy trực tiếp trên GitHub / WebRTC:</strong> Bấm <em>"Tạo Phòng Chat Mật"</em> và gửi link cho khách. Khi khách mở link, hai thiết bị sẽ <strong>kết nối trực tiếp máy ↔ máy (P2P)</strong> qua trình duyệt. Hoàn toàn không có máy chủ trung gian lưu tin nhắn, không cần backend!
+              </span>
+            </div>
+          </div>
+
           <!-- Chat Window Shell -->
           <div class="market-chat-shell">
             <div class="chat-header-bar">
               <div class="chat-peer-info">
-                <div class="peer-avatar">
-                  <span>M</span>
-                  <span class="peer-status-dot online"></span>
+                <div class="peer-avatar" id="chat-peer-avatar">
+                  <span id="chat-peer-avatar-text">M</span>
+                  <span class="peer-status-dot online" id="chat-peer-status-dot"></span>
                 </div>
                 <div>
                   <div class="peer-title-row">
-                    <h2 class="peer-name">Merchant-Node-01</h2>
-                    <span class="verified-vendor-badge">✓ ĐÃ XÁC MINH PGP</span>
+                    <h2 class="peer-name" id="chat-peer-name">Merchant-Node-01</h2>
+                    <span class="verified-vendor-badge" id="chat-peer-badge">✓ ĐÃ XÁC MINH PGP</span>
                   </div>
                   <div class="peer-meta-row">
                     <span id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" title="Bấm để sao chép toàn bộ PGP Fingerprint">
                       🔑 PGP: 4A8F...91BC 📋
                     </span>
                     <span class="peer-divider">•</span>
-                    <span class="peer-stat">★ 5.0 (98 giao dịch)</span>
+                    <span class="peer-stat" id="chat-peer-stat">★ 5.0 (98 giao dịch)</span>
                     <span class="peer-divider">•</span>
-                    <span class="peer-stat green">Phản hồi &lt; 1p</span>
+                    <span class="peer-stat green" id="chat-peer-ping">Phản hồi &lt; 1p</span>
                   </div>
                 </div>
               </div>
@@ -367,7 +425,7 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- TAB 4: ĐĂNG BÁN & ĐẤU GIÁ ẨN DANH (VENDOR & AUCTION DESK)     -->
+        <!-- TAB 4: ĐĂNG BÁN & ĐẤU GIÁ TỰ DO (UNRESTRICTED VENDOR DESK)    -->
         <!-- ============================================================= -->
         <div id="tab-vendor" class="tab-pane">
           <!-- Dismissible Vendor Principle Banner -->
@@ -375,7 +433,7 @@
             <div class="instruction-content">
               <span class="info-icon">⚖️</span>
               <div>
-                <strong>Cổng Đăng Bán & Đấu Giá Ẩn Danh (RAM-Volatile Desk):</strong> Mặt hàng bạn đăng được lưu tạm trong <strong>bộ nhớ RAM khả biến</strong> và xuất bản tức thì lên Gian Hàng. Bạn được cấp mã <strong>Vendor Kill Token</strong> bí mật để xóa bài bất kỳ lúc nào. Không lưu IP, không ghi đĩa, tự hủy 100% khi hết hạn TTL hoặc máy chủ khởi động lại.
+                <strong>Cổng Đăng Bán & Đấu Giá Tự Do (Không Giới Hạn Danh Mục):</strong> Bạn có thể đăng bán hoặc đem đấu giá <strong>bất kỳ mặt hàng, vật phẩm, tài sản số, đồ sưu tầm hay dịch vụ nào</strong> mà không bị giới hạn loại hàng hay mệnh giá. Hỗ trợ tùy chỉnh nhãn phân loại, đa tiền tệ (<code>XMR</code>, <code>USDT</code>, <code>BTC</code>, <code>USD</code>, <code>VNĐ</code>) và cấp <strong>Vendor Kill Token</strong> để xóa bài tức thì.
               </div>
             </div>
             <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('vendor-instruction-banner').style.display='none';">✕</button>
@@ -385,126 +443,162 @@
           <div class="vendor-desk-layout">
             <!-- Left Column: Creation Form Card -->
             <section class="vendor-form-col">
-              <h2 class="checkout-col-title">1. Khởi Tạo Mặt Hàng / Mở Phiên Đấu Giá</h2>
+              <h2 class="checkout-col-title">1. Đăng Bán / Đem Đấu Giá Bất Kỳ Mặt Hàng Nào</h2>
 
-              <!-- Listing Mode Segmented Toggle -->
+              <!-- Listing Mode Segmented Toggle (3 Unrestricted Modes) -->
               <div class="listing-mode-toggle" role="tablist">
-                <button type="button" class="mode-toggle-btn active" data-mode="fixed" id="mode-fixed-btn">
-                  <span>🏷️</span> Bán Giá Cố Định
+                <button type="button" class="mode-toggle-btn active" data-mode="hybrid" id="mode-hybrid-btn">
+                  <span>⚡</span> Vừa Bán & Đấu Giá (Hybrid)
                 </button>
                 <button type="button" class="mode-toggle-btn" data-mode="auction" id="mode-auction-btn">
-                  <span>🔨</span> Mở Phiên Đấu Giá Kín
+                  <span>🔨</span> Đấu Giá Tự Do
+                </button>
+                <button type="button" class="mode-toggle-btn" data-mode="fixed" id="mode-fixed-btn">
+                  <span>🏷️</span> Bán Giá Cố Định
                 </button>
               </div>
 
               <div class="form-group">
-                <label for="listing-name"><strong>Tên mặt hàng bảo mật:</strong></label>
-                <input type="text" id="listing-name" placeholder="VD: Khóa Cứng Air-Gapped HSM Token v5 hoặc Tài Liệu 0-Day..." autocomplete="off">
+                <label for="listing-name"><strong>Tên mặt hàng / Tài sản / Dịch vụ (Không giới hạn):</strong></label>
+                <input type="text" id="listing-name" placeholder="Nhập bất kỳ thứ gì bạn muốn bán hoặc đấu giá (VD: Đồng hồ cơ, Siêu xe, Tên miền VIP, Kim cương, Phần mềm...)" autocomplete="off">
               </div>
 
               <div class="form-row-2col">
                 <div class="form-group">
-                  <label for="listing-category"><strong>Phân loại danh mục:</strong></label>
+                  <label for="listing-category"><strong>Nhóm mặt hàng:</strong></label>
                   <select id="listing-category" class="custom-select">
-                    <option value="hardware">Thiết bị Phần cứng</option>
-                    <option value="network">Mạng & VPN Ẩn danh</option>
-                    <option value="crypto">Mật mã & Khóa PGP</option>
-                    <option value="audit">Tài liệu & Audit An ninh</option>
-                    <option value="zeroday">Nghiên cứu Khai thác Zero-Day</option>
+                    <option value="physical">💎 Vật phẩm Vật lý, Hàng hiệu & Đồ hiếm</option>
+                    <option value="digital">🌐 Tài sản Số, Tên miền, Tài khoản & Bản quyền</option>
+                    <option value="service">🤝 Dịch vụ Ẩn danh & Hợp đồng theo yêu cầu</option>
+                    <option value="hardware">🔑 Thiết bị Công nghệ & Phần cứng</option>
+                    <option value="network">🛰️ Hạ tầng Mạng, Máy chủ & Lưu trữ</option>
+                    <option value="crypto">🪙 Mật mã, Token, Web3 & Dữ liệu</option>
+                    <option value="audit">📜 Hồ sơ, Tài liệu & Tác phẩm độc bản</option>
                   </select>
                 </div>
 
                 <div class="form-group">
-                  <label><strong>Biểu tượng (Icon):</strong></label>
-                  <div class="emoji-quick-picker" id="emoji-quick-picker">
-                    <button type="button" class="emoji-opt active" data-icon="🔑">🔑</button>
-                    <button type="button" class="emoji-opt" data-icon="🛰️">🛰️</button>
-                    <button type="button" class="emoji-opt" data-icon="🛡️">🛡️</button>
-                    <button type="button" class="emoji-opt" data-icon="📜">📜</button>
-                    <button type="button" class="emoji-opt" data-icon="💻">💻</button>
-                    <button type="button" class="emoji-opt" data-icon="📡">📡</button>
-                    <button type="button" class="emoji-opt" data-icon="⚡">⚡</button>
-                    <button type="button" class="emoji-opt" data-icon="💾">💾</button>
-                  </div>
-                  <input type="hidden" id="listing-icon-val" value="🔑">
+                  <label for="listing-custom-badge"><strong>Nhãn hiển thị tùy chỉnh (Tự đặt tên loại hàng):</strong></label>
+                  <input type="text" id="listing-custom-badge" placeholder="Tự nhập nhãn bất kỳ (VD: Đấu Giá Tự Do, Siêu Phẩm, Hàng Độc...)">
                 </div>
               </div>
 
-              <!-- Dynamic Mode Fields: Fixed Price -->
+              <div class="form-group">
+                <label><strong>Chọn nhanh biểu tượng hoặc tự gõ Icon bất kỳ:</strong></label>
+                <div class="emoji-picker-row">
+                  <div class="emoji-quick-picker" id="emoji-quick-picker">
+                    <button type="button" class="emoji-opt active" data-icon="💎">💎</button>
+                    <button type="button" class="emoji-opt" data-icon="📦">📦</button>
+                    <button type="button" class="emoji-opt" data-icon="⌚">⌚</button>
+                    <button type="button" class="emoji-opt" data-icon="🚗">🚗</button>
+                    <button type="button" class="emoji-opt" data-icon="🎨">🎨</button>
+                    <button type="button" class="emoji-opt" data-icon="🏠">🏠</button>
+                    <button type="button" class="emoji-opt" data-icon="🎮">🎮</button>
+                    <button type="button" class="emoji-opt" data-icon="👑">👑</button>
+                    <button type="button" class="emoji-opt" data-icon="🔑">🔑</button>
+                    <button type="button" class="emoji-opt" data-icon="🛰️">🛰️</button>
+                    <button type="button" class="emoji-opt" data-icon="💻">💻</button>
+                    <button type="button" class="emoji-opt" data-icon="📜">📜</button>
+                  </div>
+                  <input type="text" id="listing-icon-val" class="custom-emoji-input" value="💎" maxlength="4" title="Tự nhập bất kỳ Emoji hoặc ký tự nào">
+                </div>
+              </div>
+
+              <!-- Currency & Stock Row -->
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label for="listing-currency"><strong>Đơn vị tiền tệ định giá:</strong></label>
+                  <select id="listing-currency" class="custom-select">
+                    <option value="XMR" selected>XMR (Monero Ẩn danh)</option>
+                    <option value="USDT">USDT (Tether Stablecoin)</option>
+                    <option value="BTC">BTC (Bitcoin)</option>
+                    <option value="ETH">ETH (Ethereum)</option>
+                    <option value="USD">USD (Đô la Mỹ)</option>
+                    <option value="VNĐ">VNĐ (Việt Nam Đồng)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="listing-stock"><strong>Số lượng / Tình trạng:</strong></label>
+                  <input type="text" id="listing-stock" value="Sẵn hàng" placeholder="VD: Độc bản 1 chiếc / Sẵn hàng / Không giới hạn">
+                </div>
+              </div>
+
+              <!-- Dynamic Mode Fields: Fixed / Buy-Now Price -->
               <div id="section-fixed-pricing">
                 <div class="form-row-2col">
                   <div class="form-group">
-                    <label for="listing-price-xmr"><strong>Giá niêm yết (Monero XMR):</strong></label>
-                    <input type="number" id="listing-price-xmr" step="0.01" min="0.01" value="0.25" placeholder="0.25">
+                    <label for="listing-price-xmr"><strong>Giá Mua Đứt / Niêm Yết (Không giới hạn):</strong></label>
+                    <input type="number" id="listing-price-xmr" step="any" min="0" value="1.50" placeholder="Nhập mức giá bất kỳ (VD: 0.5, 100, 50000...)">
                   </div>
                   <div class="form-group">
-                    <label for="listing-stock"><strong>Số lượng / Tình trạng:</strong></label>
-                    <input type="text" id="listing-stock" value="1 chiếc trong RAM" placeholder="VD: 3 chiếc trong RAM / Khả dụng tức thì">
+                    <label for="listing-security-tag"><strong>Nhãn cam kết / Uy tín:</strong></label>
+                    <input type="text" id="listing-security-tag" value="Ký Quỹ Đa Chữ Ký" placeholder="VD: Chính hãng 100% / Giao ngay / Bao kiểm định">
                   </div>
                 </div>
               </div>
 
-              <!-- Dynamic Mode Fields: Ephemeral Auction (Hidden by default) -->
-              <div id="section-auction-pricing" style="display: none;">
+              <!-- Dynamic Mode Fields: Unrestricted Auction -->
+              <div id="section-auction-pricing">
                 <div class="form-row-2col">
                   <div class="form-group">
-                    <label for="listing-start-bid"><strong>Giá sàn khởi điểm (XMR):</strong></label>
-                    <input type="number" id="listing-start-bid" step="0.01" min="0.01" value="0.30" placeholder="0.30">
+                    <label for="listing-start-bid"><strong>Giá khởi điểm đấu giá (Đặt 0 = Từ 0 đồng):</strong></label>
+                    <input type="number" id="listing-start-bid" step="any" min="0" value="0.50" placeholder="0.00">
                   </div>
                   <div class="form-group">
-                    <label for="listing-min-step"><strong>Bước giá tối thiểu (XMR):</strong></label>
-                    <input type="number" id="listing-min-step" step="0.01" min="0.01" value="0.05" placeholder="0.05">
+                    <label for="listing-min-step"><strong>Bước giá tối thiểu (Đặt 0 = Trả giá tự do):</strong></label>
+                    <input type="number" id="listing-min-step" step="any" min="0" value="0" placeholder="0 (Không giới hạn bước giá)">
                   </div>
                 </div>
 
                 <div class="form-group">
                   <label for="listing-auction-duration"><strong>Thời lượng phiên đấu giá:</strong></label>
                   <select id="listing-auction-duration" class="custom-select">
-                    <option value="1800">30 phút (Đấu giá chớp nhoáng)</option>
-                    <option value="3600" selected>1 giờ (Tiêu chuẩn)</option>
-                    <option value="7200">2 giờ</option>
-                    <option value="21600">6 giờ</option>
-                    <option value="86400">24 giờ (Đấu giá ngày)</option>
+                    <option value="900">15 phút (Đấu giá siêu tốc)</option>
+                    <option value="1800">30 phút (Chớp nhoáng)</option>
+                    <option value="3600">1 giờ (Tiêu chuẩn)</option>
+                    <option value="21600" selected>6 giờ</option>
+                    <option value="86400">24 giờ (1 ngày)</option>
+                    <option value="604800">7 ngày (Đấu giá tuần)</option>
+                    <option value="31536000">Mở tự do không giới hạn thời gian</option>
                   </select>
                 </div>
               </div>
 
               <div class="form-group">
-                <label for="listing-desc"><strong>Mô tả chi tiết & Cam kết an ninh:</strong></label>
-                <textarea id="listing-desc" rows="3" placeholder="Mô tả cơ chế cách ly mạng, chip mã hóa, tính năng chống rò rỉ hoặc nội dung nghiên cứu bảo mật..."></textarea>
+                <label for="listing-desc"><strong>Mô tả chi tiết mặt hàng & Điều kiện giao dịch:</strong></label>
+                <textarea id="listing-desc" rows="3" placeholder="Mô tả tự do về sản phẩm, xuất xứ, tình trạng, cách thức bàn giao hoặc quy tắc đấu giá..."></textarea>
               </div>
 
               <div class="form-row-2col">
                 <div class="form-group">
-                  <label for="listing-spec1-v"><strong>Thông số 1 (Tiêu chuẩn):</strong></label>
-                  <input type="text" id="listing-spec1-v" value="FIPS 140-3 Level 4 / CC EAL6+" placeholder="VD: FIPS 140-3 Level 4">
+                  <label for="listing-spec1-v"><strong>Thuộc tính 1 (Tùy chỉnh tự do):</strong></label>
+                  <input type="text" id="listing-spec1-v" value="Mới 100% • Đã kiểm định" placeholder="VD: Tình trạng / Xuất xứ / Bảo hành...">
                 </div>
                 <div class="form-group">
-                  <label for="listing-spec2-v"><strong>Thông số 2 (Bàn giao):</strong></label>
-                  <input type="text" id="listing-spec2-v" value="Drop ID Tự Hủy RAM (Burn-After-Reading)" placeholder="VD: Drop ID Tự Hủy RAM">
+                  <label for="listing-spec2-v"><strong>Thuộc tính 2 (Phương thức bàn giao):</strong></label>
+                  <input type="text" id="listing-spec2-v" value="Giao toàn cầu / Drop tự hủy" placeholder="VD: Chuyển phát kín / Giao dịch trực tiếp / Drop ID">
                 </div>
               </div>
 
               <div class="form-group">
-                <label for="listing-vendor-pubkey"><strong>Khóa PGP của người bán / Drop ID nhận thanh toán:</strong></label>
-                <input type="text" id="listing-vendor-pubkey" placeholder="Dán PGP Fingerprint hoặc Drop ID để khách liên hệ mã hóa...">
-                <span class="label-desc">Khách hàng sẽ dùng khóa này để trao đổi và nhận mã giải mật đơn hàng.</span>
+                <label for="listing-vendor-pubkey"><strong>Thông tin liên hệ ẩn danh / Ví nhận thanh toán (Tùy chọn):</strong></label>
+                <input type="text" id="listing-vendor-pubkey" placeholder="Nhập biệt danh, ví XMR/USDT, PGP Key hoặc để trống...">
               </div>
 
               <div class="form-group">
                 <label><strong>Thời gian duy trì bài đăng trong RAM (TTL):</strong></label>
                 <div class="ttl-pills-row" id="vendor-ttl-pills">
                   <button type="button" class="ttl-pill" data-ttl="3600">1 giờ</button>
-                  <button type="button" class="ttl-pill active" data-ttl="14400">4 giờ (Khuyên dùng)</button>
-                  <button type="button" class="ttl-pill" data-ttl="43200">12 giờ</button>
+                  <button type="button" class="ttl-pill" data-ttl="14400">4 giờ</button>
                   <button type="button" class="ttl-pill" data-ttl="86400">24 giờ</button>
+                  <button type="button" class="ttl-pill active" data-ttl="604800">Không giới hạn trong phiên</button>
                 </div>
-                <input type="hidden" id="listing-ttl-val" value="14400">
+                <input type="hidden" id="listing-ttl-val" value="604800">
               </div>
 
               <div class="action-row">
                 <button type="button" id="publish-listing-btn" class="primary-btn">
-                  <span>⚡</span> Xuất Bản Lên Chợ Ẩn Danh (RAM-Only)
+                  <span>⚡</span> Đăng Bán & Mở Đấu Giá Ngay
                 </button>
                 <button type="button" id="reset-listing-btn" class="secondary-btn">Xóa Form</button>
               </div>
@@ -640,11 +734,11 @@
     </div>
   </div>
 
-  <!-- Auction Bid Modal Overlay -->
+  <!-- Auction Bid Modal Overlay (Unrestricted Bidding & Instant Buyout) -->
   <div id="bid-modal-overlay" class="qr-modal-overlay" style="display: none;">
     <div class="qr-modal-card bid-modal-card">
       <div class="qr-modal-header">
-        <h2 class="qr-modal-title">🔨 Đặt Giá Thầu Ẩn Danh (RAM Auction)</h2>
+        <h2 class="qr-modal-title">🔨 Đấu Giá & Trả Giá Tự Do (Không Giới Hạn)</h2>
         <button type="button" id="close-bid-modal-btn" class="close-mask-btn" title="Đóng">✕</button>
       </div>
       
@@ -653,31 +747,41 @@
       </div>
 
       <div class="bid-input-wrap">
-        <label for="bid-amount-input"><strong>Số tiền bạn muốn ra giá (Monero XMR):</strong></label>
+        <label for="bid-amount-input"><strong>Nhập mức giá bạn muốn đặt thầu / trả giá:</strong></label>
         <div class="bid-input-row">
-          <input type="number" id="bid-amount-input" step="0.01" min="0.01" placeholder="0.00">
-          <span class="currency-tag">XMR</span>
+          <input type="number" id="bid-amount-input" step="any" min="0" placeholder="Nhập mức giá bất kỳ...">
+          <span class="currency-tag" id="bid-currency-tag">XMR</span>
+        </div>
+        <div class="bid-quick-steps" id="bid-quick-steps">
+          <button type="button" class="quick-bid-step-btn" data-mult="1.05">+5%</button>
+          <button type="button" class="quick-bid-step-btn" data-mult="1.10">+10%</button>
+          <button type="button" class="quick-bid-step-btn" data-mult="1.25">+25%</button>
+          <button type="button" class="quick-bid-step-btn" data-mult="1.50">+50%</button>
+          <button type="button" class="quick-bid-step-btn" data-mult="2.00">x2 Giá</button>
         </div>
         <div class="bid-hints-row">
-          <span class="label-desc" id="bid-min-hint">Bước giá tối thiểu: +0.05 XMR</span>
+          <span class="label-desc" id="bid-min-hint">Trả giá tự do không giới hạn trần</span>
           <span class="bid-usd-approx" id="bid-usd-approx">~$0.00 USD</span>
         </div>
       </div>
 
       <div class="bid-alias-notice">
         <span class="dot cyan"></span>
-        <span>Danh tính thầu: <strong id="bid-client-alias">Ghost-XXXX</strong> (Mã hóa E2EE)</span>
+        <span>Danh tính đấu giá: <strong id="bid-client-alias">Ghost-XXXX</strong> (Ẩn danh E2EE)</span>
       </div>
 
       <div class="bid-actions-row">
         <button type="button" id="submit-bid-btn" class="primary-btn">
-          <span>🔨</span> Xác Nhận Đặt Giá Thầu (Ký Quỹ RAM)
+          <span>🔨</span> Đặt Giá Thầu Ngay
         </button>
-        <button type="button" id="cancel-bid-modal-btn" class="secondary-btn">Hủy</button>
+        <button type="button" id="buyout-from-bid-btn" class="buy-btn">
+          <span>🛒</span> Mua Đứt Luôn
+        </button>
+        <button type="button" id="cancel-bid-modal-btn" class="secondary-btn">Đóng</button>
       </div>
 
       <div class="bid-history-feed-box">
-        <div class="bid-history-title">Lịch Sử Giá Thầu Trong RAM:</div>
+        <div class="bid-history-title">Lịch Sử Đấu Giá & Trả Giá Trong RAM:</div>
         <div class="bid-history-feed" id="bid-history-feed">
           <!-- Dynamically populated bid entries -->
         </div>
@@ -713,6 +817,7 @@
     </div>
   </div>
 
-  <script type="module" src="/js/vault.js"></script>
+  <script src="./js/peerjs.min.js"></script>
+  <script type="module" src="./js/vault.js"></script>
 </body>
 </html>
