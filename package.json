@@ -1,0 +1,24 @@
+{
+  "name": "tu-dien-da-ngon-ngu",
+  "version": "1.0.0",
+  "description": "Zero-Knowledge Ephemeral Drop & Anonymous In-Memory Messaging camouflaged as a Multilingual Dictionary",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "zero-knowledge",
+    "ephemeral",
+    "in-memory",
+    "aes-256-gcm",
+    "web-crypto",
+    "zero-trust"
+  ],
+  "author": "Senior Network & Security Engineer",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode-generator": "^2.0.4"
+  }
+}

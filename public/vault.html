@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Bazaar • Chợ Ẩn Danh & Giao Dịch Bí Mật (RAM-Only)</title>
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛍️</text></svg>">
+</head>
+<body class="vault-page">
+
+  <!-- ================================================================= -->
+  <!-- STEALTH ANONYMOUS BAZAAR CONSOLE (RAM-ONLY & ZERO-LOG)            -->
+  <!-- ================================================================= -->
+  <div class="vault-shell">
+    <!-- Header with Panic Button & Telemetry -->
+    <header class="vault-header">
+      <div class="vault-header-inner">
+        <div class="vault-brand">
+          <div class="vault-brand-icon-wrap">
+            <span class="vault-icon">🛍️</span>
+            <span class="vault-pulse-ring"></span>
+          </div>
+          <div>
+            <div class="vault-title-row">
+              <h1 class="vault-title">GHOST BAZAAR • CHỢ ẨN DANH BẢO MẬT</h1>
+              <span class="vault-version-pill">RAM-VOLATILE v3.2</span>
+            </div>
+            <p class="vault-subtitle">ZERO-KNOWLEDGE EPHEMERAL VAULT • Zero-Log IP • 100% RAM Khả Biến • Chat Mã Hóa E2EE • Tự Hủy & Xóa Sạch Dữ Liệu Khi Thoát</p>
+          </div>
+        </div>
+
+        <div class="vault-actions">
+          <button id="decoy-mask-btn" class="decoy-mask-btn" title="Kích hoạt màn che tài liệu học thuật vô hại (F2)">
+            <span>📄</span> Màn Che Học Thuật <kbd>F2</kbd>
+          </button>
+          <button id="panic-btn" class="panic-btn" title="Thoát khẩn cấp, xóa sạch bộ đệm RAM và quay về Từ Điển (Phím ESC)">
+            <span>🚨</span> THOÁT KHẨN CẤP & XÓA SẠCH <kbd>ESC</kbd>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Live Telemetry & Anti-Trace Security HUD Strip -->
+    <div class="telemetry-strip">
+      <div class="telemetry-inner">
+        <div class="telemetry-item">
+          <span class="dot green"></span>
+          <strong>IP Client:</strong>
+          <span class="telemetry-highlight green">ĐÃ ẨN DANH (Zero-Log)</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="dot cyan"></span>
+          <strong>Danh tính:</strong>
+          <span id="anon-alias" class="telemetry-highlight cyan">Ghost-Loading...</span>
+          <button type="button" id="regen-alias-btn" class="regen-alias-btn" title="Đổi sang danh tính ngẫu nhiên mới">
+            <span>🔄</span> Đổi
+          </button>
+        </div>
+        <div class="telemetry-item">
+          <span class="dot green"></span>
+          <strong>Lưu trữ:</strong>
+          <span class="telemetry-highlight green">100% RAM Khả biến</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="dot green"></span>
+          <strong>Bảo mật:</strong>
+          <span>AES-256-GCM E2EE</span>
+        </div>
+        <div class="telemetry-item session-clock">
+          <span class="dot purple"></span>
+          <strong>Thời gian phiên:</strong>
+          <span id="session-timer">00:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Marketplace Console (Clean Standalone Page, No Nested Outer Box) -->
+    <main class="vault-main">
+      <!-- Navigation Tabs (Sleek Page-Level Segmented Control) -->
+      <nav class="covert-nav-tabs" aria-label="Điều hướng các phân hệ chợ ẩn danh">
+        <button class="nav-tab active" data-tab="tab-market">
+          <span class="tab-icon">🛒</span> Gian Hàng Bí Mật
+        </button>
+        <button class="nav-tab" data-tab="tab-chat">
+          <span class="tab-icon">💬</span> Chat Với Người Bán
+          <span id="chat-badge" class="chat-unread-badge" style="display:none;">1</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-order">
+          <span class="tab-icon">📦</span> Đơn Hàng & Ký Quỹ
+        </button>
+        <button class="nav-tab" data-tab="tab-vendor">
+          <span class="tab-icon">⚖️</span> Đăng Bán & Đấu Giá
+        </button>
+        <button class="nav-tab" data-tab="tab-audit">
+          <span class="tab-icon">🛡️</span> Chính Sách Ẩn Danh
+        </button>
+      </nav>
+
+      <!-- ============================================================= -->
+      <!-- TAB 1: GIAN HÀNG BÍ MẬT (PRODUCT CATALOG)                     -->
+      <!-- ============================================================= -->
+      <div id="tab-market" class="tab-pane active">
+        <!-- Dismissible Market Principle Banner -->
+        <div class="instruction-box" id="market-principle-banner">
+          <div class="instruction-content">
+            <span class="info-icon">⚡</span>
+            <div>
+              <strong>Nguyên tắc Chợ Ẩn Danh:</strong> Toàn bộ danh mục hàng hóa và thao tác mua bán được xử lý thuần túy trên <strong>bộ nhớ RAM khả biến</strong>. Máy chủ <strong>tuyệt đối không lưu log IP, không yêu cầu tài khoản, không theo dấu phiên</strong>. Mọi đơn hàng và trao đổi sẽ tự hủy khi bạn thoát hoặc đóng trình duyệt.
+            </div>
+          </div>
+          <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('market-principle-banner').style.display='none';">✕</button>
+        </div>
+
+          <!-- Market Filter & Search Bar -->
+          <div class="market-filter-bar">
+            <div class="market-search-row">
+              <div class="market-search-wrap">
+                <input type="text" id="market-search-input" placeholder="Tìm kiếm mặt hàng bảo mật, phần cứng, gói mạng, PGP..." autocomplete="off">
+                <span class="search-icon-symbol">🔍</span>
+                <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
+              </div>
+              <div class="market-sort-wrap">
+                <label for="market-sort-select">Sắp xếp:</label>
+                <select id="market-sort-select" class="custom-select mini-select">
+                  <option value="default">Mặc định</option>
+                  <option value="price-asc">Giá XMR: Thấp → Cao</option>
+                  <option value="price-desc">Giá XMR: Cao → Thấp</option>
+                  <option value="name">Tên mặt hàng A-Z</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="market-category-pills" id="market-category-pills">
+              <button class="market-pill active" data-category="all">Tất cả mặt hàng <span class="pill-count" id="count-all">7</span></button>
+              <button class="market-pill" data-category="auction">🔨 Đấu Giá RAM <span class="pill-count" id="count-auction">1</span></button>
+              <button class="market-pill" data-category="hardware">Thiết bị Phần cứng <span class="pill-count" id="count-hardware">1</span></button>
+              <button class="market-pill" data-category="network">Mạng & VPN Ẩn danh <span class="pill-count" id="count-network">2</span></button>
+              <button class="market-pill" data-category="crypto">Mật mã & Khóa PGP <span class="pill-count" id="count-crypto">2</span></button>
+              <button class="market-pill" data-category="audit">Tài liệu & Audit <span class="pill-count" id="count-audit">1</span></button>
+            </div>
+          </div>
+
+          <!-- Products Grid -->
+          <div id="market-product-grid" class="market-product-grid">
+            <!-- Rendered dynamically by vault.js -->
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 2: KÊNH CHAT MÃ HÓA VỚI NGƯỜI BÁN (E2EE CHAT)             -->
+        <!-- ============================================================= -->
+        <div id="tab-chat" class="tab-pane">
+          <!-- Self-Destruct Warning Banner (Dismissible) -->
+          <div class="chat-warning-banner" id="chat-warning-banner">
+            <div class="warning-left">
+              <span class="warning-flame">🔥</span>
+              <div class="warning-text">
+                <strong>Tự Hủy Tuyệt Đối Khi Thoát:</strong> Kênh chat này được mã hóa đầu cuối bằng <strong>AES-256-GCM</strong>. Mọi tin nhắn chỉ tồn tại trong <strong>RAM khả biến của phiên làm việc này</strong>. Khi bạn đóng tab, bấm <code>ESC</code> hoặc rời trang, <strong>toàn bộ tin nhắn sẽ bị xóa sạch 100%, không thể khôi phục!</strong>
+              </div>
+            </div>
+            <div class="banner-action-group">
+              <button type="button" id="purge-chat-btn" class="purge-chat-btn" title="Xóa sạch lịch sử chat trong RAM ngay lập tức">
+                <span>🧹</span> Xóa Sạch Chat Ngay
+              </button>
+              <button type="button" class="dismiss-banner-btn" title="Đóng cảnh báo này" onclick="document.getElementById('chat-warning-banner').style.display='none';">✕</button>
+            </div>
+          </div>
+
+          <!-- Chat Window Shell -->
+          <div class="market-chat-shell">
+            <div class="chat-header-bar">
+              <div class="chat-peer-info">
+                <div class="peer-avatar">
+                  <span>M</span>
+                  <span class="peer-status-dot online"></span>
+                </div>
+                <div>
+                  <div class="peer-title-row">
+                    <h3 class="peer-name">Merchant-Node-01</h3>
+                    <span class="verified-vendor-badge">✓ ĐÃ XÁC MINH PGP</span>
+                  </div>
+                  <div class="peer-meta-row">
+                    <span id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" title="Bấm để sao chép toàn bộ PGP Fingerprint">
+                      🔑 PGP: 4A8F...91BC 📋
+                    </span>
+                    <span class="peer-divider">•</span>
+                    <span class="peer-stat">★ 5.0 (98 giao dịch)</span>
+                    <span class="peer-divider">•</span>
+                    <span class="peer-stat green">Phản hồi &lt; 1p</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-channel-badge">
+                <span id="active-product-tag" class="product-inquiry-tag">Tư vấn chung</span>
+              </div>
+            </div>
+
+            <!-- Quick Inquiry Questions -->
+            <div class="chat-quick-inquiries">
+              <span class="quick-inquiry-label">Hỏi nhanh:</span>
+              <button type="button" class="quick-q-btn" data-q="Xác nhận phương thức thanh toán Monero (XMR) và thời gian ký quỹ?">💰 Thanh toán XMR?</button>
+              <button type="button" class="quick-q-btn" data-q="Dữ liệu hàng số được bàn giao qua mã Drop tự hủy như thế nào?">📦 Bàn giao qua Drop ID?</button>
+              <button type="button" class="quick-q-btn" data-q="Làm thế nào để xác minh chữ ký PGP của shop trước khi nhận hàng?">🔑 Xác minh PGP Shop?</button>
+              <button type="button" class="quick-q-btn" data-q="Xác nhận tin nhắn này có bị lưu trên máy chủ hay không?">🛡️ Kiểm tra Zero-Log?</button>
+            </div>
+
+            <!-- Messages Stream Area -->
+            <div id="chat-message-list" class="chat-message-list">
+              <!-- Dynamically populated messages -->
+            </div>
+
+            <!-- Typing indicator -->
+            <div id="chat-typing-indicator" class="chat-typing-row" style="display: none;">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-text">Merchant-Node-01 đang soạn tin nhắn bảo mật...</span>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="chat-composer-bar">
+              <input type="text" id="chat-input-field" placeholder="Gõ tin nhắn bảo mật cho Người bán (Tự hủy khi đóng tab hoặc bấm ESC)..." autocomplete="off">
+              <button type="button" id="send-chat-btn" class="primary-btn chat-send-btn">
+                <span>Gửi</span> 🔒
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 3: ĐƠN HÀNG & KÝ QUỸ (EPHEMERAL ORDER ESCROW)             -->
+        <!-- ============================================================= -->
+        <div id="tab-order" class="tab-pane">
+          <div class="instruction-box" id="order-instruction-banner">
+            <div class="instruction-content">
+              <span class="info-icon">📦</span>
+              <div>
+                <strong>Giao dịch Không Cần Danh Tính (Zero-Knowledge Escrow):</strong> Bạn không cần cung cấp Họ tên, Số điện thoại hay Email. Mọi đơn hàng được tạo bằng mã <strong>Ephemeral Order ID</strong> và lưu tạm trong RAM. Hàng số sẽ được gửi qua <strong>Drop ID tự hủy</strong>.
+              </div>
+            </div>
+            <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('order-instruction-banner').style.display='none';">✕</button>
+          </div>
+
+          <!-- Two-Column Split Checkout Layout -->
+          <div class="order-checkout-layout">
+            <!-- Left Column: Order Form -->
+            <div class="order-form-col">
+              <h3 class="checkout-col-title">1. Thông Tin Đơn Hàng Bảo Mật</h3>
+              
+              <div class="form-group">
+                <label for="order-product-select"><strong>Chọn mặt hàng cần mua:</strong></label>
+                <select id="order-product-select" class="custom-select">
+                  <!-- Dynamically populated options -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <div class="label-with-action">
+                  <label for="order-receiver-pubkey"><strong>Địa chỉ nhận hàng số (PGP Key / Public Key):</strong></label>
+                  <button type="button" id="insert-sample-pgp-btn" class="mini-text-btn">Dán mẫu PGP</button>
+                </div>
+                <textarea id="order-receiver-pubkey" rows="3" placeholder="Dán PGP Public Key hoặc Drop ID nhận hàng tại đây... (Để trống để tự tạo Drop ID mới)"></textarea>
+                <span class="label-desc">Khóa này dùng để mã hóa gói hàng riêng cho bạn. Người bán và máy chủ không thể giải mật nội dung bàn giao.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="order-ttl-select"><strong>Thời gian tồn tại của đơn hàng trong RAM:</strong></label>
+                <div class="ttl-pills-row" id="order-ttl-pills">
+                  <button type="button" class="ttl-pill" data-ttl="1800">30 phút</button>
+                  <button type="button" class="ttl-pill active" data-ttl="3600">1 giờ (Khuyên dùng)</button>
+                  <button type="button" class="ttl-pill" data-ttl="14400">4 giờ</button>
+                  <button type="button" class="ttl-pill" data-ttl="86400">24 giờ</button>
+                </div>
+                <input type="hidden" id="order-ttl-value" value="3600">
+              </div>
+
+              <div class="action-row">
+                <button type="button" id="create-order-btn" class="primary-btn">
+                  <span>⚡</span> Khởi Tạo Đơn Hàng Ẩn Danh (RAM Escrow)
+                </button>
+                <button type="button" id="clear-order-btn" class="secondary-btn">Xóa trường</button>
+              </div>
+            </div>
+
+            <!-- Right Column: Live Order Preview / Cart Summary -->
+            <div class="order-preview-col">
+              <h3 class="checkout-col-title">2. Xem Trước Hàng Hóa & Ký Quỹ</h3>
+              <div id="live-order-preview-card" class="order-preview-card">
+                <!-- Dynamically rendered by vault.js -->
+              </div>
+
+              <div class="escrow-assurance-box">
+                <div class="assurance-header">
+                  <span class="shield-mini-icon">🛡️</span>
+                  <strong>Bảo Hiểm Ký Quỹ Đa Chữ Ký (Escrow Guarantee)</strong>
+                </div>
+                <p>Tiền Monero được tạm khóa trong hợp đồng khả biến. Nếu bên bán không bàn giao qua Drop ID trong thời hạn TTL, giao dịch tự động bị hủy và hoàn tiền.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Generated Slip Result (Boarding Pass / Cyber-Receipt) -->
+          <div id="order-result-box" class="order-result-box" style="display: none;">
+            <div class="order-receipt-header">
+              <div class="receipt-icon-badge">
+                <span class="success-icon">✓</span>
+              </div>
+              <div class="receipt-title-wrap">
+                <div class="receipt-badge-row">
+                  <span class="receipt-pill-status">ESCROW PENDING • CHỜ THANH TOÁN</span>
+                  <span class="receipt-pill-ttl">TỰ HỦY RAM SAU: <strong id="receipt-expiry-countdown">3600s</strong></span>
+                </div>
+                <h3 class="order-receipt-title">BIÊN LAI ĐƠN HÀNG ẨN DANH</h3>
+              </div>
+            </div>
+
+            <!-- Progress countdown bar -->
+            <div class="countdown-progress-track">
+              <div id="order-progress-bar" class="countdown-progress-bar" style="width: 100%;"></div>
+            </div>
+
+            <div class="order-details-grid">
+              <div class="order-detail-item">
+                <span class="detail-label">Mã Đơn Hàng:</span>
+                <span id="receipt-order-id" class="detail-val mono">ORD-LOADING...</span>
+              </div>
+              <div class="order-detail-item">
+                <span class="detail-label">Sản Phẩm:</span>
+                <span id="receipt-product-name" class="detail-val">...</span>
+              </div>
+              <div class="order-detail-item">
+                <span class="detail-label">Số Tiền (Monero):</span>
+                <span id="receipt-amount-xmr" class="detail-val xmr">0.00 XMR</span>
+              </div>
+              <div class="order-detail-item">
+                <span class="detail-label">Phương Thức Bàn Giao:</span>
+                <span class="detail-val mono">Mã Drop Tự Hủy AES-256-GCM</span>
+              </div>
+            </div>
+
+            <div class="xmr-payment-box">
+              <label>Địa chỉ ví Escrow Monero (XMR) tạm thời dùng 1 lần:</label>
+              <div class="link-copy-container">
+                <input type="text" id="receipt-xmr-address" readonly value="888tNkZrPN6JsE4G6K...XMR999">
+                <button type="button" id="copy-xmr-btn" class="copy-btn">Chép Địa Chỉ Ví</button>
+                <button type="button" id="show-order-qr-btn" class="qr-btn">
+                  <span>📱</span> QR Code
+                </button>
+              </div>
+            </div>
+
+            <div class="order-actions-row">
+              <button type="button" id="chat-about-order-btn" class="primary-btn">
+                <span>💬</span> Nhắn Tin với Người Bán Về Đơn Hàng Này
+              </button>
+              <button type="button" id="cancel-order-btn" class="danger-btn">
+                <span>✕</span> Hủy & Xóa Đơn Hàng Khỏi RAM
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 4: ĐĂNG BÁN & ĐẤU GIÁ ẨN DANH (VENDOR & AUCTION DESK)     -->
+        <!-- ============================================================= -->
+        <div id="tab-vendor" class="tab-pane">
+          <!-- Dismissible Vendor Principle Banner -->
+          <div class="instruction-box" id="vendor-instruction-banner">
+            <div class="instruction-content">
+              <span class="info-icon">⚖️</span>
+              <div>
+                <strong>Cổng Đăng Bán & Đấu Giá Ẩn Danh (RAM-Volatile Desk):</strong> Mặt hàng bạn đăng được lưu tạm trong <strong>bộ nhớ RAM khả biến</strong> và xuất bản tức thì lên Gian Hàng. Bạn được cấp mã <strong>Vendor Kill Token</strong> bí mật để xóa bài bất kỳ lúc nào. Không lưu IP, không ghi đĩa, tự hủy 100% khi hết hạn TTL hoặc máy chủ khởi động lại.
+              </div>
+            </div>
+            <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('vendor-instruction-banner').style.display='none';">✕</button>
+          </div>
+
+          <!-- Two-Column Split Vendor Layout -->
+          <div class="vendor-desk-layout">
+            <!-- Left Column: Creation Form Card -->
+            <div class="vendor-form-col">
+              <h3 class="checkout-col-title">1. Khởi Tạo Mặt Hàng / Mở Phiên Đấu Giá</h3>
+
+              <!-- Listing Mode Segmented Toggle -->
+              <div class="listing-mode-toggle" role="tablist">
+                <button type="button" class="mode-toggle-btn active" data-mode="fixed" id="mode-fixed-btn">
+                  <span>🏷️</span> Bán Giá Cố Định
+                </button>
+                <button type="button" class="mode-toggle-btn" data-mode="auction" id="mode-auction-btn">
+                  <span>🔨</span> Mở Phiên Đấu Giá Kín
+                </button>
+              </div>
+
+              <div class="form-group">
+                <label for="listing-name"><strong>Tên mặt hàng bảo mật:</strong></label>
+                <input type="text" id="listing-name" placeholder="VD: Khóa Cứng Air-Gapped HSM Token v5 hoặc Tài Liệu 0-Day..." autocomplete="off">
+              </div>
+
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label for="listing-category"><strong>Phân loại danh mục:</strong></label>
+                  <select id="listing-category" class="custom-select">
+                    <option value="hardware">Thiết bị Phần cứng</option>
+                    <option value="network">Mạng & VPN Ẩn danh</option>
+                    <option value="crypto">Mật mã & Khóa PGP</option>
+                    <option value="audit">Tài liệu & Audit An ninh</option>
+                    <option value="zeroday">Nghiên cứu Khai thác Zero-Day</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label><strong>Biểu tượng (Icon):</strong></label>
+                  <div class="emoji-quick-picker" id="emoji-quick-picker">
+                    <button type="button" class="emoji-opt active" data-icon="🔑">🔑</button>
+                    <button type="button" class="emoji-opt" data-icon="🛰️">🛰️</button>
+                    <button type="button" class="emoji-opt" data-icon="🛡️">🛡️</button>
+                    <button type="button" class="emoji-opt" data-icon="📜">📜</button>
+                    <button type="button" class="emoji-opt" data-icon="💻">💻</button>
+                    <button type="button" class="emoji-opt" data-icon="📡">📡</button>
+                    <button type="button" class="emoji-opt" data-icon="⚡">⚡</button>
+                    <button type="button" class="emoji-opt" data-icon="💾">💾</button>
+                  </div>
+                  <input type="hidden" id="listing-icon-val" value="🔑">
+                </div>
+              </div>
+
+              <!-- Dynamic Mode Fields: Fixed Price -->
+              <div id="section-fixed-pricing">
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label for="listing-price-xmr"><strong>Giá niêm yết (Monero XMR):</strong></label>
+                    <input type="number" id="listing-price-xmr" step="0.01" min="0.01" value="0.25" placeholder="0.25">
+                  </div>
+                  <div class="form-group">
+                    <label for="listing-stock"><strong>Số lượng / Tình trạng:</strong></label>
+                    <input type="text" id="listing-stock" value="1 chiếc trong RAM" placeholder="VD: 3 chiếc trong RAM / Khả dụng tức thì">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dynamic Mode Fields: Ephemeral Auction (Hidden by default) -->
+              <div id="section-auction-pricing" style="display: none;">
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label for="listing-start-bid"><strong>Giá sàn khởi điểm (XMR):</strong></label>
+                    <input type="number" id="listing-start-bid" step="0.01" min="0.01" value="0.30" placeholder="0.30">
+                  </div>
+                  <div class="form-group">
+                    <label for="listing-min-step"><strong>Bước giá tối thiểu (XMR):</strong></label>
+                    <input type="number" id="listing-min-step" step="0.01" min="0.01" value="0.05" placeholder="0.05">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="listing-auction-duration"><strong>Thời lượng phiên đấu giá:</strong></label>
+                  <select id="listing-auction-duration" class="custom-select">
+                    <option value="1800">30 phút (Đấu giá chớp nhoáng)</option>
+                    <option value="3600" selected>1 giờ (Tiêu chuẩn)</option>
+                    <option value="7200">2 giờ</option>
+                    <option value="21600">6 giờ</option>
+                    <option value="86400">24 giờ (Đấu giá ngày)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="listing-desc"><strong>Mô tả chi tiết & Cam kết an ninh:</strong></label>
+                <textarea id="listing-desc" rows="3" placeholder="Mô tả cơ chế cách ly mạng, chip mã hóa, tính năng chống rò rỉ hoặc nội dung nghiên cứu bảo mật..."></textarea>
+              </div>
+
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label for="listing-spec1-v"><strong>Thông số 1 (Tiêu chuẩn):</strong></label>
+                  <input type="text" id="listing-spec1-v" value="FIPS 140-3 Level 4 / CC EAL6+" placeholder="VD: FIPS 140-3 Level 4">
+                </div>
+                <div class="form-group">
+                  <label for="listing-spec2-v"><strong>Thông số 2 (Bàn giao):</strong></label>
+                  <input type="text" id="listing-spec2-v" value="Drop ID Tự Hủy RAM (Burn-After-Reading)" placeholder="VD: Drop ID Tự Hủy RAM">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="listing-vendor-pubkey"><strong>Khóa PGP của người bán / Drop ID nhận thanh toán:</strong></label>
+                <input type="text" id="listing-vendor-pubkey" placeholder="Dán PGP Fingerprint hoặc Drop ID để khách liên hệ mã hóa...">
+                <span class="label-desc">Khách hàng sẽ dùng khóa này để trao đổi và nhận mã giải mật đơn hàng.</span>
+              </div>
+
+              <div class="form-group">
+                <label><strong>Thời gian duy trì bài đăng trong RAM (TTL):</strong></label>
+                <div class="ttl-pills-row" id="vendor-ttl-pills">
+                  <button type="button" class="ttl-pill" data-ttl="3600">1 giờ</button>
+                  <button type="button" class="ttl-pill active" data-ttl="14400">4 giờ (Khuyên dùng)</button>
+                  <button type="button" class="ttl-pill" data-ttl="43200">12 giờ</button>
+                  <button type="button" class="ttl-pill" data-ttl="86400">24 giờ</button>
+                </div>
+                <input type="hidden" id="listing-ttl-val" value="14400">
+              </div>
+
+              <div class="action-row">
+                <button type="button" id="publish-listing-btn" class="primary-btn">
+                  <span>⚡</span> Xuất Bản Lên Chợ Ẩn Danh (RAM-Only)
+                </button>
+                <button type="button" id="reset-listing-btn" class="secondary-btn">Xóa Form</button>
+              </div>
+            </div>
+
+            <!-- Right Column: Live Preview & Manage Active Listings -->
+            <div class="vendor-preview-col">
+              <h3 class="checkout-col-title">2. Xem Trước Trực Quan & Quản Lý</h3>
+              
+              <!-- Card: Live Product Preview -->
+              <div class="vendor-card-shell">
+                <div class="preview-section-title">
+                  <span>👁️</span> Xem Trước Thẻ Trên Gian Hàng
+                </div>
+                <div id="live-vendor-preview" class="live-vendor-preview">
+                  <!-- Dynamically rendered -->
+                </div>
+              </div>
+
+              <!-- Card: My Active Listings in RAM -->
+              <div class="vendor-card-shell">
+                <div class="preview-section-title">
+                  <span>📋</span> Mặt Hàng Bạn Đã Đăng Trong Phiên Này
+                </div>
+                <div id="my-listings-list" class="my-listings-list">
+                  <p class="empty-listings-note">Chưa có mặt hàng nào được tạo trong phiên RAM hiện tại.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 5: CHÍNH SÁCH ẨN DANH & ZERO-TRACE AUDIT                  -->
+        <!-- ============================================================= -->
+        <div id="tab-audit" class="tab-pane">
+          <div class="audit-header-banner">
+            <div>
+              <h2 class="audit-heading">Kiểm Chứng Cơ Chế Ẩn Danh & Chống Dấu Vết</h2>
+              <p class="audit-subheading">Toàn bộ kiến trúc được xây dựng nhằm triệt tiêu 100% khả năng lưu vết kỹ thuật số trên máy chủ và máy khách.</p>
+            </div>
+            <div class="zero-trace-status-tag">
+              <span class="dot green"></span> ZERO-TRACE VERIFIED
+            </div>
+          </div>
+
+          <div class="audit-grid">
+            <div class="audit-card">
+              <div class="audit-card-icon">🛡️</div>
+              <h3>1. Ẩn Danh Cả Người Dùng & Địa Chỉ IP</h3>
+              <ul>
+                <li><strong>Zero-Log Enforced:</strong> Máy chủ hoàn toàn không ghi log địa chỉ IP, không ghi User-Agent, không tạo file access log trên ổ cứng.</li>
+                <li><strong>Phiên Ẩn Danh Ngẫu Nhiên:</strong> Mỗi lần mở trang, bạn nhận một Alias ẩn danh (ví dụ: Ghost-XXXX). Không cần tài khoản, không mật khẩu cá nhân.</li>
+              </ul>
+            </div>
+
+            <div class="audit-card">
+              <div class="audit-card-icon">🔥</div>
+              <h3>2. Tin Nhắn Bảo Mật & Tự Hủy Tuyệt Đối Khi Thoát</h3>
+              <ul>
+                <li><strong>Lưu trữ 100% trên RAM Trình duyệt:</strong> Tin nhắn trao đổi chỉ nằm trên bộ nhớ tạm thời của máy khách và bộ đệm RAM của socket.</li>
+                <li><strong>Purge-On-Exit Hooks:</strong> Khi bạn đóng tab, tắt trình duyệt, hoặc nhấn phím ESC, hàm <code>wipeMemory()</code> tự động kích hoạt để ghi đè số 0 vào biến nhớ và xóa sạch lịch sử.</li>
+              </ul>
+            </div>
+
+            <div class="audit-card">
+              <div class="audit-card-icon">🔐</div>
+              <h3>3. Mật Mã Học Tiêu Chuẩn Quân Sự (AES-256-GCM)</h3>
+              <ul>
+                <li><strong>Mã hóa đầu cuối:</strong> Dữ liệu đơn hàng và tin nhắn được mã hóa bằng khóa AES 256-bit kết hợp IV ngẫu nhiên 96-bit cho từng gói tin.</li>
+                <li><strong>Chống phân tích lưu lượng:</strong> Dữ liệu được đệm ngẫu nhiên CSPRNG theo bội số 256 bytes để ngăn kẻ nghe lén suy đoán độ dài.</li>
+              </ul>
+            </div>
+
+            <div class="audit-card">
+              <div class="audit-card-icon">🕵️</div>
+              <h3>4. Màn Che Ngụy Trang Hoàn Hảo</h3>
+              <ul>
+                <li><strong>Cổng vào ngụy trang:</strong> Toàn bộ trang ẩn này được che đậy hoàn hảo sau lớp vỏ Từ Điển Đa Ngôn Ngữ tại trang chủ.</li>
+                <li><strong>Nút Thoát (ESC) & Màn Che (F2):</strong> Bấm <code>ESC</code> lập tức xóa sạch mọi dữ liệu và đá về từ điển. Bấm <code>F2</code> lập tức hiển thị màn che bài báo học thuật vô hại.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Live Volatile RAM Allocation Meter -->
+          <div class="ram-monitor-box">
+            <div class="ram-monitor-header">
+              <span class="ram-icon">📊</span>
+              <strong>Trạng Thái Cấp Phát Bộ Nhớ RAM Khả Biến (Client-Side)</strong>
+            </div>
+            <div class="ram-metric-row">
+              <div class="ram-metric-item">
+                <span class="metric-label">Lịch sử chat trong RAM:</span>
+                <span id="ram-chat-bytes" class="metric-val mono">0 Bytes</span>
+              </div>
+              <div class="ram-metric-item">
+                <span class="metric-label">Dữ liệu đơn hàng trong RAM:</span>
+                <span id="ram-order-bytes" class="metric-val mono">0 Bytes</span>
+              </div>
+              <div class="ram-metric-item">
+                <span class="metric-label">Ghi nhật ký đĩa cứng:</span>
+                <span class="metric-val mono green">0 Bytes (BỊ VÔ HIỆU HÓA)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+    </main>
+
+    <footer class="vault-footer">
+      <p>Ghost Bazaar • Nền Tảng Chợ Ẩn Danh Khả Biến • Không Lưu Vết • Tự Hủy 100% Khi Thoát</p>
+      <div class="keyboard-hints-bar">
+        <span class="hint-pill"><kbd>F2</kbd> Màn che học thuật</span>
+        <span class="hint-pill"><kbd>Esc</kbd> Thoát khẩn cấp & Xóa sạch</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- QR Code Modal Overlay -->
+  <div id="qr-modal-overlay" class="qr-modal-overlay" style="display: none;">
+    <div class="qr-modal-card">
+      <div class="qr-modal-header">
+        <h2 class="qr-modal-title">Mã QR Thanh Toán Ẩn Danh (Monero XMR)</h2>
+        <button type="button" id="close-qr-btn" class="close-mask-btn" title="Đóng">✕</button>
+      </div>
+      <p class="qr-modal-desc">
+        Quét mã QR bằng ứng dụng ví Monero (Cake Wallet / Feather / Monerujo) để chuyển tiền ký quỹ tự động:
+      </p>
+      <div id="qr-code-box" class="qr-code-box"></div>
+      <p style="font-size: 0.75rem; color: #9ca3af; font-family: var(--font-mono);">
+        Giao dịch được ký quỹ tự động và tự hủy hóa đơn khi phiên kết thúc.
+      </p>
+    </div>
+  </div>
+
+  <!-- Auction Bid Modal Overlay -->
+  <div id="bid-modal-overlay" class="qr-modal-overlay" style="display: none;">
+    <div class="qr-modal-card bid-modal-card">
+      <div class="qr-modal-header">
+        <h2 class="qr-modal-title">🔨 Đặt Giá Thầu Ẩn Danh (RAM Auction)</h2>
+        <button type="button" id="close-bid-modal-btn" class="close-mask-btn" title="Đóng">✕</button>
+      </div>
+      
+      <div class="bid-modal-item-info" id="bid-modal-item-info">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="bid-input-wrap">
+        <label for="bid-amount-input"><strong>Số tiền bạn muốn ra giá (Monero XMR):</strong></label>
+        <div class="bid-input-row">
+          <input type="number" id="bid-amount-input" step="0.01" min="0.01" placeholder="0.00">
+          <span class="currency-tag">XMR</span>
+        </div>
+        <div class="bid-hints-row">
+          <span class="label-desc" id="bid-min-hint">Bước giá tối thiểu: +0.05 XMR</span>
+          <span class="bid-usd-approx" id="bid-usd-approx">~$0.00 USD</span>
+        </div>
+      </div>
+
+      <div class="bid-alias-notice">
+        <span class="dot cyan"></span>
+        <span>Danh tính thầu: <strong id="bid-client-alias">Ghost-XXXX</strong> (Mã hóa E2EE)</span>
+      </div>
+
+      <div class="bid-actions-row">
+        <button type="button" id="submit-bid-btn" class="primary-btn">
+          <span>🔨</span> Xác Nhận Đặt Giá Thầu (Ký Quỹ RAM)
+        </button>
+        <button type="button" id="cancel-bid-modal-btn" class="secondary-btn">Hủy</button>
+      </div>
+
+      <div class="bid-history-feed-box">
+        <div class="bid-history-title">Lịch Sử Giá Thầu Trong RAM:</div>
+        <div class="bid-history-feed" id="bid-history-feed">
+          <!-- Dynamically populated bid entries -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- Emergency Academic Decoy Mask (F2) -->
+  <div id="decoy-mask-overlay" class="decoy-mask-overlay" style="display: none;">
+    <div class="academic-paper-wrapper">
+      <div class="paper-header">
+        <span class="paper-journal">TẠP CHÍ NGÔN NGỮ HỌC VÀ KHOA HỌC DỮ LIỆU • ISSN 2615-9872 • TẬP 18 - SỐ 4/2026</span>
+        <button id="close-mask-btn" class="close-mask-btn" title="Đóng màn che (F2)">✕</button>
+      </div>
+      <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 0.75rem;">
+        DOI: 10.1016/j.lingua.2026.103982 • Xuất bản trực tuyến: 14/03/2026 • Bản quyền thuộc Viện Nghiên Cứu
+      </div>
+      <h1 class="paper-title">Nghiên cứu cấu trúc ngữ nghĩa học thuật ngữ đa ngôn ngữ trong kỷ nguyên dữ liệu lớn</h1>
+      <p class="paper-authors">GS.TS. Nguyễn Văn Hùng, PGS.TS. Lê Hoàng Mai — Viện Nghiên cứu Ngôn ngữ Ứng dụng</p>
+      <div class="paper-abstract">
+        <strong>TÓM TẮT:</strong> Bài báo trình bày phương pháp phân tích ngữ nghĩa phân bố (distributional semantics) áp dụng cho các thuật ngữ kỹ thuật trong các ngôn ngữ Đông Á và phương Tây...
+      </div>
+      <div class="paper-body">
+        <h2>1. Đặt vấn đề và Tổng quan nghiên cứu</h2>
+        <p>Sự bùng nổ của các kho ngữ liệu song ngữ đặt ra thách thức lớn đối với công tác biên soạn từ điển học thuật...</p>
+      </div>
+      <div class="paper-footer">
+        <em>Nhấn <strong>F2</strong> hoặc nhấp đúp vào văn bản để quay lại bảng điều khiển</em>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/vault.js"></script>
+</body>
+</html>

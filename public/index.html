@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Từ Điển Đa Ngôn Ngữ & Tra Cứu Thuật Ngữ Kỹ Thuật</title>
+  <meta name="description" content="Tra cứu từ vựng, thuật ngữ đa ngôn ngữ: Tiếng Việt, Tiếng Anh, Tiếng Pháp, Tiếng Nhật và Khoa học Máy tính.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>">
+</head>
+<body>
+
+  <!-- ================================================================= -->
+  <!-- 1. DECOY VENEER: GIAO DIỆN TỪ ĐIỂN ĐA NGÔN NGỮ (NGỤY TRANG)        -->
+  <!-- ================================================================= -->
+  <div id="decoy-container">
+    <header class="lexicon-header">
+      <div class="header-inner">
+        <div class="brand-group">
+          <span class="brand-icon">📚</span>
+          <div>
+            <h1 class="brand-title">Từ Điển Đa Ngôn Ngữ</h1>
+            <p class="brand-subtitle">Tra cứu từ vựng & Thuật ngữ Chuyên ngành (VI • EN • FR • JA • TECH)</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Unified Omnibox Search Section -->
+      <section class="search-section">
+        <div class="search-omnibox-container">
+          <div class="search-bar-wrapper unified">
+            <!-- Integrated Search Engine Switcher (Right inside the search bar) -->
+            <div class="engine-dropdown-wrap">
+              <button type="button" id="engine-btn" class="engine-btn" title="Chọn công cụ tìm kiếm trực tiếp">
+                <span id="engine-icon" class="engine-icon">🌐</span>
+                <span id="engine-label" class="engine-label">Wikipedia</span>
+                <span class="engine-chevron">▾</span>
+              </button>
+              <div id="engine-menu" class="engine-menu" style="display: none;">
+                <button type="button" class="engine-menu-item active" data-engine="wiki-vi">
+                  <span class="item-icon">🇻🇳</span> Wikipedia Tiếng Việt
+                </button>
+                <button type="button" class="engine-menu-item" data-engine="wiki-en">
+                  <span class="item-icon">🌐</span> Wikipedia English
+                </button>
+                <button type="button" class="engine-menu-item" data-engine="wiktionary">
+                  <span class="item-icon">📖</span> Wiktionary Từ Điển
+                </button>
+                <button type="button" class="engine-menu-item" data-engine="google">
+                  <span class="item-icon">🔍</span> Google Search
+                </button>
+                <button type="button" class="engine-menu-item" data-engine="local">
+                  <span class="item-icon">📚</span> Từ Điển Nội Bộ
+                </button>
+              </div>
+            </div>
+
+            <!-- Search Input Field -->
+            <div class="input-core-wrap">
+              <input 
+                type="text" 
+                id="search-input" 
+                placeholder="Nhập từ khóa tìm kiếm trực tiếp trên Wikipedia... (Mẹo: gõ :drop hoặc vault)" 
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <span class="search-kbd-hint" title="Gõ phím / để tìm kiếm nhanh">/</span>
+              <button id="clear-search-btn" class="clear-btn" style="display:none;" title="Xóa từ khóa">✕</button>
+            </div>
+
+            <!-- Integrated Search Submit Action Button -->
+            <button type="button" id="search-submit-btn" class="search-submit-btn" title="Thực thi tìm kiếm">
+              <span class="submit-icon">🔍</span>
+              <span class="submit-text">Tìm kiếm</span>
+            </button>
+          </div>
+
+          <!-- Real-Time Wikipedia Autocomplete / OpenSearch Suggestions Dropdown -->
+          <div id="omnibox-suggestions" class="omnibox-dropdown" style="display: none;">
+            <!-- Live suggestions populated dynamically -->
+          </div>
+        </div>
+
+        <div class="filters-bar">
+          <div class="lang-pills" id="lang-pills">
+            <button class="pill active" data-lang="all">Tất cả mục từ</button>
+            <button class="pill" data-lang="vi">Tiếng Việt</button>
+            <button class="pill" data-lang="en">English</button>
+            <button class="pill" data-lang="fr">Français</button>
+            <button class="pill" data-lang="ja">日本語</button>
+            <button class="pill" data-lang="tech">Thuật ngữ Kỹ thuật</button>
+          </div>
+        </div>
+
+        <!-- Quick Tags -->
+        <div class="quick-tags">
+          <span class="tag-label">Gợi ý thuật ngữ nhanh:</span>
+          <button class="tag-btn" data-word="Zero-Knowledge">Zero-Knowledge</button>
+          <button class="tag-btn" data-word="Mật mã học">Mật mã học</button>
+          <button class="tag-btn" data-word="Diffie-Hellman">Diffie-Hellman</button>
+          <button class="tag-btn" data-word="Ephemeral (Tạm thời)">Ephemeral</button>
+          <button class="tag-btn" data-word="Bộ nhớ khả biến (RAM)">RAM</button>
+          <button class="tag-btn" data-word="Steganography (Ẩn mã)">Steganography</button>
+        </div>
+      </section>
+
+      <!-- Live Wikipedia Knowledge Stream Box (if term fetched from Wikipedia) -->
+      <section id="wiki-live-wrapper" class="wiki-live-wrapper" style="display: none;">
+        <!-- Populated dynamically with live Wikipedia data -->
+      </section>
+
+      <!-- Word Results List -->
+      <section class="results-section">
+        <div id="results-count" class="results-count">Hiển thị kết quả tra cứu:</div>
+        <div id="dictionary-list" class="dictionary-grid">
+          <!-- Dynamic words will be populated here -->
+        </div>
+      </section>
+    </main>
+
+    <footer class="lexicon-footer">
+      <div class="footer-inner">
+        <p>© 2026 Viện Ngôn Ngữ & Mật Mã Ứng Dụng. Bảo vệ bởi tiêu chuẩn RAM-only & Zero-Trust.</p>
+        <div class="keyboard-hints-bar">
+          <span class="hint-pill"><kbd>/</kbd> Tìm kiếm nhanh</span>
+          <span class="hint-pill"><kbd>↓</kbd><kbd>↑</kbd> Duyệt gợi ý</span>
+          <span class="hint-pill"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> Mở Bảng điều khiển Vault</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 2. COVERT SYSTEM: ZERO-KNOWLEDGE EPHEMERAL DROP & IN-MEMORY P2P   -->
+  <!-- ================================================================= -->
+  <div id="covert-modal" class="modal-backdrop" style="display: none;">
+    <div class="covert-window">
+      <!-- Covert Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="shield-badge">🛡️ ZERO-KNOWLEDGE RAM DROP</span>
+          <span class="crypto-spec-tag">AES-256-GCM • ECDH P-256 • IN-MEMORY ONLY</span>
+        </div>
+        <button id="close-covert-btn" class="close-modal-btn" title="Đóng & Xóa bộ đệm tạm thời">✕</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="covert-nav-tabs">
+        <button class="nav-tab active" data-tab="tab-create">Tạo Ephemeral Drop</button>
+        <button class="nav-tab" data-tab="tab-p2p">Tin nhắn Ẩn danh (P2P)</button>
+        <button class="nav-tab" data-tab="tab-decrypt">Đọc / Giải mã Drop</button>
+        <button class="nav-tab" data-tab="tab-audit">Kiểm tra Bảo mật (Audit)</button>
+      </div>
+
+      <!-- TAB 1: CREATE EPHEMERAL DROP -->
+      <div id="tab-create" class="tab-pane active">
+        <div class="instruction-box">
+          <span class="info-icon">ℹ️</span>
+          <div>
+            <strong>Nguyên tắc Zero-Trust:</strong> Dữ liệu được mã hóa ngay trên trình duyệt bằng khóa <strong>AES-256-GCM 256-bit</strong>. Máy chủ chỉ lưu bản mã trong RAM và <em>tuyệt đối không biết khóa bí mật</em>. Khóa nằm trọn vẹn ở phân đoạn URL (<code>#k=...</code>), không bao giờ gửi qua mạng.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="plaintext-input">Nội dung mật (Văn bản, Khóa riêng tư, Mật khẩu, Tọa độ):</label>
+          <textarea 
+            id="plaintext-input" 
+            rows="6" 
+            placeholder="Nhập nội dung cần truyền gửi an toàn tại đây..."
+            spellcheck="false"
+          ></textarea>
+        </div>
+
+        <div class="options-grid">
+          <div class="option-card">
+            <label class="checkbox-container">
+              <input type="checkbox" id="burn-checkbox" checked>
+              <span class="checkmark"></span>
+              <strong>Tự hủy sau lần đọc đầu tiên (Burn-After-Reading)</strong>
+            </label>
+            <p class="option-desc">Ciphertext sẽ bị xóa vĩnh viễn khỏi RAM của Server ngay khi người nhận tải về lần đầu.</p>
+          </div>
+
+          <div class="option-card">
+            <label for="ttl-select"><strong>Thời gian tồn tại tối đa (TTL):</strong></label>
+            <select id="ttl-select" class="custom-select">
+              <option value="300">5 phút (Tự hủy nhanh)</option>
+              <option value="900">15 phút</option>
+              <option value="3600" selected>1 giờ (Khuyên dùng)</option>
+              <option value="86400">24 giờ (1 ngày)</option>
+            </select>
+            <p class="option-desc">Sau thời gian này, dữ liệu sẽ tự động bốc hơi khỏi bộ nhớ đệm kể cả chưa được đọc.</p>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="encrypt-drop-btn" class="primary-btn">
+            <span>🔒</span> Mã Hóa & Lưu Đệm RAM
+          </button>
+          <button id="clear-create-btn" class="secondary-btn">Xóa trường</button>
+        </div>
+
+        <!-- Result Box after creation -->
+        <div id="create-result-box" class="result-box" style="display: none;">
+          <div class="result-header">
+            <span class="success-icon">✓</span>
+            <h2>Drop đã được mã hóa an toàn & nạp vào RAM!</h2>
+          </div>
+          <p class="result-guide">
+            Chia sẻ liên kết này cho người nhận qua kênh liên lạc của bạn. Khóa giải mã được định vị sau dấu <code>#</code> nên <strong>máy chủ không thể giải mật</strong>:
+          </p>
+          <div class="link-copy-container">
+            <input type="text" id="drop-url-result" readonly>
+            <button id="copy-drop-url-btn" class="copy-btn">Sao chép Link</button>
+          </div>
+          <div class="security-status-pills">
+            <span class="status-pill green">✓ Mã hóa: AES-256-GCM</span>
+            <span class="status-pill green">✓ Lưu trữ: RAM-Only</span>
+            <span class="status-pill blue" id="result-burn-badge">✓ Tự hủy: Bật</span>
+            <span class="status-pill purple" id="result-ttl-badge">✓ TTL: 3600s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ANONYMOUS IN-MEMORY P2P MESSAGING -->
+      <div id="tab-p2p" class="tab-pane">
+        <div class="instruction-box">
+          <span class="info-icon">⚡</span>
+          <div>
+            <strong>Giao thức P2P ECDH P-256:</strong> Thiết lập phiên nhắn tin ẩn danh trực tiếp. Hai bên sinh cặp khóa Ephemeral Elliptic Curve, bắt tay mật mã học qua HKDF-SHA256 để tạo khóa đối xứng AES-GCM dùng một lần. Lịch sử chat chỉ tồn tại trong RAM trình duyệt!
+          </div>
+        </div>
+
+        <div class="p2p-setup-bar">
+          <div class="p2p-channel-input">
+            <label for="p2p-channel-id">Mã phòng / Kênh liên lạc ẩn danh:</label>
+            <div class="input-with-button">
+              <input type="text" id="p2p-channel-id" placeholder="Nhập hoặc tạo mã kênh ngẫu nhiên...">
+              <button id="gen-p2p-channel-btn" class="btn-small">Sinh mã mới</button>
+            </div>
+          </div>
+          <button id="join-p2p-btn" class="primary-btn">Bắt đầu phiên kết nối</button>
+        </div>
+
+        <div id="p2p-chat-area" class="p2p-chat-container" style="display: none;">
+          <div class="chat-status-bar">
+            <span id="p2p-connection-status" class="status-indicator yellow">Đang trao đổi khóa ECDH...</span>
+            <button id="leave-p2p-btn" class="btn-danger-small">Hủy phiên & Xóa RAM</button>
+          </div>
+          <div id="p2p-message-history" class="chat-messages">
+            <!-- Messages rendered dynamically -->
+          </div>
+          <div class="chat-input-bar">
+            <input type="text" id="p2p-message-input" placeholder="Gõ tin nhắn bảo mật (mã hóa tự động AES-GCM)..." autocomplete="off">
+            <button id="send-p2p-btn" class="primary-btn">Gửi</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: DECRYPT / READ DROP -->
+      <div id="tab-decrypt" class="tab-pane">
+        <div class="instruction-box">
+          <span class="info-icon">🔓</span>
+          <div>
+            <strong>Giải mã phía Client:</strong> Dữ liệu ciphertext được kéo từ bộ nhớ đệm máy chủ và giải mã trực tiếp trong RAM trình duyệt của bạn bằng khóa trong URL Fragment.
+          </div>
+        </div>
+
+        <div class="decrypt-form">
+          <div class="form-group">
+            <label for="manual-drop-id">Mã Drop (Drop ID):</label>
+            <input type="text" id="manual-drop-id" placeholder="VD: 4a2f8b901c3e45d67890abcdef123456">
+          </div>
+          <div class="form-group">
+            <label for="manual-drop-key">Khóa giải mã (Secret Key - Base64URL):</label>
+            <input type="password" id="manual-drop-key" placeholder="Nhập khóa giải mã (lấy từ phân đoạn #k=...)">
+          </div>
+          <button id="manual-decrypt-btn" class="primary-btn">Kéo dữ liệu & Giải mật</button>
+        </div>
+
+        <!-- Decrypted output area -->
+        <div id="decrypted-result-box" class="decrypted-box" style="display: none;">
+          <div class="decrypted-header">
+            <div class="status-title">
+              <span class="status-dot red"></span>
+              <h2>BẢN TIN ĐÃ ĐƯỢC GIẢI MÃ HOÀN TẤT</h2>
+            </div>
+            <div class="countdown-badge" id="countdown-badge">
+              ⏳ Tự hủy khỏi màn hình sau: <span id="countdown-timer">60</span>s
+            </div>
+          </div>
+          <div class="decrypted-content-wrapper">
+            <pre id="decrypted-plaintext"></pre>
+          </div>
+          <div class="decrypted-actions">
+            <button id="copy-plaintext-btn" class="secondary-btn">Sao chép nội dung</button>
+            <button id="purge-now-btn" class="danger-btn">Xóa khỏi màn hình ngay lập tức</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: SECURITY & ARCHITECTURAL AUDIT -->
+      <div id="tab-audit" class="tab-pane">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1rem; color: var(--covert-accent);">Kiểm tra Bảo mật & Mật mã học</h2>
+        <div class="audit-grid">
+          <div class="audit-card">
+            <h3>1. Kiến trúc Zero-Trust & Zero-Knowledge</h3>
+            <ul>
+              <li><strong>Không tin tưởng Máy chủ:</strong> Máy chủ chỉ là vùng trung chuyển bytes thô (ciphertext). Plaintext và Khóa giải mã không bao giờ rời khỏi thiết bị người gửi.</li>
+              <li><strong>RFC 3986 §3.5 Fragment Safety:</strong> Toàn bộ khóa giải mã được nhúng trong <code>#k=...</code>. Trình duyệt không bao giờ gửi chuỗi sau dấu thăng lên HTTP Header.</li>
+            </ul>
+          </div>
+
+          <div class="audit-card">
+            <h3>2. Lưu trữ RAM-Only & Triệt tiêu Dấu vết</h3>
+            <ul>
+              <li><strong>Zero Persistent Write:</strong> Không có bất kỳ lệnh ghi đĩa (disk write) nào được thực thi cho ciphertext.</li>
+              <li><strong>Atomic Burn-After-Reading:</strong> Bản ghi bị xóa và giải phóng khỏi bộ nhớ đệm (RAM) ngay ở lượt đọc đầu tiên.</li>
+              <li><strong>Zero-Log Policy:</strong> Vô hiệu hóa toàn bộ access log, không ghi IP người dùng, không ghi User-Agent.</li>
+            </ul>
+          </div>
+
+          <div class="audit-card">
+            <h3>3. Tiêu chuẩn Mật mã học (Cryptographic Standard)</h3>
+            <ul>
+              <li><strong>Thuật toán đối xứng:</strong> AES-256-GCM với IV ngẫu nhiên 96-bit (12 bytes) cho mỗi lần mã hóa và thẻ chứng thực 128-bit (Authentication Tag).</li>
+              <li><strong>Bắt tay P2P:</strong> Elliptic Curve Diffie-Hellman (NIST P-256) kết hợp hàm dẫn xuất khóa HKDF-SHA256 (RFC 5869).</li>
+              <li><strong>Thực thi:</strong> Web Crypto API nguyên bản của trình duyệt (W3C Standard), ngăn chặn rò rỉ qua thư viện bên thứ ba.</li>
+            </ul>
+          </div>
+
+          <div class="audit-card">
+            <h3>4. Ngụy trang Hoàn hảo (Steganography Veneer)</h3>
+            <ul>
+              <li><strong>Lớp vỏ vô hại:</strong> Toàn bộ hệ thống đội lốt một ứng dụng Từ Điển Đa Ngôn Ngữ với đầy đủ tính năng tra cứu từ vựng thật.</li>
+              <li><strong>Đường dẫn ngụy trang:</strong> Các endpoint bí mật mượn danh nghĩa đồng bộ từ vựng (<code>/api/lexicon/cache-entry</code>).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- Audio elements for feedback effects (Optional / Silent fallbacks) -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
