@@ -324,6 +324,15 @@ describe('Server RAM-Only & Ephemeral Drop Tests', () => {
     const afterData = JSON.parse(getAfterBurn.body);
     assert.strictEqual(afterData.deal, null);
     assert.strictEqual(afterData.lastBurnedDealId, dealId);
+    assert.ok(afterData.soldOrRevokedIds.includes('hw-hsm-01'));
+
+    // 5. Verify the purchased product ('hw-hsm-01') has automatically disappeared from the marketplace RAM
+    const itemsAfterBuyRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items`, {
+      method: 'GET'
+    });
+    const itemsAfterBuy = JSON.parse(itemsAfterBuyRes.body);
+    const soldItemStillPresent = itemsAfterBuy.data.find(p => p.id === 'hw-hsm-01');
+    assert.strictEqual(soldItemStillPresent, undefined);
   });
 });
 

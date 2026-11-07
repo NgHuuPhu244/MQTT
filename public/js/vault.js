@@ -850,8 +850,23 @@ async function fetchBazaarProducts(silent = true) {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
+    if (json && Array.isArray(json.soldOrRevokedIds)) {
+      let newlySoldOnServer = false;
+      json.soldOrRevokedIds.forEach(soldId => {
+        if (soldId && !revokedProductIds.has(soldId)) {
+          addRevokedProductId(soldId);
+          newlySoldOnServer = true;
+        }
+      });
+      if (newlySoldOnServer) {
+        MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p && !revokedProductIds.has(p.id));
+        myVendorListings = myVendorListings.filter(p => p && !revokedProductIds.has(p.id));
+        saveMyVendorListingsToStorage();
+        saveMarketProductsToStorage();
+      }
+    }
     if (json && Array.isArray(json.data)) {
-      const serverItems = json.data;
+      const serverItems = json.data.filter(p => p && !revokedProductIds.has(p.id));
       const serverIds = new Set(serverItems.map(p => p.id));
 
       // Re-push any locally created user items that the server doesn't have yet (e.g. after server restart)
@@ -995,7 +1010,7 @@ function initMarketCatalog() {
       } else if (msg.type === 'DEAL_SYNC' && msg.deal) {
         applyIncomingBlindDealState(msg.deal);
       } else if (msg.type === 'DEAL_COMPLETED_BURN') {
-        executeLocalDealAutoBurn(msg.dealId, true);
+        executeLocalDealAutoBurn(msg.dealId, true, msg.productId || '', msg.productName || '');
       }
     };
   }
@@ -2212,12 +2227,59 @@ async function sendBlindDealMessage(text) {
   }
 }
 
+function removeSoldProductFromMarket(productId, productName = '') {
+  let matched = null;
+  if (productId && productId !== 'general' && productId !== 'custom') {
+    matched = MARKET_PRODUCTS.find(p => p.id === productId) || myVendorListings.find(p => p.id === productId);
+  }
+  if (!matched && productName) {
+    matched = MARKET_PRODUCTS.find(p => p.name === productName) || myVendorListings.find(p => p.name === productName);
+  }
+
+  const targetId = matched?.id || (productId !== 'general' && productId !== 'custom' ? productId : '');
+  if (!targetId) return null;
+
+  addRevokedProductId(targetId);
+  MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== targetId);
+  myVendorListings = myVendorListings.filter(p => p.id !== targetId);
+  saveMyVendorListingsToStorage();
+  saveMarketProductsToStorage();
+
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'REVOKE_PRODUCT',
+        productId: targetId
+      });
+    } catch {}
+  }
+
+  if (isP2PConnected && activePeerConnection) {
+    try {
+      activePeerConnection.send({
+        type: 'market_item_revoked',
+        productId: targetId
+      });
+    } catch {}
+  }
+
+  updateCategoryPillCounts();
+  populateOrderProductSelect(MARKET_PRODUCTS);
+  filterAndRenderProducts();
+  renderMyListings();
+  updateRamMonitor();
+  return targetId;
+}
+
 async function confirmBlindDealPayment() {
   const thread = getActiveThread();
   if (!thread || !thread.dealId) {
     showToast('Chưa có phiên giao dịch nào đang mở!', 'warning');
     return;
   }
+
+  const prodId = thread.productId || activeAutoDeal?.productId || activeOrder?.product?.id || '';
+  const prodName = thread.productName || activeAutoDeal?.productName || activeOrder?.product?.name || '';
 
   let updatedDeal = null;
   try {
@@ -2226,7 +2288,9 @@ async function confirmBlindDealPayment() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'pay_escrow',
-        dealId: thread.dealId
+        dealId: thread.dealId,
+        productId: prodId,
+        productName: prodName
       })
     });
     if (res.ok) {
@@ -2235,13 +2299,16 @@ async function confirmBlindDealPayment() {
     }
   } catch {}
 
+  // Immediately remove the sold product from the marketplace once it has a buyer!
+  removeSoldProductFromMarket(prodId, prodName);
+
   thread.messages.push({
     author: 'KÝ QUỸ RAM (ESCROW)',
     role: 'system',
     time: getCurrentTimeStr(),
-    text: `💸 [ĐÃ NẠP KÝ QUỸ THÀNH CÔNG]: Người mua ẩn danh đã xác nhận thanh toán cho phiên [${thread.dealId}]. Sau khi bàn giao xong, nhấn "✅ Hoàn Tất Mua Hàng & Thanh Toán" để giải ngân và tự hủy đoạn chat này!`
+    text: `💸 [ĐÃ NẠP KÝ QUỸ & GỠ MẶT HÀNG KHỎI CHỢ]: Người mua ẩn danh đã thanh toán cho phiên [${thread.dealId}]. Mặt hàng "${prodName}" đã tự động biến mất khỏi gian hàng công khai! Nhấn "✅ Hoàn Tất Mua Hàng & Thanh Toán" để tự hủy đoạn chat này!`
   });
-  thread.lastMessage = 'Đã nạp ký quỹ Monero';
+  thread.lastMessage = 'Đã thanh toán & gỡ hàng khỏi chợ';
   thread.lastTime = getCurrentTimeStr();
 
   saveChatThreadsToStorage();
@@ -2252,17 +2319,19 @@ async function confirmBlindDealPayment() {
     try {
       bazaarSyncChannel.postMessage({
         type: 'DEAL_SYNC',
-        deal: updatedDeal || { dealId: thread.dealId, status: 'paid_escrow' }
+        deal: updatedDeal || { dealId: thread.dealId, productId: prodId, productName: prodName, status: 'paid_escrow' }
       });
     } catch {}
   }
 
-  showToast(`💸 Đã xác nhận thanh toán Ký quỹ cho [${thread.dealId}]! Hãy nhấn "Hoàn Tất Mua Hàng" để giải ngân và tự hủy.`, 'success');
+  showToast(`💸 Đã xác nhận người mua cho "${prodName}"! Mặt hàng đã tự động biến mất khỏi gian hàng.`, 'success');
 }
 
 async function completeDealAndAutoBurn() {
   const thread = getActiveThread();
   const targetDealId = thread?.dealId || activeAutoDeal?.dealId || 'DEAL-RAM';
+  const prodId = thread?.productId || activeAutoDeal?.productId || activeOrder?.product?.id || '';
+  const prodName = thread?.productName || activeAutoDeal?.productName || activeOrder?.product?.name || '';
 
   try {
     await bazaarApiFetch('/api/lexicon/bazaar-deals', {
@@ -2270,31 +2339,62 @@ async function completeDealAndAutoBurn() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'complete_and_burn',
-        dealId: targetDealId
+        dealId: targetDealId,
+        productId: prodId,
+        productName: prodName
       })
     });
   } catch {}
+
+  removeSoldProductFromMarket(prodId, prodName);
 
   if (bazaarSyncChannel) {
     try {
       bazaarSyncChannel.postMessage({
         type: 'DEAL_COMPLETED_BURN',
-        dealId: targetDealId
+        dealId: targetDealId,
+        productId: prodId,
+        productName: prodName
       });
     } catch {}
   }
 
-  executeLocalDealAutoBurn(targetDealId, false);
+  executeLocalDealAutoBurn(targetDealId, false, prodId, prodName);
 }
 
-function executeLocalDealAutoBurn(dealId, isRemoteTrigger = false) {
+function executeLocalDealAutoBurn(dealId, isRemoteTrigger = false, soldProductId = '', soldProductName = '') {
   const burnedCode = dealId || 'DEAL';
   lastBurnedDealId = burnedCode;
+
+  const targetThread = chatThreads.find(t => t.dealId === burnedCode);
+  const pId = soldProductId || targetThread?.productId || activeAutoDeal?.productId || activeOrder?.product?.id || '';
+  const pName = soldProductName || targetThread?.productName || activeAutoDeal?.productName || activeOrder?.product?.name || '';
+
+  if (pId || pName) {
+    removeSoldProductFromMarket(pId, pName);
+  }
+
+  activeAutoDeal = null;
+  activeOrder = null;
+  if (orderCountdownTimer) {
+    clearInterval(orderCountdownTimer);
+    orderCountdownTimer = null;
+  }
+
+  try {
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
+    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
+  } catch {}
+
+  const orderResultBox = document.getElementById('order-result-box');
+  if (orderResultBox) orderResultBox.style.display = 'none';
 
   // Remove the burned thread from Messenger threads
   chatThreads = chatThreads.filter(t => t.dealId !== burnedCode);
   if (chatThreads.length === 0) {
-    loadChatThreadsFromStorage();
+    inMemoryChatMessages = [];
   } else {
     activeThreadId = chatThreads[0].id;
   }
@@ -2312,7 +2412,7 @@ function executeLocalDealAutoBurn(dealId, isRemoteTrigger = false) {
 
   playNotificationChime();
   showToast(
-    `🔥 Hoàn tất mua hàng & thanh toán! Đoạn chat mã [${burnedCode}] đã TỰ ĐỘNG BIẾN MẤT khỏi RAM cả 2 bên!`,
+    `🔥 Đã hoàn tất mua hàng! Mặt hàng và toàn bộ đoạn chat [${burnedCode}] đã TỰ ĐỘNG BIẾN MẤT khỏi RAM cả 2 bên!`,
     'success'
   );
 }
@@ -2324,6 +2424,22 @@ async function pollBlindDealRelay() {
     });
     if (!res.ok) return;
     const data = await res.json();
+
+    if (data && Array.isArray(data.soldOrRevokedIds)) {
+      data.soldOrRevokedIds.forEach(soldId => {
+        if (soldId && !revokedProductIds.has(soldId)) {
+          removeSoldProductFromMarket(soldId);
+        }
+      });
+    }
+
+    if (data && data.lastBurnedDealId && data.lastBurnedDealId !== lastBurnedDealId) {
+      const hasThread = chatThreads.some(t => t.dealId === data.lastBurnedDealId);
+      if (hasThread || (activeAutoDeal && activeAutoDeal.dealId === data.lastBurnedDealId)) {
+        executeLocalDealAutoBurn(data.lastBurnedDealId, true, data.lastSoldProductId || '');
+      }
+    }
+
     if (data && Array.isArray(data.deals)) {
       data.deals.forEach(deal => {
         applyIncomingBlindDealState(deal, false);
@@ -2383,9 +2499,7 @@ function initEncryptedChat() {
 
   if (completeBurnBtn) {
     completeBurnBtn.addEventListener('click', () => {
-      if (confirm('Xác nhận hoàn tất giao dịch và thanh toán? Toàn bộ đoạn chat này sẽ bị xóa vĩnh viễn khỏi RAM của cả hai bên!')) {
-        completeDealAndAutoBurn();
-      }
+      completeDealAndAutoBurn();
     });
   }
 
@@ -2718,9 +2832,22 @@ function initOrderSystem() {
       displayOrderResult(activeOrder);
       updateRamMonitor();
 
-      // Automatically connect Buyer <-> Seller Deal Channel when Order is created
-      startAutoBlindDeal(product.name, product.id);
-      showToast('Khởi tạo đơn hàng ký quỹ & tự động kết nối kênh ẩn danh với Người bán thành công!', 'success');
+      // Automatically connect Buyer <-> Seller Deal Channel & remove bought item from public market
+      startAutoBlindDeal(product.name, product.id).then((deal) => {
+        bazaarApiFetch('/api/lexicon/bazaar-deals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'pay_escrow',
+            dealId: deal?.dealId || '',
+            orderId,
+            productId: product.id,
+            productName: product.name
+          })
+        }).catch(() => {});
+      });
+      removeSoldProductFromMarket(product.id, product.name);
+      showToast(`Đã mua "${product.name}"! Mặt hàng đã tự động biến mất khỏi chợ & kênh chat ẩn danh đã kết nối!`, 'success');
     });
   }
 
