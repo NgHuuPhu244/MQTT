@@ -73,6 +73,352 @@ const inMemoryStore = new Map();
 let currentTotalRAMBytes = 0;
 
 /**
+ * In-Memory Bazaar Products Registry (RAM-Only, Zero-Log)
+ * Allows distributed sellers and buyers to list, bid, and buy without disk writes.
+ */
+const INITIAL_BAZAAR_PRODUCTS = [
+  {
+    id: 'auction-chip-07',
+    name: 'Lô 10 Chip Mật Mã HSM Air-Gapped EAL6+ Đấu Giá Kín',
+    category: 'hardware',
+    badge: 'Đấu Giá & Mua Ngay',
+    icon: '🔨',
+    securityLevel: 'Cấp 5 • Silent Bid',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.50,
+    currentBidXMR: 0.85,
+    buyNowPrice: 1.40,
+    minBidIncrement: 0,
+    bidCount: 4,
+    highestBidder: 'Ghost-9A4F',
+    bids: [
+      { bidder: 'Ghost-9A4F', amount: 0.85, currency: 'XMR', time: '2 phút trước' },
+      { bidder: 'Ghost-1B2C', amount: 0.80, currency: 'XMR', time: '8 phút trước' },
+      { bidder: 'Ghost-5E3D', amount: 0.70, currency: 'XMR', time: '15 phút trước' },
+      { bidder: 'Ghost-7A11', amount: 0.50, currency: 'XMR', time: '28 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (5400 * 1000),
+    priceXMR: '0.85 XMR',
+    rawPriceXMR: 0.85,
+    approxUSD: '~$140 USD',
+    stock: '1 lô duy nhất',
+    desc: 'Lô linh kiện phần cứng chip xử lý mật mã học độc lập EAL6+, chưa từng kết nối mạng, mở đấu giá tự do hoặc mua đứt ngay.',
+    specs: {
+      'Hình thức': 'Đấu giá tự do & Mua đứt 2 chiều',
+      'Bước giá': 'Tự do không giới hạn',
+      'Bàn giao': 'Mã Drop tự hủy hoặc Ship ẩn danh'
+    }
+  },
+  {
+    id: 'lux-watch-08',
+    name: 'Đồng Hồ Cơ Patek Philippe Sưu Tầm & Vàng Khối 24K',
+    category: 'physical',
+    badge: 'Hàng Vật Lý',
+    icon: '⌚',
+    securityLevel: 'Escrow • Vật phẩm thực',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 12.00,
+    currentBidXMR: 14.50,
+    buyNowPrice: 18.00,
+    minBidIncrement: 0,
+    bidCount: 6,
+    highestBidder: 'Ghost-77FE',
+    bids: [
+      { bidder: 'Ghost-77FE', amount: 14.50, currency: 'XMR', time: '5 phút trước' },
+      { bidder: 'Ghost-3A91', amount: 13.20, currency: 'XMR', time: '19 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (10800 * 1000),
+    priceXMR: '14.50 XMR',
+    rawPriceXMR: 14.50,
+    approxUSD: '~$2,390 USD',
+    stock: '1 chiếc nguyên hộp',
+    desc: 'Vật phẩm sưu tầm thực tế ngoài đời thực, đầy đủ chứng nhận gốc, giao dịch qua hợp đồng ký quỹ ẩn danh và giao nhận Dead-Drop bảo mật.',
+    specs: {
+      'Danh mục': 'Hàng thực tế • Xa xỉ phẩm',
+      'Chế độ': 'Trả giá tự do / Mua ngay',
+      'Bàn giao': 'Hòm thư Dead-Drop / Bưu chính kín'
+    }
+  },
+  {
+    id: 'dig-domain-09',
+    name: 'Tên Miền VIP 2 Ký Tự & Kho Tài Sản Số Độc Quyền',
+    category: 'digital',
+    badge: 'Tài Sản Số',
+    icon: '💎',
+    securityLevel: 'Instant • Transfer',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 2.00,
+    currentBidXMR: 2.40,
+    buyNowPrice: 3.50,
+    minBidIncrement: 0,
+    bidCount: 3,
+    highestBidder: 'Ghost-3C1A',
+    bids: [
+      { bidder: 'Ghost-3C1A', amount: 2.40, currency: 'XMR', time: '11 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (7200 * 1000),
+    priceXMR: '2.40 XMR',
+    rawPriceXMR: 2.40,
+    approxUSD: '~$395 USD',
+    stock: 'Chuyển giao ngay',
+    desc: 'Tài sản kỹ thuật số, tên miền ngắn quý hiếm kèm mã EPP Auth-Code chuyển nhượng quyền sở hữu tức thì qua kênh mã hóa một lần.',
+    specs: {
+      'Loại tài sản': 'Tên miền & Bản quyền số',
+      'Đấu giá': 'Mở thầu tự do 24/7',
+      'Bàn giao': 'Mã EPP / Khoá chuyển nhượng RAM'
+    }
+  },
+  {
+    id: 'hw-hsm-01',
+    name: 'Khóa Bảo Mật Air-Gapped HSM Token v4',
+    category: 'hardware',
+    badge: 'Phần Cứng',
+    icon: '🔑',
+    securityLevel: 'Cấp 5 • FIPS 140-3',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.35,
+    currentBidXMR: 0.45,
+    buyNowPrice: 0.45,
+    minBidIncrement: 0,
+    bidCount: 2,
+    highestBidder: 'Ghost-4D88',
+    bids: [
+      { bidder: 'Ghost-4D88', amount: 0.45, currency: 'XMR', time: '14 phút trước' }
+    ],
+    auctionEndTime: Date.now() + (14400 * 1000),
+    priceXMR: '0.45 XMR',
+    rawPriceXMR: 0.45,
+    approxUSD: '~$75 USD',
+    stock: '5 chiếc',
+    desc: 'Khóa vật lý USB chứa chip bảo mật chuyên dụng EAL6+, cách ly hoàn toàn (Air-gapped) khỏi mạng Internet. Tự hủy firmware khi phát hiện can thiệp vật lý.',
+    specs: {
+      'Tiêu chuẩn': 'FIPS 140-3 Level 4 / CC EAL6+',
+      'Bảo vệ': 'Chống trích xuất vi mạch (Anti-DPA)',
+      'Bàn giao': 'Bưu chính ẩn danh / Drop bí mật'
+    }
+  },
+  {
+    id: 'net-mesh-02',
+    name: 'Cấu Hình Ephemeral Multi-Hop Mesh (RAM-Only)',
+    category: 'network',
+    badge: 'Mạng Lưới',
+    icon: '🛰️',
+    securityLevel: 'Cấp 5 • 5-Hop Obfs4',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.10,
+    currentBidXMR: 0.15,
+    buyNowPrice: 0.15,
+    minBidIncrement: 0,
+    bidCount: 1,
+    highestBidder: 'Ghost-8E02',
+    bids: [],
+    auctionEndTime: Date.now() + (18000 * 1000),
+    priceXMR: '0.15 XMR',
+    rawPriceXMR: 0.15,
+    approxUSD: '~$25 USD',
+    stock: 'Sẵn hàng',
+    desc: 'Gói cấu hình định tuyến 5 lớp ngụy trang qua giao thức Obfs4 + WireGuard kết nối qua các cụm máy chủ RAM-only không lưu nhật ký truy cập (Zero-Log).',
+    specs: {
+      'Giao thức': 'WireGuard Obfuscated • Tor Over VPN',
+      'Định tuyến': '5 bước nhảy (Multi-Hop) ngẫu nhiên',
+      'Bàn giao': 'Mã Drop tự hủy sau 1 lần đọc'
+    }
+  },
+  {
+    id: 'sec-ssl-03',
+    name: 'Chứng Chỉ SSL Bulletproof & DNS Chống Giám Sát',
+    category: 'network',
+    badge: 'Mạng Lưới',
+    icon: '🛡️',
+    securityLevel: 'Cấp 4 • ECH DNSSEC',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.15,
+    currentBidXMR: 0.20,
+    buyNowPrice: 0.20,
+    minBidIncrement: 0,
+    bidCount: 1,
+    highestBidder: 'Ghost-2A19',
+    bids: [],
+    auctionEndTime: Date.now() + (21600 * 1000),
+    priceXMR: '0.20 XMR',
+    rawPriceXMR: 0.20,
+    approxUSD: '~$35 USD',
+    stock: 'Sẵn hàng',
+    desc: 'Cụm tên miền và chứng chỉ wildcard SSL phát hành nặc danh, định tuyến qua hệ thống Anycast DNS chống chặn ISP và loại bỏ rò rỉ SNI (ESNI/ECH).',
+    specs: {
+      'Công nghệ': 'Encrypted Client Hello (ECH) • DNSSEC',
+      'Định danh': 'Ẩn hoàn toàn thông tin Whois / Khách hàng',
+      'Bàn giao': 'Gói chứng chỉ nén kèm Private Key PGP'
+    }
+  },
+  {
+    id: 'doc-audit-04',
+    name: 'Báo Cáo Nghiên Cứu Lỗ Hổng Zero-Day White-Hat Audit',
+    category: 'audit',
+    badge: 'Audit & PoC',
+    icon: '📑',
+    securityLevel: 'Cấp 5 • Top-Secret',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.60,
+    currentBidXMR: 0.85,
+    buyNowPrice: 0.85,
+    minBidIncrement: 0,
+    bidCount: 3,
+    highestBidder: 'Ghost-5B71',
+    bids: [],
+    auctionEndTime: Date.now() + (9000 * 1000),
+    priceXMR: '0.85 XMR',
+    rawPriceXMR: 0.85,
+    approxUSD: '~$140 USD',
+    stock: '2 bản đệm',
+    desc: 'Tài liệu phân tích kỹ thuật độc quyền về kiến trúc chống nghe lén dữ liệu qua kênh bên (Side-channel attacks) và phương pháp vá lỗi cho giao thức mật mã đối xứng.',
+    specs: {
+      'Định dạng': 'PDF mã hóa AES-256-GCM + Khóa giải mật',
+      'Nội dung': 'Whitepaper 48 trang + Script kiểm thử PoC',
+      'Bàn giao': 'Mã Drop RAM-only'
+    }
+  },
+  {
+    id: 'os-amnesic-05',
+    name: 'Tails/Qubes Amnesic USB OS Bootable Image',
+    category: 'crypto',
+    badge: 'Hệ Điều Hành',
+    icon: '💾',
+    securityLevel: 'Cấp 5 • Zero-Trace',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.20,
+    currentBidXMR: 0.30,
+    buyNowPrice: 0.30,
+    minBidIncrement: 0,
+    bidCount: 2,
+    highestBidder: 'Ghost-6F04',
+    bids: [],
+    auctionEndTime: Date.now() + (12600 * 1000),
+    priceXMR: '0.30 XMR',
+    rawPriceXMR: 0.30,
+    approxUSD: '~$50 USD',
+    stock: 'Sẵn hàng',
+    desc: 'Bản phân phối Linux bảo mật tối đa được tùy biến sâu. Tự động xóa sạch RAM khi tắt máy, định tuyến 100% lưu lượng qua Tor, vô hiệu hóa hoàn toàn ghi đĩa.',
+    specs: {
+      'Bảo mật': 'Amnesic RAM-Only • Chống Forensic',
+      'Checksum': 'SHA-256 xác thực kèm chữ ký PGP',
+      'Bàn giao': 'Link tải tốc độ cao kèm khóa token'
+    }
+  },
+  {
+    id: 'key-pgp-06',
+    name: 'Cặp Khóa PGP 4096-bit Sinh Trong Lồng Faraday',
+    category: 'crypto',
+    badge: 'Mật Mã Học',
+    icon: '🗝️',
+    securityLevel: 'Cấp 5 • Faraday Key',
+    currency: 'XMR',
+    isAuction: true,
+    allowBid: true,
+    allowBuyNow: true,
+    startingBidXMR: 0.05,
+    currentBidXMR: 0.10,
+    buyNowPrice: 0.10,
+    minBidIncrement: 0,
+    bidCount: 1,
+    highestBidder: 'Ghost-0D33',
+    bids: [],
+    auctionEndTime: Date.now() + (16200 * 1000),
+    priceXMR: '0.10 XMR',
+    rawPriceXMR: 0.10,
+    approxUSD: '~$18 USD',
+    stock: '10 cặp khóa',
+    desc: 'Cặp khóa riêng tư RSA-4096 / Ed25519 được sinh từ nguồn entropy phần cứng trong phòng cách ly sóng điện từ (Faraday cage), chưa từng chạm mạng Internet.',
+    specs: {
+      'Độ dài khóa': 'RSA 4096-bit + Ed25519 Subkeys',
+      'Bảo mật': 'Zero Internet Exposure',
+      'Bàn giao': 'Mã hóa gửi qua kênh drop dùng 1 lần'
+    }
+  }
+];
+
+let inMemoryBazaarProducts = JSON.parse(JSON.stringify(INITIAL_BAZAAR_PRODUCTS));
+
+export function getBazaarItems() {
+  return inMemoryBazaarProducts;
+}
+
+export function addBazaarItem(item) {
+  if (!item || !item.name) {
+    throw new Error('Invalid product item');
+  }
+  inMemoryBazaarProducts.unshift(item);
+  if (inMemoryBazaarProducts.length > 200) {
+    inMemoryBazaarProducts.pop();
+  }
+  return item;
+}
+
+export function bidBazaarItem(id, { bidder, amount, currency = 'XMR' }) {
+  const prod = inMemoryBazaarProducts.find(p => p.id === id);
+  if (!prod) return null;
+  const numAmount = Number(amount);
+  if (isNaN(numAmount) || numAmount <= 0) return null;
+
+  prod.isAuction = true;
+  prod.bidCount = (prod.bidCount || 0) + 1;
+  const current = Number(prod.currentBidXMR || prod.startingBidXMR || prod.rawPriceXMR || 0);
+
+  if (numAmount >= current) {
+    prod.currentBidXMR = numAmount;
+    prod.rawPriceXMR = numAmount;
+    prod.highestBidder = bidder || 'Ghost-Anonymous';
+    prod.priceXMR = `${numAmount >= 100 ? numAmount.toLocaleString('en-US', { maximumFractionDigits: 2 }) : numAmount.toFixed(2)} ${currency}`;
+  }
+
+  if (!prod.bids) prod.bids = [];
+  prod.bids.unshift({
+    bidder: bidder || 'Ghost-Anonymous',
+    amount: numAmount,
+    currency,
+    time: 'Vừa xong',
+    timestamp: Date.now()
+  });
+
+  return prod;
+}
+
+export function revokeBazaarItem(id, vendorKillToken) {
+  const idx = inMemoryBazaarProducts.findIndex(p => p.id === id);
+  if (idx === -1) return { found: false };
+  const prod = inMemoryBazaarProducts[idx];
+  if (prod.vendorKillToken && prod.vendorKillToken !== vendorKillToken) {
+    return { found: true, authorized: false };
+  }
+  inMemoryBazaarProducts.splice(idx, 1);
+  return { found: true, authorized: true, product: prod };
+}
+
+/**
  * Securely overwrites Buffer memory with zeros before release.
  * @param {Buffer} buf 
  */
@@ -642,7 +988,141 @@ export function createServer() {
       }
 
       // -------------------------------------------------------------
-      // 4. STATIC DECOY WEB APP: Multilingual Dictionary UI
+      // 4. BAZAAR REGISTRY API: Synchronized Ephemeral RAM Marketplace
+      // -------------------------------------------------------------
+
+      // LIST ITEMS: GET /api/lexicon/bazaar-items or /api/bazaar/items
+      if ((pathname === '/api/lexicon/bazaar-items' || pathname === '/api/bazaar/items') && method === 'GET') {
+        const items = getBazaarItems();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', count: items.length, data: items }));
+        return;
+      }
+
+      // PUBLISH NEW ITEM: POST /api/lexicon/bazaar-items or /api/bazaar/items
+      if ((pathname === '/api/lexicon/bazaar-items' || pathname === '/api/bazaar/items') && method === 'POST') {
+        const rawBody = await readRequestBody(req, 128 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+          return;
+        }
+
+        if (!body.name || typeof body.name !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing product name' }));
+          return;
+        }
+
+        const randHex = crypto.randomBytes(4).toString('hex').toUpperCase();
+        const id = body.id || `usr-${body.category || 'item'}-${randHex}`;
+        const killTokenHex = crypto.randomBytes(6).toString('hex').toUpperCase();
+        const vendorKillToken = body.vendorKillToken || `KILL-${killTokenHex}`;
+
+        const newProduct = {
+          id,
+          name: String(body.name).trim(),
+          category: body.category || 'physical',
+          badge: body.badge || 'Đấu Giá & Mua Ngay',
+          icon: body.icon || '💎',
+          securityLevel: body.securityLevel || 'Escrow 2 Chiều • Tự Do',
+          currency: body.currency || 'XMR',
+          isAuction: body.isAuction !== false,
+          allowBid: body.allowBid !== false,
+          allowBuyNow: body.allowBuyNow !== false,
+          startingBidXMR: Number(body.startingBidXMR || body.priceXMR || 0.1),
+          currentBidXMR: Number(body.currentBidXMR || body.startingBidXMR || body.priceXMR || 0.1),
+          buyNowPrice: Number(body.buyNowPrice || body.priceXMR || 1.0),
+          minBidIncrement: Number(body.minBidIncrement || 0),
+          bidCount: Number(body.bidCount || 0),
+          highestBidder: body.highestBidder || 'Mở tự do',
+          bids: Array.isArray(body.bids) ? body.bids : [],
+          auctionEndTime: body.auctionEndTime !== undefined ? Number(body.auctionEndTime) : 0,
+          priceXMR: body.priceXMR || `${Number(body.currentBidXMR || body.startingBidXMR || 0.1).toFixed(2)} ${body.currency || 'XMR'}`,
+          rawPriceXMR: Number(body.rawPriceXMR || body.currentBidXMR || 0.1),
+          approxUSD: body.approxUSD || '~$0 USD',
+          stock: body.stock || 'Sẵn sàng giao ngay',
+          desc: body.desc || '',
+          specs: typeof body.specs === 'object' && body.specs !== null ? body.specs : {},
+          vendorKillToken,
+          isUserCreated: true,
+          createdAt: Date.now()
+        };
+
+        addBazaarItem(newProduct);
+
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', product: newProduct }));
+        return;
+      }
+
+      // SUBMIT BID: POST /api/lexicon/bazaar-items/:id/bid or /api/bazaar/items/:id/bid
+      const bidMatch = pathname.match(/^\/(?:api\/lexicon\/bazaar-items|api\/bazaar\/items)\/([^/]+)\/bid$/);
+      if (bidMatch && method === 'POST') {
+        const itemId = decodeURIComponent(bidMatch[1]);
+        const rawBody = await readRequestBody(req, 16 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid bid payload' }));
+          return;
+        }
+
+        const updated = bidBazaarItem(itemId, {
+          bidder: body.bidder,
+          amount: body.amount,
+          currency: body.currency
+        });
+
+        if (!updated) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Item not found or invalid bid amount' }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', product: updated }));
+        return;
+      }
+
+      // REVOKE ITEM: POST /api/lexicon/bazaar-items/:id/revoke or /api/bazaar/items/:id/revoke
+      const revokeMatch = pathname.match(/^\/(?:api\/lexicon\/bazaar-items|api\/bazaar\/items)\/([^/]+)\/revoke$/);
+      if (revokeMatch && method === 'POST') {
+        const itemId = decodeURIComponent(revokeMatch[1]);
+        const rawBody = await readRequestBody(req, 16 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid revoke payload' }));
+          return;
+        }
+
+        const result = revokeBazaarItem(itemId, body.vendorKillToken);
+        if (!result.found) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Item not found' }));
+          return;
+        }
+        if (!result.authorized) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized: Invalid Vendor Kill Token' }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', message: 'Item revoked successfully from RAM' }));
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // 5. STATIC DECOY WEB APP: Multilingual Dictionary UI
       // -------------------------------------------------------------
       if (method === 'GET' || method === 'HEAD') {
         serveStaticFile(pathname, res);

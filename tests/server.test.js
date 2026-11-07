@@ -156,6 +156,107 @@ describe('Server RAM-Only & Ephemeral Drop Tests', () => {
     const list = JSON.parse(res.body);
     assert.deepStrictEqual(list, []);
   });
+
+  it('should list bazaar items from volatile RAM', async () => {
+    const res = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items`, {
+      method: 'GET'
+    });
+
+    assert.strictEqual(res.statusCode, 200);
+    const json = JSON.parse(res.body);
+    assert.strictEqual(json.status, 'success');
+    assert.ok(Array.isArray(json.data));
+    assert.ok(json.data.length >= 7);
+  });
+
+  it('should publish, bid on, and revoke an item via Bazaar REST API', async () => {
+    // 1. Publish new item
+    const postPayload = JSON.stringify({
+      name: 'Thiết Bị Cổng Node 01 RAM Test',
+      category: 'hardware',
+      startingBidXMR: 1.20,
+      buyNowPrice: 2.50,
+      currency: 'XMR',
+      stock: '2 chiếc'
+    });
+
+    const postRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postPayload)
+      },
+      body: postPayload
+    });
+
+    assert.strictEqual(postRes.statusCode, 201);
+    const postData = JSON.parse(postRes.body);
+    assert.strictEqual(postData.status, 'success');
+    assert.ok(postData.product.id);
+    assert.ok(postData.product.vendorKillToken);
+
+    const productId = postData.product.id;
+    const killToken = postData.product.vendorKillToken;
+
+    // 2. Submit bid on the published item
+    const bidPayload = JSON.stringify({
+      bidder: 'Ghost-TESTER',
+      amount: 1.80,
+      currency: 'XMR'
+    });
+
+    const bidRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/bid`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(bidPayload)
+      },
+      body: bidPayload
+    });
+
+    assert.strictEqual(bidRes.statusCode, 200);
+    const bidData = JSON.parse(bidRes.body);
+    assert.strictEqual(bidData.status, 'success');
+    assert.strictEqual(bidData.product.highestBidder, 'Ghost-TESTER');
+    assert.strictEqual(bidData.product.currentBidXMR, 1.80);
+    assert.ok(bidData.product.bids.length >= 1);
+
+    // 3. Revoke with invalid token should fail
+    const badRevokePayload = JSON.stringify({
+      vendorKillToken: 'WRONG-TOKEN'
+    });
+    const badRevokeRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/revoke`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(badRevokePayload)
+      },
+      body: badRevokePayload
+    });
+    assert.strictEqual(badRevokeRes.statusCode, 403);
+
+    // 4. Revoke with valid killToken should succeed
+    const okRevokePayload = JSON.stringify({
+      vendorKillToken: killToken
+    });
+    const okRevokeRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/revoke`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(okRevokePayload)
+      },
+      body: okRevokePayload
+    });
+    assert.strictEqual(okRevokeRes.statusCode, 200);
+
+    // 5. Verify item no longer exists in RAM list
+    const checkRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-items`, {
+      method: 'GET'
+    });
+    const checkData = JSON.parse(checkRes.body);
+    const found = checkData.data.find(p => p.id === productId);
+    assert.strictEqual(found, undefined);
+  });
 });
 
 /**
