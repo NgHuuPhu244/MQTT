@@ -419,7 +419,9 @@ export function revokeBazaarItem(id, vendorKillToken) {
 }
 
 // Volatile In-Memory Blind Deal & Auto-Chat Relay Session (Zero-Log IP & Blinded IDs)
+const inMemoryActiveDeals = new Map();
 let inMemoryActiveDeal = null;
+let lastBurnedDealId = null;
 let dealBurnTimeout = null;
 function initDealStub() {
 }
@@ -1138,10 +1140,26 @@ export function createServer() {
       }
 
       // -------------------------------------------------------------
-      // BLIND DEAL & EPHEMERAL AUTO-CHAT RELAY: GET / POST /api/lexicon/bazaar-deals
+      // MULTI-BUYER BLIND DEAL & EPHEMERAL RELAY: GET / POST /api/lexicon/bazaar-deals
       if ((pathname === '/api/lexicon/bazaar-deals' || pathname === '/api/bazaar/deals') && method === 'GET') {
+        const queryDealId = parsedUrl.query?.dealId;
+        const activeList = Array.from(inMemoryActiveDeals.values()).filter(d => d.status !== 'completed_burned');
+        
+        let targetDeal = null;
+        if (queryDealId && inMemoryActiveDeals.has(queryDealId)) {
+          const d = inMemoryActiveDeals.get(queryDealId);
+          if (d.status !== 'completed_burned') targetDeal = d;
+        } else if (inMemoryActiveDeal && inMemoryActiveDeal.status !== 'completed_burned') {
+          targetDeal = inMemoryActiveDeal;
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+        res.end(JSON.stringify({
+          status: 'success',
+          deal: targetDeal,
+          deals: activeList,
+          lastBurnedDealId
+        }));
         return;
       }
 
@@ -1159,27 +1177,22 @@ export function createServer() {
         const action = body.action || 'init';
 
         if (action === 'init') {
-          if (dealBurnTimeout) {
-            clearTimeout(dealBurnTimeout);
-            dealBurnTimeout = null;
-          }
           const randCode = crypto.randomBytes(2).toString('hex').toUpperCase();
           const dealId = body.dealId || `DEAL-${randCode}`;
           const buyerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
           const sellerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
 
-          // If same product deal is already active and not burned, reuse it so Buyer & Seller join seamlessly
-          if (
-            inMemoryActiveDeal &&
-            inMemoryActiveDeal.status !== 'completed_burned' &&
-            inMemoryActiveDeal.productId === body.productId
-          ) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
-            return;
+          // Reuse active deal if exact same dealId provided
+          if (inMemoryActiveDeals.has(dealId)) {
+            const existing = inMemoryActiveDeals.get(dealId);
+            if (existing && existing.status !== 'completed_burned') {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ status: 'success', deal: existing, deals: Array.from(inMemoryActiveDeals.values()) }));
+              return;
+            }
           }
 
-          inMemoryActiveDeal = {
+          const newDeal = {
             dealId,
             productId: body.productId || 'general',
             productName: body.productName || 'Giao dịch Ẩn danh',
@@ -1201,18 +1214,25 @@ export function createServer() {
             ]
           };
 
+          inMemoryActiveDeals.set(dealId, newDeal);
+          inMemoryActiveDeal = newDeal;
+
           res.writeHead(201, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          res.end(JSON.stringify({ status: 'success', deal: newDeal, deals: Array.from(inMemoryActiveDeals.values()) }));
           return;
         }
 
         if (action === 'message') {
-          if (!inMemoryActiveDeal || inMemoryActiveDeal.status === 'completed_burned') {
+          const reqDealId = body.dealId || inMemoryActiveDeal?.dealId;
+          let deal = reqDealId ? inMemoryActiveDeals.get(reqDealId) : inMemoryActiveDeal;
+
+          if (!deal || deal.status === 'completed_burned') {
             const randCode = crypto.randomBytes(2).toString('hex').toUpperCase();
             const buyerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
             const sellerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
-            inMemoryActiveDeal = {
-              dealId: body.dealId || `DEAL-${randCode}`,
+            const dealId = reqDealId || `DEAL-${randCode}`;
+            deal = {
+              dealId,
               productId: body.productId || 'general',
               productName: body.productName || 'Thương lượng Ẩn danh',
               priceXMR: body.priceXMR || '',
@@ -1224,15 +1244,21 @@ export function createServer() {
               updatedAt: Date.now(),
               messages: []
             };
+            inMemoryActiveDeals.set(dealId, deal);
+            inMemoryActiveDeal = deal;
           }
 
-          const isInitiator = body.senderAlias && body.senderAlias === inMemoryActiveDeal.initiatorAlias;
-          const blindDisplay = isInitiator
-            ? inMemoryActiveDeal.buyerBlindId
-            : inMemoryActiveDeal.sellerBlindId;
+          const senderRole = body.senderRole === 'seller'
+            ? 'seller'
+            : (body.senderRole === 'buyer' ? 'buyer' : ((body.senderAlias && body.senderAlias === deal.initiatorAlias) ? 'buyer' : 'seller'));
+          const blindDisplay = senderRole === 'seller'
+            ? deal.sellerBlindId
+            : deal.buyerBlindId;
 
           const newMsg = {
             id: body.id || `msg-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+            role: senderRole,
+            senderBlindId: blindDisplay,
             senderAlias: body.senderAlias || '',
             blindAuthor: blindDisplay,
             text: String(body.text || '').trim().slice(0, 2000),
@@ -1241,24 +1267,27 @@ export function createServer() {
           };
 
           if (newMsg.text) {
-            inMemoryActiveDeal.messages.push(newMsg);
-            if (inMemoryActiveDeal.messages.length > 100) {
-              inMemoryActiveDeal.messages.shift();
+            deal.messages.push(newMsg);
+            if (deal.messages.length > 100) {
+              deal.messages.shift();
             }
-            inMemoryActiveDeal.updatedAt = Date.now();
+            deal.updatedAt = Date.now();
           }
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          res.end(JSON.stringify({ status: 'success', deal, deals: Array.from(inMemoryActiveDeals.values()) }));
           return;
         }
 
         if (action === 'pay_escrow') {
-          if (inMemoryActiveDeal && inMemoryActiveDeal.status !== 'completed_burned') {
-            inMemoryActiveDeal.status = 'paid_escrow';
-            inMemoryActiveDeal.orderId = body.orderId || inMemoryActiveDeal.orderId || '';
-            inMemoryActiveDeal.updatedAt = Date.now();
-            inMemoryActiveDeal.messages.push({
+          const reqDealId = body.dealId || inMemoryActiveDeal?.dealId;
+          const deal = reqDealId ? inMemoryActiveDeals.get(reqDealId) : inMemoryActiveDeal;
+
+          if (deal && deal.status !== 'completed_burned') {
+            deal.status = 'paid_escrow';
+            deal.orderId = body.orderId || deal.orderId || '';
+            deal.updatedAt = Date.now();
+            deal.messages.push({
               id: `sys-pay-${Date.now()}`,
               role: 'system',
               author: 'KÝ QUỸ RAM (ESCROW)',
@@ -1267,27 +1296,31 @@ export function createServer() {
             });
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          res.end(JSON.stringify({ status: 'success', deal, deals: Array.from(inMemoryActiveDeals.values()) }));
           return;
         }
 
         if (action === 'complete_and_burn') {
-          const burnedDealId = inMemoryActiveDeal ? inMemoryActiveDeal.dealId : (body.dealId || 'DEAL');
-          inMemoryActiveDeal = {
+          const burnedDealId = body.dealId || (inMemoryActiveDeal ? inMemoryActiveDeal.dealId : 'DEAL');
+          lastBurnedDealId = burnedDealId;
+          const burnedDeal = {
             dealId: burnedDealId,
             status: 'completed_burned',
             burnedAt: Date.now(),
             messages: []
           };
+          inMemoryActiveDeals.set(burnedDealId, burnedDeal);
+          if (inMemoryActiveDeal && inMemoryActiveDeal.dealId === burnedDealId) {
+            inMemoryActiveDeal = null;
+          }
           if (dealBurnTimeout) clearTimeout(dealBurnTimeout);
           dealBurnTimeout = setTimeout(() => {
-            if (inMemoryActiveDeal && inMemoryActiveDeal.status === 'completed_burned') {
-              inMemoryActiveDeal = null;
-            }
+            inMemoryActiveDeals.delete(burnedDealId);
           }, 5000);
+          if (dealBurnTimeout.unref) dealBurnTimeout.unref();
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          res.end(JSON.stringify({ status: 'success', deal: null, burnedDealId, lastBurnedDealId }));
           return;
         }
       }

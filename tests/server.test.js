@@ -257,6 +257,74 @@ describe('Server RAM-Only & Ephemeral Drop Tests', () => {
     const found = checkData.data.find(p => p.id === productId);
     assert.strictEqual(found, undefined);
   });
+
+  it('should auto-generate blind deal code, relay blinded messages, confirm escrow, and auto-burn chat on completion', async () => {
+    // 1. Buyer clicks chat -> auto-init deal
+    const initPayload = JSON.stringify({
+      action: 'init',
+      productId: 'hw-hsm-01',
+      productName: 'Khóa Bảo Mật Air-Gapped HSM Token v4'
+    });
+    const initRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-deals`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(initPayload)
+      },
+      body: initPayload
+    });
+    assert.strictEqual(initRes.statusCode, 201);
+    const initData = JSON.parse(initRes.body);
+    assert.ok(initData.deal.dealId.startsWith('DEAL-'));
+    assert.ok(initData.deal.buyerBlindId.includes('[IP & ID: ĐÃ ẨN]'));
+    assert.ok(initData.deal.sellerBlindId.includes('[IP & ID: ĐÃ ẨN]'));
+
+    const dealId = initData.deal.dealId;
+
+    // 2. Buyer sends message -> Seller receives with blinded identity
+    const msgPayload = JSON.stringify({
+      action: 'message',
+      dealId,
+      senderRole: 'buyer',
+      text: 'Chào shop, tôi muốn mua sản phẩm này qua ký quỹ!'
+    });
+    const msgRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-deals`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(msgPayload)
+      },
+      body: msgPayload
+    });
+    assert.strictEqual(msgRes.statusCode, 200);
+    const msgData = JSON.parse(msgRes.body);
+    assert.strictEqual(msgData.deal.messages.length, 2);
+
+    // 3. Complete purchase & payment -> auto-burn deal & wipe chat from RAM
+    const burnPayload = JSON.stringify({
+      action: 'complete_and_burn',
+      dealId
+    });
+    const burnRes = await makeRequest(`${baseUrl}/api/lexicon/bazaar-deals`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(burnPayload)
+      },
+      body: burnPayload
+    });
+    assert.strictEqual(burnRes.statusCode, 200);
+    const burnData = JSON.parse(burnRes.body);
+    assert.strictEqual(burnData.burnedDealId, dealId);
+
+    // 4. Subsequent GET returns null deal (completely vanished from RAM)
+    const getAfterBurn = await makeRequest(`${baseUrl}/api/lexicon/bazaar-deals`, {
+      method: 'GET'
+    });
+    const afterData = JSON.parse(getAfterBurn.body);
+    assert.strictEqual(afterData.deal, null);
+    assert.strictEqual(afterData.lastBurnedDealId, dealId);
+  });
 });
 
 /**

@@ -402,6 +402,7 @@ const STORAGE_KEYS = {
   REVOKED_IDS: 'ghost_revoked_product_ids_v1',
   MY_LISTINGS: 'ghost_my_vendor_listings',
   ACTIVE_ORDER: 'ghost_active_order_v1',
+  ACTIVE_DEAL: 'ghost_active_blind_deal_v1',
   CHAT_MESSAGES: 'ghost_chat_messages_v1',
   ACTIVE_TAB: 'ghost_active_tab_v1',
   SESSION_SECONDS: 'ghost_session_seconds_v1'
@@ -409,6 +410,46 @@ const STORAGE_KEYS = {
 
 let revokedProductIds = new Set();
 let isPurgingNow = false;
+let activeAutoDeal = null;
+let lastBurnedDealId = null;
+
+/**
+ * Multi-origin resilient API fetch helper:
+ * Tries current origin first, then automatically falls back to localhost:3000 / 127.0.0.1:3000
+ * so multi-browser tests (e.g. Chrome + Opera GX or Live Server port) always reach the RAM server.
+ */
+async function bazaarApiFetch(path, options = {}) {
+  const candidates = [path];
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    const port = window.location.port;
+    if (port !== '3000') {
+      candidates.push(`http://localhost:3000${path}`);
+      candidates.push(`http://127.0.0.1:3000${path}`);
+    } else if (host === 'localhost') {
+      candidates.push(`http://127.0.0.1:3000${path}`);
+    } else if (host === '127.0.0.1') {
+      candidates.push(`http://localhost:3000${path}`);
+    }
+  }
+
+  let lastErr = null;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        ...options,
+        cache: 'no-store'
+      });
+      if (res.ok || res.status === 400 || res.status === 403) {
+        return res;
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Network unreachable');
+}
 
 function loadRevokedIdsFromStorage() {
   try {
@@ -804,9 +845,8 @@ const bazaarSyncChannel = (typeof window !== 'undefined' && 'BroadcastChannel' i
 async function fetchBazaarProducts(silent = true) {
   loadMarketProductsFromStorage();
   try {
-    const res = await fetch('/api/lexicon/bazaar-items', {
-      headers: { 'Accept': 'application/json' },
-      cache: 'no-store'
+    const res = await bazaarApiFetch('/api/lexicon/bazaar-items', {
+      headers: { 'Accept': 'application/json' }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
@@ -819,7 +859,7 @@ async function fetchBazaarProducts(silent = true) {
         p => p && p.isUserCreated && !serverIds.has(p.id) && !revokedProductIds.has(p.id)
       );
       localOnlyUserItems.forEach(item => {
-        fetch('/api/lexicon/bazaar-items', {
+        bazaarApiFetch('/api/lexicon/bazaar-items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(item)
@@ -879,6 +919,21 @@ function initMarketCatalog() {
       filterAndRenderProducts();
       renderMyListings();
       updateRamMonitor();
+    } else if (e.key === STORAGE_KEYS.ACTIVE_DEAL) {
+      if (!e.newValue) {
+        if (activeAutoDeal) {
+          executeLocalDealAutoBurn(activeAutoDeal.dealId, true);
+        }
+      } else {
+        try {
+          const dealObj = JSON.parse(e.newValue);
+          if (dealObj && dealObj.status === 'completed_burned') {
+            executeLocalDealAutoBurn(dealObj.dealId, true);
+          } else if (dealObj && dealObj.dealId) {
+            applyIncomingBlindDealState(dealObj);
+          }
+        } catch {}
+      }
     }
   });
 
@@ -937,6 +992,10 @@ function initMarketCatalog() {
         filterAndRenderProducts();
         renderMyListings();
         updateRamMonitor();
+      } else if (msg.type === 'DEAL_SYNC' && msg.deal) {
+        applyIncomingBlindDealState(msg.deal);
+      } else if (msg.type === 'DEAL_COMPLETED_BURN') {
+        executeLocalDealAutoBurn(msg.dealId, true);
       }
     };
   }
@@ -1189,7 +1248,21 @@ function renderProducts(products) {
   grid.querySelectorAll('.chat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const prodName = btn.getAttribute('data-name');
-      initiateChatForProduct(prodName);
+      const prodId = btn.getAttribute('data-id') || '';
+      initiateChatForProduct(prodName, prodId);
+    });
+  });
+
+  grid.querySelectorAll('.share-card-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prodId = btn.getAttribute('data-id') || '';
+      const prod = MARKET_PRODUCTS.find(p => p.id === prodId);
+      const shareUrl = `${window.location.origin}${window.location.pathname}#item=${encodeURIComponent(prodId)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showToast(`Đã sao chép link mặt hàng "${prod ? prod.name : prodId}" vào bộ đệm!`, 'success');
+        }).catch(() => {});
+      }
     });
   });
 
@@ -1248,16 +1321,19 @@ function initiateOrderForProduct(productId) {
   showToast('Đã nạp sản phẩm vào cổng Ký quỹ & Đơn hàng!', 'info');
 }
 
-function initiateChatForProduct(productName) {
+function initiateChatForProduct(productName, productId = '') {
   currentChatInquiry = productName;
   const tag = document.getElementById('active-product-tag');
   if (tag) tag.textContent = `Về: ${productName}`;
 
   switchTab('tab-chat');
 
+  // Auto-generate Ephemeral Blind Deal Session Code & connect Buyer <-> Seller automatically
+  startAutoBlindDeal(productName, productId);
+
   const input = document.getElementById('chat-input-field');
   if (input) {
-    input.value = `Chào shop, tôi muốn hỏi thông tin bảo mật và phương thức bàn giao cho "${productName}"?`;
+    input.value = `Chào shop, tôi muốn mua sản phẩm "${productName}". Vui lòng hướng dẫn bàn giao qua Ký quỹ RAM!`;
     input.focus();
   }
 }
@@ -1651,12 +1727,436 @@ function checkUrlForP2PRoom() {
   }
 }
 
+/* ==========================================================================
+   5B. AUTO-GENERATED BLIND DEAL RELAY & AUTO-BURN ON COMPLETION
+   (Tự sinh mã kết nối Mua ↔ Bán • Ẩn 100% ID & IP • Tự hủy đoạn chat khi hoàn tất)
+   ========================================================================== */
+
+function getMyDealRole(deal) {
+  if (!deal || !deal.dealId) return 'buyer';
+  try {
+    const savedRole = sessionStorage.getItem(`ghost_my_deal_role_${deal.dealId}`);
+    if (savedRole === 'buyer' || savedRole === 'seller') {
+      return savedRole;
+    }
+  } catch {}
+  return 'seller';
+}
+
+function setMyDealRole(dealId, role) {
+  if (!dealId) return;
+  try {
+    sessionStorage.setItem(`ghost_my_deal_role_${dealId}`, role);
+  } catch {}
+}
+
+function saveActiveDealToStorage(deal) {
+  if (isPurgingNow) return;
+  try {
+    if (deal && deal.status !== 'completed_burned') {
+      const json = JSON.stringify(deal);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_DEAL, json);
+      sessionStorage.setItem(STORAGE_KEYS.ACTIVE_DEAL, json);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+      sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+    }
+  } catch {}
+}
+
+async function startAutoBlindDeal(productName, productId = '') {
+  if (
+    activeAutoDeal &&
+    activeAutoDeal.status !== 'completed_burned' &&
+    activeAutoDeal.productName === productName
+  ) {
+    applyIncomingBlindDealState(activeAutoDeal, true);
+    return activeAutoDeal;
+  }
+
+  let createdDeal = null;
+  try {
+    const res = await bazaarApiFetch('/api/lexicon/bazaar-deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'init',
+        productId,
+        productName
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.deal) {
+        createdDeal = data.deal;
+      }
+    }
+  } catch {}
+
+  if (!createdDeal) {
+    const randHex = Array.from(crypto.getRandomValues(new Uint8Array(3)))
+      .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+      .join('');
+    const bMask = randHex.slice(0, 4);
+    const sMask = Array.from(crypto.getRandomValues(new Uint8Array(2)))
+      .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+      .join('');
+    const dealId = `DEAL-${randHex}`;
+    createdDeal = {
+      dealId,
+      productId: productId || 'custom',
+      productName: productName || 'Mặt hàng ẩn danh',
+      buyerBlindId: `Khách-Ẩn-Danh #${bMask} [IP & ID: ĐÃ ẨN]`,
+      sellerBlindId: `Người-Bán-Ẩn-Danh #${sMask} [IP & ID: ĐÃ ẨN]`,
+      status: 'connected',
+      createdAt: Date.now(),
+      messages: [
+        {
+          id: `sys-${Date.now()}`,
+          role: 'system',
+          senderBlindId: 'HỆ THỐNG KẾT NỐI TỰ ĐỘNG',
+          time: getCurrentTimeStr(),
+          text: `🔐 ĐÃ TỰ SINH MÃ GIAO DỊCH [${dealId}] & TỰ ĐỘNG KẾT NỐI GIỮA KHÁCH VÀ NGƯỜI BÁN cho mặt hàng "${productName}". Danh tính (ID) và Địa chỉ IP của cả hai bên đều được che giấu tuyệt đối (0.0.0.0 Blind Relay). Khi hoàn tất mua hàng và thanh toán, toàn bộ đoạn chat này sẽ TỰ ĐỘNG BIẾN MẤT!`
+        }
+      ]
+    };
+  }
+
+  setMyDealRole(createdDeal.dealId, 'buyer');
+  applyIncomingBlindDealState(createdDeal, true);
+
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'DEAL_SYNC',
+        deal: createdDeal
+      });
+    } catch {}
+  }
+
+  showToast(`🔗 Đã tự sinh mã [${createdDeal.dealId}] & kết nối ẩn danh với Người bán (Đã ẩn ID & IP cả 2 bên)!`, 'success');
+  return createdDeal;
+}
+
+function applyIncomingBlindDealState(deal, isInitiator = false) {
+  if (!deal || !deal.dealId) return;
+  if (deal.dealId === lastBurnedDealId || deal.status === 'completed_burned') {
+    if (activeAutoDeal && activeAutoDeal.dealId === deal.dealId) {
+      executeLocalDealAutoBurn(deal.dealId, true);
+    }
+    return;
+  }
+
+  const isNewDealForThisWindow = !activeAutoDeal || activeAutoDeal.dealId !== deal.dealId;
+  const prevMsgCount = activeAutoDeal && Array.isArray(activeAutoDeal.messages)
+    ? activeAutoDeal.messages.length
+    : 0;
+
+  if (isNewDealForThisWindow && !isInitiator) {
+    let existingRole = null;
+    try {
+      existingRole = sessionStorage.getItem(`ghost_my_deal_role_${deal.dealId}`);
+    } catch {}
+    if (!existingRole) {
+      setMyDealRole(deal.dealId, 'seller');
+      playNotificationChime();
+      showToast(`🔔 Khách ẩn danh vừa kết nối kênh mua hàng [${deal.dealId}] cho "${deal.productName}"! (Đã ẩn ID & IP)`, 'info');
+    }
+  }
+
+  const myRole = getMyDealRole(deal);
+  activeAutoDeal = deal;
+  saveActiveDealToStorage(deal);
+
+  // Map deal messages to local chat display (self messages on right, partner messages on left)
+  if (Array.isArray(deal.messages)) {
+    if (!isNewDealForThisWindow && deal.messages.length > prevMsgCount) {
+      const latestMsg = deal.messages[deal.messages.length - 1];
+      if (latestMsg && latestMsg.role !== myRole) {
+        playNotificationChime();
+        const activeTab = document.querySelector('.covert-nav-tabs .nav-tab.active');
+        if (activeTab && activeTab.getAttribute('data-tab') !== 'tab-chat') {
+          const badge = document.getElementById('chat-badge');
+          if (badge) badge.style.display = 'inline-block';
+        }
+      }
+    }
+
+    inMemoryChatMessages = deal.messages.map(m => {
+      if (m.role === 'system') {
+        return {
+          author: m.senderBlindId || 'KÊNH GIAO DỊCH ẨN DANH',
+          role: 'system',
+          time: m.time || getCurrentTimeStr(),
+          text: m.text
+        };
+      }
+      if (m.role === myRole) {
+        return {
+          author: `Tôi • ${m.senderBlindId}`,
+          role: 'buyer',
+          time: m.time || getCurrentTimeStr(),
+          text: m.text
+        };
+      }
+      return {
+        author: m.senderBlindId,
+        role: 'merchant',
+        time: m.time || getCurrentTimeStr(),
+        text: m.text
+      };
+    });
+  }
+
+  // Update Auto-Deal Banner UI
+  const banner = document.getElementById('auto-deal-banner');
+  const codeBadge = document.getElementById('auto-deal-code-badge');
+  const prodLabel = document.getElementById('auto-deal-product-label');
+  const blindBadge = document.getElementById('auto-deal-blind-badge');
+  const activeProdTag = document.getElementById('active-product-tag');
+
+  if (banner) banner.style.display = 'block';
+  if (codeBadge) codeBadge.textContent = deal.dealId;
+  if (prodLabel) {
+    const roleLabel = myRole === 'buyer' ? 'Vai trò: Người Mua Ẩn Danh' : 'Vai trò: Người Bán Ẩn Danh';
+    prodLabel.textContent = `${deal.productName} (${roleLabel})`;
+  }
+  if (blindBadge) {
+    if (deal.status === 'paid_escrow') {
+      blindBadge.textContent = '💸 ĐÃ NẠP KÝ QUỸ • SẴN SÀNG HOÀN TẤT & TỰ HỦY CHAT';
+      blindBadge.style.color = '#fbbf24';
+    } else {
+      blindBadge.textContent = '🛡️ Đã ẩn ID & IP cả 2 bên (0.0.0.0 Blind Relay)';
+      blindBadge.style.color = '#38bdf8';
+    }
+  }
+  if (activeProdTag) {
+    activeProdTag.textContent = `[${deal.dealId}] ${deal.productName}`;
+  }
+
+  // Update Top Status Bar & Peer Header with Blinded Identity
+  const pulseDot = document.getElementById('p2p-pulse-dot');
+  const statusText = document.getElementById('p2p-status-text');
+  const avatarText = document.getElementById('chat-peer-avatar-text');
+  const peerName = document.getElementById('chat-peer-name');
+  const peerBadge = document.getElementById('chat-peer-badge');
+  const peerStat = document.getElementById('chat-peer-stat');
+  const peerPing = document.getElementById('chat-peer-ping');
+
+  const partnerBlindName = myRole === 'buyer' ? deal.sellerBlindId : deal.buyerBlindId;
+  if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
+  if (statusText) {
+    statusText.textContent = `🟢 ĐÃ TỰ ĐỘNG KẾT NỐI MÃ [${deal.dealId}] • ẨN 100% ID & IP CẢ KHÁCH LẪN NGƯỜI BÁN`;
+  }
+  if (avatarText) avatarText.textContent = myRole === 'buyer' ? 'B' : 'K';
+  if (peerName) peerName.textContent = partnerBlindName;
+  if (peerBadge) {
+    peerBadge.textContent = '🛡️ ĐÃ ẨN ID & IP (0.0.0.0 BLIND RELAY)';
+    peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
+  }
+  if (peerStat) peerStat.textContent = `Mã phiên: ${deal.dealId} • Tự hủy khi thanh toán xong`;
+  if (peerPing) {
+    peerPing.textContent = 'Đồng bộ Tức thì';
+    peerPing.className = 'peer-stat green';
+  }
+
+  renderChatMessages();
+  updateRamMonitor();
+}
+
+async function sendBlindDealMessage(text) {
+  if (!activeAutoDeal) return;
+  const myRole = getMyDealRole(activeAutoDeal);
+
+  let updatedDeal = null;
+  try {
+    const res = await bazaarApiFetch('/api/lexicon/bazaar-deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'message',
+        dealId: activeAutoDeal.dealId,
+        senderRole: myRole,
+        text
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.deal) {
+        updatedDeal = data.deal;
+      }
+    }
+  } catch {}
+
+  if (!updatedDeal) {
+    const senderBlindId = myRole === 'seller'
+      ? activeAutoDeal.sellerBlindId
+      : activeAutoDeal.buyerBlindId;
+    activeAutoDeal.messages.push({
+      id: `msg-${Date.now()}`,
+      role: myRole,
+      senderBlindId,
+      time: getCurrentTimeStr(),
+      text
+    });
+    updatedDeal = activeAutoDeal;
+  }
+
+  applyIncomingBlindDealState(updatedDeal, true);
+
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'DEAL_SYNC',
+        deal: updatedDeal
+      });
+    } catch {}
+  }
+}
+
+async function confirmBlindDealPayment() {
+  if (!activeAutoDeal) {
+    showToast('Chưa có phiên giao dịch nào đang mở!', 'warning');
+    return;
+  }
+
+  let updatedDeal = null;
+  try {
+    const res = await bazaarApiFetch('/api/lexicon/bazaar-deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'pay_escrow',
+        dealId: activeAutoDeal.dealId
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.deal) {
+        updatedDeal = data.deal;
+      }
+    }
+  } catch {}
+
+  if (!updatedDeal) {
+    activeAutoDeal.status = 'paid_escrow';
+    activeAutoDeal.messages.push({
+      id: `sys-${Date.now()}`,
+      role: 'system',
+      senderBlindId: 'KÝ QUỸ RAM ESCROW',
+      time: getCurrentTimeStr(),
+      text: `💸 [ĐÃ NẠP KÝ QUỸ THÀNH CÔNG]: Người mua ẩn danh đã xác nhận thanh toán cho phiên [${activeAutoDeal.dealId}]. Sau khi bàn giao xong, nhấn "✅ Hoàn Tất Mua Hàng & Thanh Toán (Tự Hủy Chat)" để giải ngân và xóa sạch đoạn chat!`
+    });
+    updatedDeal = activeAutoDeal;
+  }
+
+  applyIncomingBlindDealState(updatedDeal, true);
+
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'DEAL_SYNC',
+        deal: updatedDeal
+      });
+    } catch {}
+  }
+
+  showToast(`💸 Đã xác nhận thanh toán Ký quỹ cho [${updatedDeal.dealId}]! Nhấn "Hoàn Tất Mua Hàng" để tự hủy đoạn chat.`, 'success');
+}
+
+async function completeDealAndAutoBurn() {
+  const targetDealId = activeAutoDeal?.dealId || activeOrder?.orderId || 'DEAL-RAM';
+
+  try {
+    await bazaarApiFetch('/api/lexicon/bazaar-deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'complete_and_burn',
+        dealId: activeAutoDeal?.dealId || ''
+      })
+    });
+  } catch {}
+
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'DEAL_COMPLETED_BURN',
+        dealId: targetDealId
+      });
+    } catch {}
+  }
+
+  executeLocalDealAutoBurn(targetDealId, false);
+}
+
+function executeLocalDealAutoBurn(dealId, isRemoteTrigger = false) {
+  const burnedCode = dealId || activeAutoDeal?.dealId || 'DEAL';
+  lastBurnedDealId = burnedCode;
+  activeAutoDeal = null;
+  activeOrder = null;
+  inMemoryChatMessages = [];
+
+  if (orderCountdownTimer) {
+    clearInterval(orderCountdownTimer);
+    orderCountdownTimer = null;
+  }
+
+  // Wipe Deal, Chat, and Order from localStorage & sessionStorage
+  try {
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+    localStorage.removeItem(STORAGE_KEYS.CHAT_MESSAGES);
+    sessionStorage.removeItem(STORAGE_KEYS.CHAT_MESSAGES);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
+    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
+  } catch {}
+
+  const banner = document.getElementById('auto-deal-banner');
+  if (banner) banner.style.display = 'none';
+
+  const orderResultBox = document.getElementById('order-result-box');
+  if (orderResultBox) orderResultBox.style.display = 'none';
+
+  const activeProdTag = document.getElementById('active-product-tag');
+  if (activeProdTag) activeProdTag.textContent = 'Đoạn chat đã tự hủy sau thanh toán';
+
+  updateP2PStatusUI('disconnected');
+  renderChatMessages();
+  updateRamMonitor();
+
+  playNotificationChime();
+  showToast(
+    `🔥 Hoàn tất mua hàng & thanh toán! Toàn bộ đoạn chat và mã kết nối [${burnedCode}] đã TỰ ĐỘNG BIẾN MẤT khỏi RAM cả 2 bên!`,
+    'success'
+  );
+}
+
+async function pollBlindDealRelay() {
+  try {
+    const res = await bazaarApiFetch('/api/lexicon/bazaar-deals', {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.deal) {
+      applyIncomingBlindDealState(data.deal, false);
+    } else if (data && !data.deal && activeAutoDeal) {
+      if (!data.lastBurnedDealId || data.lastBurnedDealId === activeAutoDeal.dealId) {
+        executeLocalDealAutoBurn(activeAutoDeal.dealId, true);
+      }
+    }
+  } catch {}
+}
+
 function initEncryptedChat() {
   const sendBtn = document.getElementById('send-chat-btn');
   const chatInput = document.getElementById('chat-input-field');
   const purgeBtn = document.getElementById('purge-chat-btn');
   const quickBtns = document.querySelectorAll('.quick-q-btn');
   const copyPgpBtn = document.getElementById('copy-pgp-fingerprint');
+  const confirmPayBtn = document.getElementById('btn-deal-confirm-pay');
+  const completeBurnBtn = document.getElementById('btn-deal-complete-burn');
 
   // P2P Controls
   const btnHost = document.getElementById('btn-p2p-host');
@@ -1664,6 +2164,32 @@ function initEncryptedChat() {
   const inputCode = document.getElementById('input-p2p-code');
   const btnCopyLink = document.getElementById('btn-p2p-copy-link');
   const btnDisconnect = document.getElementById('btn-p2p-disconnect');
+
+  if (confirmPayBtn) {
+    confirmPayBtn.addEventListener('click', () => {
+      confirmBlindDealPayment();
+    });
+  }
+
+  if (completeBurnBtn) {
+    completeBurnBtn.addEventListener('click', () => {
+      completeDealAndAutoBurn();
+    });
+  }
+
+  // Restore active blind deal if present, and start real-time deal polling (1.5s)
+  try {
+    const rawDeal = localStorage.getItem(STORAGE_KEYS.ACTIVE_DEAL) || sessionStorage.getItem(STORAGE_KEYS.ACTIVE_DEAL);
+    if (rawDeal) {
+      const parsedDeal = JSON.parse(rawDeal);
+      if (parsedDeal && parsedDeal.dealId && parsedDeal.status !== 'completed_burned') {
+        applyIncomingBlindDealState(parsedDeal, true);
+      }
+    }
+  } catch {}
+
+  pollBlindDealRelay();
+  setInterval(pollBlindDealRelay, 1500);
 
   if (btnHost) {
     btnHost.addEventListener('click', () => {
@@ -1729,29 +2255,31 @@ function initEncryptedChat() {
   }
 
   // Restore chat history from storage if available, otherwise show initial welcome message
-  let restoredChat = false;
-  try {
-    const rawChat = localStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES) || sessionStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES);
-    if (rawChat) {
-      const parsedChat = JSON.parse(rawChat);
-      if (Array.isArray(parsedChat) && parsedChat.length > 0) {
-        inMemoryChatMessages = parsedChat;
-        restoredChat = true;
+  if (!activeAutoDeal) {
+    let restoredChat = false;
+    try {
+      const rawChat = localStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES) || sessionStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES);
+      if (rawChat) {
+        const parsedChat = JSON.parse(rawChat);
+        if (Array.isArray(parsedChat) && parsedChat.length > 0) {
+          inMemoryChatMessages = parsedChat;
+          restoredChat = true;
+        }
       }
-    }
-  } catch {}
+    } catch {}
 
-  if (!restoredChat) {
-    inMemoryChatMessages = [
-      {
-        author: 'Merchant-Node-01',
-        role: 'merchant',
-        time: getCurrentTimeStr(),
-        text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC. Để chat trực tiếp 2 máy với khách hàng không cần máy chủ, hãy bấm "Tạo Phòng Chat Mật (Host P2P)" ở trên.'
-      }
-    ];
+    if (!restoredChat) {
+      inMemoryChatMessages = [
+        {
+          author: 'Merchant-Node-01',
+          role: 'merchant',
+          time: getCurrentTimeStr(),
+          text: 'Xác thực E2EE hoàn tất. Khi bạn nhấn nút 💬 Nhắn tin hoặc 🛒 Mua trên bất kỳ mặt hàng nào, hệ thống sẽ TỰ ĐỘNG SINH MÃ GIAO DỊCH (DEAL-XXXX) và kết nối trực tiếp Khách ↔ Người bán (ẩn 100% ID & IP của cả hai bên). Ngay khi hoàn tất mua hàng và thanh toán, toàn bộ đoạn chat sẽ tự động biến mất khỏi RAM!'
+        }
+      ];
+    }
+    renderChatMessages();
   }
-  renderChatMessages();
 
   // Send message handler
   const handleSendMessage = () => {
@@ -1767,7 +2295,10 @@ function initEncryptedChat() {
       } catch {}
     }
 
-    if (isP2PConnected && activePeerConnection) {
+    if (activeAutoDeal && activeAutoDeal.status !== 'completed_burned') {
+      // Send over Auto-Generated Blind Deal Relay (Buyer <-> Seller with hidden ID & IP)
+      sendBlindDealMessage(text);
+    } else if (isP2PConnected && activePeerConnection) {
       // 100% P2P Device-to-Device WebRTC DataChannel
       try {
         activePeerConnection.send({
@@ -1790,43 +2321,10 @@ function initEncryptedChat() {
       renderChatMessages();
       updateRamMonitor();
     } else {
-      // Bot / Offline simulation mode
-      inMemoryChatMessages.push({
-        author: anonymousAlias || 'Ghost-Buyer',
-        role: 'buyer',
-        time: getCurrentTimeStr(),
-        text
+      // Auto-initialize a blind deal channel if user types directly in chat without clicking a product first
+      startAutoBlindDeal(currentChatInquiry || 'Tư vấn mua hàng ẩn danh').then(() => {
+        sendBlindDealMessage(text);
       });
-
-      renderChatMessages();
-      updateRamMonitor();
-
-      // Show simulated typing indicator
-      const typingIndicator = document.getElementById('chat-typing-indicator');
-      const typingText = document.querySelector('#chat-typing-indicator .typing-text');
-      if (typingText) typingText.textContent = 'Merchant-Node-01 đang soạn tin nhắn bảo mật...';
-      if (typingIndicator) typingIndicator.style.display = 'flex';
-
-      setTimeout(() => {
-        if (typingIndicator) typingIndicator.style.display = 'none';
-
-        const reply = generateMerchantReply(text);
-        inMemoryChatMessages.push({
-          author: 'Merchant-Node-01',
-          role: 'merchant',
-          time: getCurrentTimeStr(),
-          text: reply
-        });
-        renderChatMessages();
-        updateRamMonitor();
-
-        // Show unread badge if tab not active
-        const activeTab = document.querySelector('.covert-nav-tabs .nav-tab.active');
-        if (activeTab && activeTab.getAttribute('data-tab') !== 'tab-chat') {
-          const badge = document.getElementById('chat-badge');
-          if (badge) badge.style.display = 'inline-block';
-        }
-      }, 750);
     }
   };
 
@@ -1876,10 +2374,14 @@ function initEncryptedChat() {
   // Manual instant chat purge
   if (purgeBtn) {
     purgeBtn.addEventListener('click', () => {
-      inMemoryChatMessages = [];
-      renderChatMessages();
-      updateRamMonitor();
-      showToast('Đã xóa sạch toàn bộ lịch sử tin nhắn trong RAM!', 'success');
+      if (activeAutoDeal) {
+        completeDealAndAutoBurn();
+      } else {
+        inMemoryChatMessages = [];
+        renderChatMessages();
+        updateRamMonitor();
+        showToast('Đã xóa sạch toàn bộ lịch sử tin nhắn trong RAM!', 'success');
+      }
     });
   }
 }
@@ -1888,6 +2390,15 @@ function renderChatMessages() {
   saveChatMessagesToStorage();
   const container = document.getElementById('chat-message-list');
   if (!container) return;
+
+  if (inMemoryChatMessages.length === 0) {
+    container.innerHTML = `
+      <div class="chat-system-msg">
+        <div class="system-bubble">🛡️ Kênh hội thoại RAM hiện đang trống (0 Bytes). Mọi tin nhắn trước đó đã tự động biến mất hoàn toàn sau khi hoàn tất giao dịch.</div>
+      </div>
+    `;
+    return;
+  }
 
   container.innerHTML = inMemoryChatMessages.map(msg => {
     if (msg.role === 'system') {
@@ -1903,6 +2414,7 @@ function renderChatMessages() {
       return `
         <div class="chat-msg buyer">
           <div class="msg-bubble">
+            ${msg.author ? `<div class="msg-author-tag" style="color: #a7f3d0; font-size: 0.7rem; margin-bottom: 3px;">${escapeHtml(msg.author)}</div>` : ''}
             <div class="msg-text">${escapeHtml(msg.text)}</div>
             <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
           </div>
@@ -1960,6 +2472,7 @@ function initOrderSystem() {
   const createOrderBtn = document.getElementById('create-order-btn');
   const clearOrderBtn = document.getElementById('clear-order-btn');
   const cancelOrderBtn = document.getElementById('cancel-order-btn');
+  const completeOrderBurnBtn = document.getElementById('complete-order-burn-btn');
   const copyXmrBtn = document.getElementById('copy-xmr-btn');
   const showQrBtn = document.getElementById('show-order-qr-btn');
   const chatAboutOrderBtn = document.getElementById('chat-about-order-btn');
@@ -2029,7 +2542,10 @@ function initOrderSystem() {
       saveActiveOrderToStorage();
       displayOrderResult(activeOrder);
       updateRamMonitor();
-      showToast('Khởi tạo đơn hàng ký quỹ ẩn danh thành công!', 'success');
+
+      // Automatically connect Buyer <-> Seller Deal Channel when Order is created
+      startAutoBlindDeal(product.name, product.id);
+      showToast('Khởi tạo đơn hàng ký quỹ & tự động kết nối kênh ẩn danh với Người bán thành công!', 'success');
     });
   }
 
@@ -2051,6 +2567,12 @@ function initOrderSystem() {
     clearOrderBtn.addEventListener('click', () => {
       const pubkeyInput = document.getElementById('order-receiver-pubkey');
       if (pubkeyInput) pubkeyInput.value = '';
+    });
+  }
+
+  if (completeOrderBurnBtn) {
+    completeOrderBurnBtn.addEventListener('click', () => {
+      completeDealAndAutoBurn();
     });
   }
 
@@ -2096,7 +2618,7 @@ function initOrderSystem() {
   if (chatAboutOrderBtn) {
     chatAboutOrderBtn.addEventListener('click', () => {
       if (!activeOrder) return;
-      initiateChatForProduct(`Đơn Hàng [${activeOrder.orderId}] - ${activeOrder.product.name}`);
+      initiateChatForProduct(activeOrder.product.name, activeOrder.product.id);
     });
   }
 }
@@ -2303,7 +2825,7 @@ function initAuctionBidding() {
       // Synchronize bid with server RAM
       let updatedFromServer = null;
       try {
-        const res = await fetch(`/api/lexicon/bazaar-items/${encodeURIComponent(product.id)}/bid`, {
+        const res = await bazaarApiFetch(`/api/lexicon/bazaar-items/${encodeURIComponent(product.id)}/bid`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2729,7 +3251,7 @@ async function handlePublishListing() {
 
   // Synchronize new item with volatile RAM server
   try {
-    const res = await fetch('/api/lexicon/bazaar-items', {
+    const res = await bazaarApiFetch('/api/lexicon/bazaar-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProduct)
@@ -2865,7 +3387,7 @@ async function revokeUserListing(productId) {
   addRevokedProductId(productId);
 
   try {
-    await fetch(`/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/revoke`, {
+    await bazaarApiFetch(`/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/revoke`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vendorKillToken: killToken })

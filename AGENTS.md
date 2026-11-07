@@ -9,3 +9,4 @@
   4. Đẩy trực tiếp lên kho chứa: `git push origin main`
 - **Tuyệt đối không đợi người dùng nhắc nhở**: Người dùng đã ra lệnh rõ ràng: *"tự đẩy lên git giúp tôi từ giờ và về sau"*.
 - Luôn thông báo ngắn gọn mã commit hoặc trạng thái đẩy mã thành công trong câu trả lời cuối cùng.
+
