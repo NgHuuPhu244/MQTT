@@ -93,9 +93,6 @@
         <button class="nav-tab" data-tab="tab-vendor">
           <span class="tab-icon">⚖️</span> Đăng Bán & Đấu Giá
         </button>
-        <button class="nav-tab" data-tab="tab-audit">
-          <span class="tab-icon">🛡️</span> Chính Sách Ẩn Danh
-        </button>
       </nav>
 
       <!-- ============================================================= -->
@@ -640,81 +637,6 @@
                   <p class="empty-listings-note">Chưa có mặt hàng nào được tạo trong phiên RAM hiện tại.</p>
                 </div>
               </section>
-            </div>
-          </div>
-        </div>
-
-        <!-- ============================================================= -->
-        <!-- TAB 5: CHÍNH SÁCH ẨN DANH & ZERO-TRACE AUDIT                  -->
-        <!-- ============================================================= -->
-        <div id="tab-audit" class="tab-pane">
-          <div class="audit-header-banner">
-            <div>
-              <h2 class="audit-heading">Kiểm Chứng Cơ Chế Ẩn Danh & Chống Dấu Vết</h2>
-              <p class="audit-subheading">Toàn bộ kiến trúc được xây dựng nhằm triệt tiêu 100% khả năng lưu vết kỹ thuật số trên máy chủ và máy khách.</p>
-            </div>
-            <div class="zero-trace-status-tag">
-              <span class="dot green"></span> ZERO-TRACE VERIFIED
-            </div>
-          </div>
-
-          <div class="audit-grid">
-            <section class="audit-card">
-              <div class="audit-card-icon">🛡️</div>
-              <h3>1. Ẩn Danh Cả Người Dùng & Địa Chỉ IP</h3>
-              <ul>
-                <li><strong>Zero-Log Enforced:</strong> Máy chủ hoàn toàn không ghi log địa chỉ IP, không ghi User-Agent, không tạo file access log trên ổ cứng.</li>
-                <li><strong>Phiên Ẩn Danh Ngẫu Nhiên:</strong> Mỗi lần mở trang, bạn nhận một Alias ẩn danh (ví dụ: Ghost-XXXX). Không cần tài khoản, không mật khẩu cá nhân.</li>
-              </ul>
-            </section>
-
-            <section class="audit-card">
-              <div class="audit-card-icon">🔥</div>
-              <h3>2. Tin Nhắn Bảo Mật & Tự Hủy Tuyệt Đối Khi Thoát</h3>
-              <ul>
-                <li><strong>Lưu trữ 100% trên RAM Trình duyệt:</strong> Tin nhắn trao đổi chỉ nằm trên bộ nhớ tạm thời của máy khách và bộ đệm RAM của socket.</li>
-                <li><strong>Purge-On-Exit Hooks:</strong> Khi bạn đóng tab, tắt trình duyệt, hoặc nhấn phím ESC, hàm <code>wipeMemory()</code> tự động kích hoạt để ghi đè số 0 vào biến nhớ và xóa sạch lịch sử.</li>
-              </ul>
-            </section>
-
-            <section class="audit-card">
-              <div class="audit-card-icon">🔐</div>
-              <h3>3. Mật Mã Học Tiêu Chuẩn Quân Sự (AES-256-GCM)</h3>
-              <ul>
-                <li><strong>Mã hóa đầu cuối:</strong> Dữ liệu đơn hàng và tin nhắn được mã hóa bằng khóa AES 256-bit kết hợp IV ngẫu nhiên 96-bit cho từng gói tin.</li>
-                <li><strong>Chống phân tích lưu lượng:</strong> Dữ liệu được đệm ngẫu nhiên CSPRNG theo bội số 256 bytes để ngăn kẻ nghe lén suy đoán độ dài.</li>
-              </ul>
-            </section>
-
-            <section class="audit-card">
-              <div class="audit-card-icon">🕵️</div>
-              <h3>4. Cơ Chế Thoát Khẩn Cấp Tức Thì</h3>
-              <ul>
-                <li><strong>Cổng vào ngụy trang:</strong> Toàn bộ trang ẩn này được che đậy hoàn hảo sau lớp vỏ Từ Điển Đa Ngôn Ngữ tại trang chủ.</li>
-                <li><strong>Nút Thoát Khẩn Cấp (ESC):</strong> Bấm <code>ESC</code> lập tức xóa sạch mọi dữ liệu trong RAM và điều hướng ngay về giao diện từ điển.</li>
-              </ul>
-            </section>
-          </div>
-
-          <!-- Live Volatile RAM Allocation Meter -->
-          <div class="ram-monitor-box">
-            <div class="ram-monitor-header">
-              <span class="ram-icon">📊</span>
-              <strong>Trạng Thái Cấp Phát Bộ Nhớ RAM Khả Biến (Client-Side)</strong>
-            </div>
-            <div class="ram-metric-row">
-              <div class="ram-metric-item">
-                <span class="metric-label">Lịch sử chat trong RAM:</span>
-                <span id="ram-chat-bytes" class="metric-val mono">0 Bytes</span>
-              </div>
-              <div class="ram-metric-item">
-                <span class="metric-label">Dữ liệu đơn hàng trong RAM:</span>
-                <span id="ram-order-bytes" class="metric-val mono">0 Bytes</span>
-              </div>
-              <div class="ram-metric-item">
-                <span class="metric-label">Ghi nhật ký đĩa cứng:</span>
-                <span class="metric-val mono green">0 Bytes (BỊ VÔ HIỆU HÓA)</span>
-              </div>
             </div>
           </div>
         </div>
