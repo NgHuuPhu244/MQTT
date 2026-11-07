@@ -33,7 +33,7 @@ const SWEEP_INTERVAL_MS = 5000; // Sweep expired drops every 5s
 // Anti-DoS Rate Limiter (In-Memory Sliding Window Bucket)
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 150; // max 150 requests per minute
+const MAX_REQUESTS_PER_WINDOW = 5000; // max 5000 requests per minute for real-time multi-window sync
 
 function checkRateLimit(clientKey) {
   const now = Date.now();
@@ -418,6 +418,12 @@ export function revokeBazaarItem(id, vendorKillToken) {
   return { found: true, authorized: true, product: prod };
 }
 
+// Volatile In-Memory Blind Deal & Auto-Chat Relay Session (Zero-Log IP & Blinded IDs)
+let inMemoryActiveDeal = null;
+let dealBurnTimeout = null;
+function initDealStub() {
+}
+
 /**
  * Securely overwrites Buffer memory with zeros before release.
  * @param {Buffer} buf 
@@ -639,9 +645,13 @@ function applySecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org https://*.wikipedia.org; connect-src 'self' https://*.wikipedia.org;"
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://upload.wikimedia.org https://*.wikipedia.org; connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 https://*.wikipedia.org https://*.peerjs.com wss://*.peerjs.com;"
   );
 }
 
@@ -740,6 +750,12 @@ export function createServer() {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const pathname = parsedUrl.pathname;
     const method = req.method;
+
+    if (method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
 
     try {
       // -------------------------------------------------------------
@@ -1122,6 +1138,160 @@ export function createServer() {
       }
 
       // -------------------------------------------------------------
+      // BLIND DEAL & EPHEMERAL AUTO-CHAT RELAY: GET / POST /api/lexicon/bazaar-deals
+      if ((pathname === '/api/lexicon/bazaar-deals' || pathname === '/api/bazaar/deals') && method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+        return;
+      }
+
+      if ((pathname === '/api/lexicon/bazaar-deals' || pathname === '/api/bazaar/deals') && method === 'POST') {
+        const rawBody = await readRequestBody(req, 64 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid deal payload' }));
+          return;
+        }
+
+        const action = body.action || 'init';
+
+        if (action === 'init') {
+          if (dealBurnTimeout) {
+            clearTimeout(dealBurnTimeout);
+            dealBurnTimeout = null;
+          }
+          const randCode = crypto.randomBytes(2).toString('hex').toUpperCase();
+          const dealId = body.dealId || `DEAL-${randCode}`;
+          const buyerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
+          const sellerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
+
+          // If same product deal is already active and not burned, reuse it so Buyer & Seller join seamlessly
+          if (
+            inMemoryActiveDeal &&
+            inMemoryActiveDeal.status !== 'completed_burned' &&
+            inMemoryActiveDeal.productId === body.productId
+          ) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+            return;
+          }
+
+          inMemoryActiveDeal = {
+            dealId,
+            productId: body.productId || 'general',
+            productName: body.productName || 'Giao dịch Ẩn danh',
+            priceXMR: body.priceXMR || '0.00 XMR',
+            initiatorAlias: body.initiatorAlias || '',
+            buyerBlindId: `Khách-Ẩn-Danh #${buyerToken} [IP & ID: ĐÃ ẨN]`,
+            sellerBlindId: `Người-Bán-Ẩn-Danh #${sellerToken} [IP & ID: ĐÃ ẨN]`,
+            status: 'connected',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            messages: [
+              {
+                id: `sys-${Date.now()}`,
+                role: 'system',
+                author: 'HỆ THỐNG KẾT NỐI MÙ (BLIND RELAY)',
+                time: body.time || 'Vừa xong',
+                text: `🔗 Đã tự động sinh mã phiên [${dealId}] và kết nối trực tiếp Người Mua ↔ Người Bán cho mặt hàng "${body.productName || 'Vật phẩm'}". Địa chỉ IP (0.0.0.0) và định danh gốc của cả 2 bên đã được ẩn hoàn toàn. Khi hoàn tất mua hàng và thanh toán, toàn bộ đoạn chat này sẽ tự động biến mất khỏi RAM!`
+              }
+            ]
+          };
+
+          res.writeHead(201, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          return;
+        }
+
+        if (action === 'message') {
+          if (!inMemoryActiveDeal || inMemoryActiveDeal.status === 'completed_burned') {
+            const randCode = crypto.randomBytes(2).toString('hex').toUpperCase();
+            const buyerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
+            const sellerToken = crypto.randomBytes(2).toString('hex').toUpperCase();
+            inMemoryActiveDeal = {
+              dealId: body.dealId || `DEAL-${randCode}`,
+              productId: body.productId || 'general',
+              productName: body.productName || 'Thương lượng Ẩn danh',
+              priceXMR: body.priceXMR || '',
+              initiatorAlias: body.senderAlias || '',
+              buyerBlindId: `Khách-Ẩn-Danh #${buyerToken} [IP & ID: ĐÃ ẨN]`,
+              sellerBlindId: `Người-Bán-Ẩn-Danh #${sellerToken} [IP & ID: ĐÃ ẨN]`,
+              status: 'connected',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              messages: []
+            };
+          }
+
+          const isInitiator = body.senderAlias && body.senderAlias === inMemoryActiveDeal.initiatorAlias;
+          const blindDisplay = isInitiator
+            ? inMemoryActiveDeal.buyerBlindId
+            : inMemoryActiveDeal.sellerBlindId;
+
+          const newMsg = {
+            id: body.id || `msg-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+            senderAlias: body.senderAlias || '',
+            blindAuthor: blindDisplay,
+            text: String(body.text || '').trim().slice(0, 2000),
+            time: body.time || 'Vừa xong',
+            timestamp: Date.now()
+          };
+
+          if (newMsg.text) {
+            inMemoryActiveDeal.messages.push(newMsg);
+            if (inMemoryActiveDeal.messages.length > 100) {
+              inMemoryActiveDeal.messages.shift();
+            }
+            inMemoryActiveDeal.updatedAt = Date.now();
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          return;
+        }
+
+        if (action === 'pay_escrow') {
+          if (inMemoryActiveDeal && inMemoryActiveDeal.status !== 'completed_burned') {
+            inMemoryActiveDeal.status = 'paid_escrow';
+            inMemoryActiveDeal.orderId = body.orderId || inMemoryActiveDeal.orderId || '';
+            inMemoryActiveDeal.updatedAt = Date.now();
+            inMemoryActiveDeal.messages.push({
+              id: `sys-pay-${Date.now()}`,
+              role: 'system',
+              author: 'KÝ QUỸ RAM (ESCROW)',
+              time: body.time || 'Vừa xong',
+              text: `💸 Người mua đã xác nhận chuyển thanh toán vào Hợp đồng Ký quỹ RAM ${body.orderId ? `[${body.orderId}]` : ''}. Người bán vui lòng bàn giao vật phẩm và bấm "Hoàn Tất Mua Hàng & Thanh Toán" để giải ngân và tự hủy đoạn chat!`
+            });
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          return;
+        }
+
+        if (action === 'complete_and_burn') {
+          const burnedDealId = inMemoryActiveDeal ? inMemoryActiveDeal.dealId : (body.dealId || 'DEAL');
+          inMemoryActiveDeal = {
+            dealId: burnedDealId,
+            status: 'completed_burned',
+            burnedAt: Date.now(),
+            messages: []
+          };
+          if (dealBurnTimeout) clearTimeout(dealBurnTimeout);
+          dealBurnTimeout = setTimeout(() => {
+            if (inMemoryActiveDeal && inMemoryActiveDeal.status === 'completed_burned') {
+              inMemoryActiveDeal = null;
+            }
+          }, 5000);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'success', deal: inMemoryActiveDeal }));
+          return;
+        }
+      }
+
       // 5. STATIC DECOY WEB APP: Multilingual Dictionary UI
       // -------------------------------------------------------------
       if (method === 'GET' || method === 'HEAD') {

@@ -1898,13 +1898,25 @@ function renderChatMessages() {
         </div>
       `;
     }
-    return `
-      <div class="chat-msg ${escapeHtml(msg.role)}">
-        <div class="msg-header">
-          <span class="msg-author">${escapeHtml(msg.author)}</span>
-          <span class="msg-time">${escapeHtml(msg.time)}</span>
+
+    if (msg.role === 'buyer') {
+      return `
+        <div class="chat-msg buyer">
+          <div class="msg-bubble">
+            <div class="msg-text">${escapeHtml(msg.text)}</div>
+            <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
+          </div>
         </div>
-        <div class="msg-bubble">${escapeHtml(msg.text)}</div>
+      `;
+    }
+
+    return `
+      <div class="chat-msg merchant">
+        <div class="msg-bubble">
+          <div class="msg-author-tag">${escapeHtml(msg.author)}</div>
+          <div class="msg-text">${escapeHtml(msg.text)}</div>
+          <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
+        </div>
       </div>
     `;
   }).join('');

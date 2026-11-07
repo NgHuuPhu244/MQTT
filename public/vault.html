@@ -161,78 +161,12 @@
         <!-- TAB 2: KÊNH CHAT MÃ HÓA VỚI NGƯỜI BÁN (E2EE CHAT)             -->
         <!-- ============================================================= -->
         <div id="tab-chat" class="tab-pane">
-          <!-- Self-Destruct Warning Banner (Dismissible) -->
-          <div class="chat-warning-banner" id="chat-warning-banner">
-            <div class="warning-left">
-              <span class="warning-flame">🔥</span>
-              <div class="warning-text">
-                <strong>Tự Hủy Tuyệt Đối Khi Thoát:</strong> Kênh chat này được mã hóa đầu cuối bằng <strong>AES-256-GCM</strong>. Mọi tin nhắn chỉ tồn tại trong <strong>RAM khả biến của phiên làm việc này</strong>. Khi bạn đóng tab, bấm <code>ESC</code> hoặc rời trang, <strong>toàn bộ tin nhắn sẽ bị xóa sạch 100%, không thể khôi phục!</strong>
-              </div>
-            </div>
-            <div class="banner-action-group">
-              <button type="button" id="purge-chat-btn" class="purge-chat-btn" title="Xóa sạch lịch sử chat trong RAM ngay lập tức">
-                <span>🧹</span> Xóa Sạch Chat Ngay
-              </button>
-              <button type="button" class="dismiss-banner-btn" title="Đóng cảnh báo này" onclick="document.getElementById('chat-warning-banner').style.display='none';">✕</button>
-            </div>
-          </div>
-
-          <!-- P2P Direct WebRTC (Zero-Server) Connection Bar -->
-          <div class="p2p-control-panel" id="p2p-control-panel">
-            <div class="p2p-panel-header">
-              <div class="p2p-status-indicator">
-                <span class="p2p-pulse-dot" id="p2p-pulse-dot"></span>
-                <span class="p2p-status-text" id="p2p-status-text">🔴 Chế độ Bot Tự Động (Chưa kết nối P2P)</span>
-              </div>
-              <div class="p2p-mode-pill" id="p2p-mode-pill">
-                <span>⚡</span> P2P MÁY ↔ MÁY (ZERO-SERVER)
-              </div>
-            </div>
-
-            <div class="p2p-panel-actions">
-              <!-- When disconnected: Show Host and Join controls -->
-              <div class="p2p-setup-row" id="p2p-setup-row">
-                <button type="button" id="btn-p2p-host" class="primary-btn p2p-host-btn" title="Tạo phòng chat bí mật và nhận link chia sẻ trực tiếp">
-                  <span>➕</span> Tạo Phòng Chat Mật (Host P2P)
-                </button>
-                <span class="p2p-or-sep">hoặc</span>
-                <div class="p2p-join-group">
-                  <input type="text" id="input-p2p-code" class="p2p-code-input" placeholder="Nhập mã phòng hoặc dán link mời..." autocomplete="off" spellcheck="false">
-                  <button type="button" id="btn-p2p-join" class="secondary-btn p2p-join-btn">
-                    <span>🔗</span> Vào Phòng
-                  </button>
-                </div>
-              </div>
-
-              <!-- When room is created or joined: Show Room details & Disconnect -->
-              <div class="p2p-active-row" id="p2p-active-row" style="display: none;">
-                <div class="p2p-room-badge-wrap">
-                  <span class="p2p-room-label">MÃ PHÒNG:</span>
-                  <code class="p2p-room-code" id="display-room-code">GHOST-XXXX</code>
-                </div>
-                <div class="p2p-active-btns">
-                  <button type="button" id="btn-p2p-copy-link" class="primary-btn p2p-copy-link-btn" title="Sao chép link mời gửi cho đối tác hoặc khách hàng">
-                    <span>📋</span> Sao Chép Link Gửi Khách
-                  </button>
-                  <button type="button" id="btn-p2p-disconnect" class="danger-btn p2p-disconnect-btn" title="Ngắt kết nối P2P và xóa sạch RAM">
-                    <span>🔌</span> Ngắt Kết Nối & Tự Hủy
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Explanatory hint banner -->
-            <div class="p2p-hint-bar" id="p2p-hint-bar">
-              <span class="p2p-hint-icon">💡</span>
-              <span class="p2p-hint-text">
-                <strong>Chạy trực tiếp trên GitHub / WebRTC:</strong> Bấm <em>"Tạo Phòng Chat Mật"</em> và gửi link cho khách. Khi khách mở link, hai thiết bị sẽ <strong>kết nối trực tiếp máy ↔ máy (P2P)</strong> qua trình duyệt. Hoàn toàn không có máy chủ trung gian lưu tin nhắn, không cần backend!
-              </span>
-            </div>
-          </div>
-
-          <!-- Chat Window Shell -->
-          <div class="market-chat-shell">
-            <div class="chat-header-bar">
+          <!-- Unified Single-Stage Flat Chat Console (No Nested Boxes) -->
+          <div class="market-chat-shell flat-chat-container">
+            
+            <!-- Top Flat Toolbar: Identity + Inline P2P Room Controls -->
+            <div class="chat-header-bar flat-header">
+              <!-- Left: Peer Identity -->
               <div class="chat-peer-info">
                 <div class="peer-avatar" id="chat-peer-avatar">
                   <span id="chat-peer-avatar-text">M</span>
@@ -242,25 +176,52 @@
                   <div class="peer-title-row">
                     <h2 class="peer-name" id="chat-peer-name">Merchant-Node-01</h2>
                     <span class="verified-vendor-badge" id="chat-peer-badge">✓ ĐÃ XÁC MINH PGP</span>
+                    <span id="active-product-tag" class="product-inquiry-tag">Tư vấn chung</span>
                   </div>
                   <div class="peer-meta-row">
-                    <span id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" title="Bấm để sao chép toàn bộ PGP Fingerprint">
-                      🔑 PGP: 4A8F...91BC 📋
+                    <span class="p2p-status-indicator" id="p2p-status-indicator">
+                      <span class="p2p-pulse-dot" id="p2p-pulse-dot"></span>
+                      <span class="p2p-status-text" id="p2p-status-text">🔴 Chế độ Bot (Chưa kết nối P2P)</span>
                     </span>
                     <span class="peer-divider">•</span>
-                    <span class="peer-stat" id="chat-peer-stat">★ 5.0 (98 giao dịch)</span>
-                    <span class="peer-divider">•</span>
-                    <span class="peer-stat green" id="chat-peer-ping">Phản hồi &lt; 1p</span>
+                    <span id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" title="Bấm để sao chép PGP Fingerprint">🔑 PGP: 4A8F...91BC 📋</span>
                   </div>
                 </div>
               </div>
-              <div class="chat-channel-badge">
-                <span id="active-product-tag" class="product-inquiry-tag">Tư vấn chung</span>
+
+              <!-- Right: Integrated Inline Action Pills -->
+              <div class="chat-header-actions">
+                <!-- Disconnected setup controls -->
+                <div class="p2p-setup-row" id="p2p-setup-row">
+                  <button type="button" id="btn-p2p-host" class="p2p-pill-btn host" title="Tạo phòng chat bí mật và chia sẻ link">
+                    <span>➕</span> Tạo Phòng P2P
+                  </button>
+                  <div class="p2p-compact-join">
+                    <input type="text" id="input-p2p-code" class="p2p-compact-input" placeholder="Mã phòng..." autocomplete="off">
+                    <button type="button" id="btn-p2p-join" class="p2p-pill-btn join">Vào</button>
+                  </div>
+                </div>
+
+                <!-- Connected active controls -->
+                <div class="p2p-active-row" id="p2p-active-row" style="display: none;">
+                  <span class="p2p-room-code-pill" id="display-room-code">GHOST-XXXX</span>
+                  <button type="button" id="btn-p2p-copy-link" class="p2p-pill-btn copy" title="Sao chép link mời gửi khách">
+                    <span>📋</span> Gửi Khách
+                  </button>
+                  <button type="button" id="btn-p2p-disconnect" class="p2p-pill-btn disconnect" title="Ngắt kết nối P2P">
+                    <span>🔌</span> Ngắt P2P
+                  </button>
+                </div>
+
+                <!-- Instant in-RAM purge -->
+                <button type="button" id="purge-chat-btn" class="p2p-pill-btn purge" title="Xóa sạch lịch sử tin nhắn trong RAM">
+                  <span>🧹</span> Xóa Chat
+                </button>
               </div>
             </div>
 
-            <!-- Quick Inquiry Questions -->
-            <div class="chat-quick-inquiries">
+            <!-- Seamless Quick Inquiry Chips -->
+            <div class="chat-quick-inquiries flat-chips-row">
               <span class="quick-inquiry-label">Hỏi nhanh:</span>
               <button type="button" class="quick-q-btn" data-q="Xác nhận phương thức thanh toán Monero (XMR) và thời gian ký quỹ?">💰 Thanh toán XMR?</button>
               <button type="button" class="quick-q-btn" data-q="Dữ liệu hàng số được bàn giao qua mã Drop tự hủy như thế nào?">📦 Bàn giao qua Drop ID?</button>
@@ -268,26 +229,29 @@
               <button type="button" class="quick-q-btn" data-q="Xác nhận tin nhắn này có bị lưu trên máy chủ hay không?">🛡️ Kiểm tra Zero-Log?</button>
             </div>
 
-            <!-- Messages Stream Area -->
-            <div id="chat-message-list" class="chat-message-list">
+            <!-- Messages Stream Canvas (Flat, Non-Boxed) -->
+            <div id="chat-message-list" class="chat-message-list flat-message-list">
               <!-- Dynamically populated messages -->
             </div>
 
             <!-- Typing indicator -->
-            <div id="chat-typing-indicator" class="chat-typing-row" style="display: none;">
+            <div id="chat-typing-indicator" class="chat-typing-row flat-typing" style="display: none;">
               <span class="typing-dot"></span>
               <span class="typing-dot"></span>
               <span class="typing-dot"></span>
               <span class="typing-text">Merchant-Node-01 đang soạn tin nhắn bảo mật...</span>
             </div>
 
-            <!-- Input Bar -->
-            <div class="chat-composer-bar">
-              <input type="text" id="chat-input-field" placeholder="Gõ tin nhắn bảo mật cho Người bán (Tự hủy khi đóng tab hoặc bấm ESC)..." autocomplete="off">
-              <button type="button" id="send-chat-btn" class="primary-btn chat-send-btn">
-                <span>Gửi</span> 🔒
-              </button>
+            <!-- Unified Floating Pill Input Bar (Zero Nested Boxes) -->
+            <div class="chat-composer-wrap">
+              <div class="chat-composer-pill">
+                <input type="text" id="chat-input-field" placeholder="Gõ tin nhắn bảo mật (Tự hủy trong RAM khi rời trang hoặc bấm ESC)..." autocomplete="off">
+                <button type="button" id="send-chat-btn" class="chat-send-pill-btn" title="Gửi tin nhắn bảo mật">
+                  <span>Gửi</span> 🔒
+                </button>
+              </div>
             </div>
+
           </div>
         </div>
 
