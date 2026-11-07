@@ -371,6 +371,14 @@ export function addBazaarItem(item) {
   if (!item || !item.name) {
     throw new Error('Invalid product item');
   }
+  if (item.id && inMemorySoldOrRevokedIds.has(item.id)) {
+    return item;
+  }
+  const existingIdx = inMemoryBazaarProducts.findIndex(p => p.id === item.id);
+  if (existingIdx !== -1) {
+    inMemoryBazaarProducts[existingIdx] = item;
+    return item;
+  }
   inMemoryBazaarProducts.unshift(item);
   if (inMemoryBazaarProducts.length > 200) {
     inMemoryBazaarProducts.pop();
@@ -415,14 +423,40 @@ export function revokeBazaarItem(id, vendorKillToken) {
     return { found: true, authorized: false };
   }
   inMemoryBazaarProducts.splice(idx, 1);
+  inMemorySoldOrRevokedIds.add(id);
   return { found: true, authorized: true, product: prod };
 }
 
 // Volatile In-Memory Blind Deal & Auto-Chat Relay Session (Zero-Log IP & Blinded IDs)
+const inMemorySoldOrRevokedIds = new Set();
 const inMemoryActiveDeals = new Map();
 let inMemoryActiveDeal = null;
 let lastBurnedDealId = null;
+let lastSoldProductId = null;
 let dealBurnTimeout = null;
+
+function markProductSoldAndRemoveFromRAM(productId, productName) {
+  let idx = -1;
+  if (productId && productId !== 'general' && productId !== 'custom') {
+    idx = inMemoryBazaarProducts.findIndex(p => p.id === productId);
+  }
+  if (idx === -1 && productName) {
+    idx = inMemoryBazaarProducts.findIndex(p => p.name === productName);
+  }
+  if (idx !== -1) {
+    const removed = inMemoryBazaarProducts.splice(idx, 1)[0];
+    if (removed && removed.id) {
+      inMemorySoldOrRevokedIds.add(removed.id);
+      lastSoldProductId = removed.id;
+      return removed.id;
+    }
+  } else if (productId && productId !== 'general' && productId !== 'custom') {
+    inMemorySoldOrRevokedIds.add(productId);
+    lastSoldProductId = productId;
+    return productId;
+  }
+  return null;
+}
 function initDealStub() {
 }
 
@@ -1013,7 +1047,7 @@ export function createServer() {
       if ((pathname === '/api/lexicon/bazaar-items' || pathname === '/api/bazaar/items') && method === 'GET') {
         const items = getBazaarItems();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'success', count: items.length, data: items }));
+        res.end(JSON.stringify({ status: 'success', count: items.length, data: items, soldOrRevokedIds: Array.from(inMemorySoldOrRevokedIds) }));
         return;
       }
 
@@ -1158,7 +1192,9 @@ export function createServer() {
           status: 'success',
           deal: targetDeal,
           deals: activeList,
-          lastBurnedDealId
+          lastBurnedDealId,
+          lastSoldProductId,
+          soldOrRevokedIds: Array.from(inMemorySoldOrRevokedIds)
         }));
         return;
       }
@@ -1282,29 +1318,47 @@ export function createServer() {
         if (action === 'pay_escrow') {
           const reqDealId = body.dealId || inMemoryActiveDeal?.dealId;
           const deal = reqDealId ? inMemoryActiveDeals.get(reqDealId) : inMemoryActiveDeal;
+          const soldProductId = markProductSoldAndRemoveFromRAM(
+            body.productId || deal?.productId,
+            body.productName || deal?.productName
+          );
 
           if (deal && deal.status !== 'completed_burned') {
             deal.status = 'paid_escrow';
             deal.orderId = body.orderId || deal.orderId || '';
+            deal.soldProductId = soldProductId || deal.productId || '';
             deal.updatedAt = Date.now();
             deal.messages.push({
               id: `sys-pay-${Date.now()}`,
               role: 'system',
               author: 'KÝ QUỸ RAM (ESCROW)',
               time: body.time || 'Vừa xong',
-              text: `💸 Người mua đã xác nhận chuyển thanh toán vào Hợp đồng Ký quỹ RAM ${body.orderId ? `[${body.orderId}]` : ''}. Người bán vui lòng bàn giao vật phẩm và bấm "Hoàn Tất Mua Hàng & Thanh Toán" để giải ngân và tự hủy đoạn chat!`
+              text: `💸 Người mua đã xác nhận chuyển thanh toán vào Hợp đồng Ký quỹ RAM ${body.orderId ? `[${body.orderId}]` : ''}. Mặt hàng "${deal.productName}" đã tự động gỡ khỏi sàn công khai! Người bán vui lòng bàn giao và bấm "✅ Hoàn Tất Mua Hàng & Thanh Toán" để tự hủy đoạn chat!`
             });
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'success', deal, deals: Array.from(inMemoryActiveDeals.values()) }));
+          res.end(JSON.stringify({
+            status: 'success',
+            deal,
+            soldProductId,
+            soldOrRevokedIds: Array.from(inMemorySoldOrRevokedIds),
+            deals: Array.from(inMemoryActiveDeals.values())
+          }));
           return;
         }
 
         if (action === 'complete_and_burn') {
           const burnedDealId = body.dealId || (inMemoryActiveDeal ? inMemoryActiveDeal.dealId : 'DEAL');
+          const existingDeal = inMemoryActiveDeals.get(burnedDealId) || inMemoryActiveDeal;
+          const soldProductId = markProductSoldAndRemoveFromRAM(
+            body.productId || existingDeal?.productId,
+            body.productName || existingDeal?.productName
+          );
+
           lastBurnedDealId = burnedDealId;
           const burnedDeal = {
             dealId: burnedDealId,
+            productId: soldProductId || existingDeal?.productId || '',
             status: 'completed_burned',
             burnedAt: Date.now(),
             messages: []
@@ -1320,7 +1374,14 @@ export function createServer() {
           if (dealBurnTimeout.unref) dealBurnTimeout.unref();
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'success', deal: null, burnedDealId, lastBurnedDealId }));
+          res.end(JSON.stringify({
+            status: 'success',
+            deal: null,
+            burnedDealId,
+            lastBurnedDealId,
+            soldProductId,
+            soldOrRevokedIds: Array.from(inMemorySoldOrRevokedIds)
+          }));
           return;
         }
       }

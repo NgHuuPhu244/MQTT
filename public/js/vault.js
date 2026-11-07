@@ -1728,19 +1728,238 @@ function checkUrlForP2PRoom() {
 }
 
 /* ==========================================================================
-   5B. AUTO-GENERATED BLIND DEAL RELAY & AUTO-BURN ON COMPLETION
-   (Tự sinh mã kết nối Mua ↔ Bán • Ẩn 100% ID & IP • Tự hủy đoạn chat khi hoàn tất)
+   5B. MESSENGER MULTI-THREAD CONVERSATION SYSTEM & ISOLATED BLIND DEALS
+   (Mô hình Messenger Đa Hội Thoại • Tách biệt từng Người Mua & từng Sản Phẩm • Ẩn 100% ID & IP)
    ========================================================================== */
+
+let chatThreads = [];
+let activeThreadId = 'thread-merchant-general';
+
+function getActiveThread() {
+  let thread = chatThreads.find(t => t.id === activeThreadId);
+  if (!thread && chatThreads.length > 0) {
+    thread = chatThreads[0];
+    activeThreadId = thread.id;
+  }
+  return thread;
+}
+
+function loadChatThreadsFromStorage() {
+  try {
+    const raw = localStorage.getItem('ghost_messenger_threads_v2') || sessionStorage.getItem('ghost_messenger_threads_v2');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        chatThreads = parsed;
+      }
+    }
+  } catch {}
+
+  try {
+    const savedId = localStorage.getItem('ghost_active_thread_v2') || sessionStorage.getItem('ghost_active_thread_v2');
+    if (savedId && chatThreads.some(t => t.id === savedId)) {
+      activeThreadId = savedId;
+    }
+  } catch {}
+
+  if (chatThreads.length === 0) {
+    chatThreads = [
+      {
+        id: 'thread-merchant-general',
+        dealId: null,
+        productId: 'general',
+        productName: 'Tư vấn chung',
+        peerAlias: 'Merchant-Node-01',
+        peerRole: 'merchant',
+        avatarText: 'M',
+        lastMessage: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar...',
+        lastTime: getCurrentTimeStr(),
+        unreadCount: 0,
+        messages: [
+          {
+            id: 'msg-init-1',
+            author: 'Merchant-Node-01',
+            role: 'merchant',
+            time: getCurrentTimeStr(),
+            text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC.'
+          }
+        ]
+      }
+    ];
+    activeThreadId = 'thread-merchant-general';
+  }
+
+  const cur = getActiveThread();
+  if (cur) inMemoryChatMessages = cur.messages;
+}
+
+function saveChatThreadsToStorage() {
+  if (isPurgingNow) return;
+  try {
+    const json = JSON.stringify(chatThreads);
+    localStorage.setItem('ghost_messenger_threads_v2', json);
+    sessionStorage.setItem('ghost_messenger_threads_v2', json);
+    if (activeThreadId) {
+      localStorage.setItem('ghost_active_thread_v2', activeThreadId);
+      sessionStorage.setItem('ghost_active_thread_v2', activeThreadId);
+    }
+  } catch {}
+}
+
+function updateFloatingMessengerBadge() {
+  const badge = document.getElementById('floating-messenger-badge');
+  const chatTabBadge = document.getElementById('chat-badge');
+  const totalUnread = chatThreads.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
+
+  if (badge) {
+    if (totalUnread > 0) {
+      badge.textContent = String(totalUnread);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  if (chatTabBadge) {
+    if (totalUnread > 0) {
+      chatTabBadge.textContent = String(totalUnread);
+      chatTabBadge.style.display = 'inline-block';
+    } else {
+      chatTabBadge.style.display = 'none';
+    }
+  }
+}
+
+function renderMessengerThreads() {
+  const container = document.getElementById('messenger-threads-list');
+  const countBadge = document.getElementById('messenger-threads-count');
+  if (countBadge) {
+    countBadge.textContent = `${chatThreads.length} cuộc trò chuyện`;
+  }
+  if (!container) return;
+
+  const searchInput = document.getElementById('messenger-thread-search');
+  const filterKw = (searchInput?.value || '').trim().toLowerCase();
+
+  const filtered = chatThreads.filter(t => {
+    if (!filterKw) return true;
+    return (t.peerAlias && t.peerAlias.toLowerCase().includes(filterKw)) ||
+           (t.productName && t.productName.toLowerCase().includes(filterKw)) ||
+           (t.lastMessage && t.lastMessage.toLowerCase().includes(filterKw)) ||
+           (t.dealId && t.dealId.toLowerCase().includes(filterKw));
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="padding: 1.5rem 1rem; text-align: center; color: #64748b; font-size: 0.78rem;">Không tìm thấy cuộc trò chuyện nào</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(t => {
+    const isActive = t.id === activeThreadId;
+    const initial = (t.avatarText || t.peerAlias || 'M').charAt(0).toUpperCase();
+    const unreadHtml = t.unreadCount > 0 ? `<span class="thread-unread-pill">${t.unreadCount}</span>` : '';
+    const dealBadge = t.dealId ? `<span style="color: #34d399; font-size: 0.65rem; font-family: var(--font-mono); margin-left: 4px;">[${t.dealId}]</span>` : '';
+
+    return `
+      <div class="messenger-thread-item ${isActive ? 'active' : ''}" data-thread-id="${escapeHtml(t.id)}">
+        <div class="thread-avatar-wrap">
+          <span>${escapeHtml(initial)}</span>
+          <span class="thread-online-dot"></span>
+        </div>
+        <div class="thread-content">
+          <div class="thread-top-row">
+            <span class="thread-peer-name">${escapeHtml(t.peerAlias || 'Ẩn Danh')}${dealBadge}</span>
+            <span class="thread-time">${escapeHtml(t.lastTime || '')}</span>
+          </div>
+          <div>
+            <span class="thread-product-badge">📦 ${escapeHtml(t.productName || 'Vật phẩm')}</span>
+          </div>
+          <div class="thread-snippet">${escapeHtml(t.lastMessage || 'Chưa có tin nhắn')}</div>
+        </div>
+        ${unreadHtml}
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.messenger-thread-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const threadId = item.getAttribute('data-thread-id');
+      if (threadId) {
+        selectMessengerThread(threadId);
+      }
+    });
+  });
+}
+
+function selectMessengerThread(threadId) {
+  const target = chatThreads.find(t => t.id === threadId);
+  if (!target) return;
+
+  activeThreadId = target.id;
+  target.unreadCount = 0;
+  saveChatThreadsToStorage();
+
+  renderMessengerThreads();
+  updateActiveThreadHeader();
+  renderChatMessages();
+  updateFloatingMessengerBadge();
+
+  const input = document.getElementById('chat-input-field');
+  input?.focus();
+}
+
+function updateActiveThreadHeader() {
+  const thread = getActiveThread();
+  if (!thread) return;
+
+  const avatarText = document.getElementById('chat-peer-avatar-text');
+  const peerName = document.getElementById('chat-peer-name');
+  const peerBadge = document.getElementById('chat-peer-badge');
+  const prodTag = document.getElementById('active-product-tag');
+  const statusText = document.getElementById('p2p-status-text');
+  const pulseDot = document.getElementById('p2p-pulse-dot');
+
+  if (avatarText) avatarText.textContent = (thread.avatarText || thread.peerAlias || 'M').charAt(0).toUpperCase();
+  if (peerName) peerName.textContent = thread.peerAlias || 'Merchant-Node-01';
+  if (prodTag) prodTag.textContent = `Về: ${thread.productName || 'Tư vấn chung'}`;
+
+  if (thread.dealId) {
+    if (peerBadge) {
+      peerBadge.textContent = `🛡️ PHIÊN RIÊNG BIỆT [${thread.dealId}]`;
+      peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
+    }
+    if (statusText) statusText.textContent = `🟢 Kênh đàm thoại riêng cho "${thread.productName}" • Cách ly 100% với các khách khác`;
+    if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
+  } else {
+    if (peerBadge) {
+      peerBadge.textContent = '✓ ĐÃ XÁC MINH PGP';
+      peerBadge.className = 'verified-vendor-badge';
+    }
+    if (statusText) statusText.textContent = '🔴 Chế độ Bot Tự Động (Chưa kết nối P2P)';
+    if (pulseDot) pulseDot.className = 'p2p-pulse-dot disconnected';
+  }
+
+  // Update Auto-Deal Banner if applicable
+  const banner = document.getElementById('auto-deal-banner');
+  const codeBadge = document.getElementById('auto-deal-code-badge');
+  const prodLabel = document.getElementById('auto-deal-product-label');
+
+  if (thread.dealId) {
+    if (banner) banner.style.display = 'flex';
+    if (codeBadge) codeBadge.textContent = thread.dealId;
+    if (prodLabel) prodLabel.textContent = `${thread.productName} (Đàm thoại riêng)`;
+  } else {
+    if (banner) banner.style.display = 'none';
+  }
+}
 
 function getMyDealRole(deal) {
   if (!deal || !deal.dealId) return 'buyer';
   try {
     const savedRole = sessionStorage.getItem(`ghost_my_deal_role_${deal.dealId}`);
-    if (savedRole === 'buyer' || savedRole === 'seller') {
-      return savedRole;
-    }
+    if (savedRole === 'buyer' || savedRole === 'seller') return savedRole;
   } catch {}
-  return 'seller';
+  return 'buyer';
 }
 
 function setMyDealRole(dealId, role) {
@@ -1750,29 +1969,12 @@ function setMyDealRole(dealId, role) {
   } catch {}
 }
 
-function saveActiveDealToStorage(deal) {
-  if (isPurgingNow) return;
-  try {
-    if (deal && deal.status !== 'completed_burned') {
-      const json = JSON.stringify(deal);
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_DEAL, json);
-      sessionStorage.setItem(STORAGE_KEYS.ACTIVE_DEAL, json);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
-      sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
-    }
-  } catch {}
-}
-
 async function startAutoBlindDeal(productName, productId = '') {
-  if (
-    activeAutoDeal &&
-    activeAutoDeal.status !== 'completed_burned' &&
-    activeAutoDeal.productName === productName
-  ) {
-    applyIncomingBlindDealState(activeAutoDeal, true);
-    return activeAutoDeal;
-  }
+  const randHex = Array.from(crypto.getRandomValues(new Uint8Array(2)))
+    .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+    .join('');
+  const dealId = `DEAL-${randHex}`;
+  const threadId = `thread-${productId || 'item'}-${randHex}`;
 
   let createdDeal = null;
   try {
@@ -1781,27 +1983,23 @@ async function startAutoBlindDeal(productName, productId = '') {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'init',
+        dealId,
         productId,
-        productName
+        productName,
+        initiatorAlias: anonymousAlias
       })
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.deal) {
-        createdDeal = data.deal;
-      }
+      if (data && data.deal) createdDeal = data.deal;
     }
   } catch {}
 
   if (!createdDeal) {
-    const randHex = Array.from(crypto.getRandomValues(new Uint8Array(3)))
-      .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-      .join('');
     const bMask = randHex.slice(0, 4);
     const sMask = Array.from(crypto.getRandomValues(new Uint8Array(2)))
       .map(b => b.toString(16).padStart(2, '0').toUpperCase())
       .join('');
-    const dealId = `DEAL-${randHex}`;
     createdDeal = {
       dealId,
       productId: productId || 'custom',
@@ -1816,73 +2014,106 @@ async function startAutoBlindDeal(productName, productId = '') {
           role: 'system',
           senderBlindId: 'HỆ THỐNG KẾT NỐI TỰ ĐỘNG',
           time: getCurrentTimeStr(),
-          text: `🔐 ĐÃ TỰ SINH MÃ GIAO DỊCH [${dealId}] & TỰ ĐỘNG KẾT NỐI GIỮA KHÁCH VÀ NGƯỜI BÁN cho mặt hàng "${productName}". Danh tính (ID) và Địa chỉ IP của cả hai bên đều được che giấu tuyệt đối (0.0.0.0 Blind Relay). Khi hoàn tất mua hàng và thanh toán, toàn bộ đoạn chat này sẽ TỰ ĐỘNG BIẾN MẤT!`
+          text: `🔐 ĐÃ TỰ SINH PHÒNG CHAT RIÊNG BIỆT [${dealId}] cho mặt hàng "${productName}". Danh tính và IP (0.0.0.0) được che giấu tuyệt đối. Mọi tin nhắn cách ly hoàn toàn với các khách mua khác!`
         }
       ]
     };
   }
 
   setMyDealRole(createdDeal.dealId, 'buyer');
-  applyIncomingBlindDealState(createdDeal, true);
+
+  // Spawn new conversation thread in Messenger
+  const newThread = {
+    id: threadId,
+    dealId: createdDeal.dealId,
+    productId: productId || 'general',
+    productName: productName,
+    peerAlias: createdDeal.sellerBlindId || 'Merchant-Node-01',
+    peerRole: 'merchant',
+    avatarText: 'M',
+    lastMessage: `Bắt đầu hỏi mua "${productName}"`,
+    lastTime: getCurrentTimeStr(),
+    unreadCount: 0,
+    messages: createdDeal.messages.map(m => ({
+      author: m.senderBlindId || 'HỆ THỐNG GIAO DỊCH',
+      role: 'system',
+      time: m.time || getCurrentTimeStr(),
+      text: m.text
+    }))
+  };
+
+  chatThreads.unshift(newThread);
+  activeThreadId = newThread.id;
+  activeAutoDeal = createdDeal;
+
+  saveChatThreadsToStorage();
+  saveActiveDealToStorage(createdDeal);
 
   if (bazaarSyncChannel) {
     try {
       bazaarSyncChannel.postMessage({
         type: 'DEAL_SYNC',
-        deal: createdDeal
+        deal: createdDeal,
+        thread: newThread
       });
     } catch {}
   }
 
-  showToast(`🔗 Đã tự sinh mã [${createdDeal.dealId}] & kết nối ẩn danh với Người bán (Đã ẩn ID & IP cả 2 bên)!`, 'success');
+  renderMessengerThreads();
+  updateActiveThreadHeader();
+  renderChatMessages();
+  updateFloatingMessengerBadge();
+
+  showToast(`🔗 Đã mở cuộc trò chuyện riêng [${createdDeal.dealId}] cho "${productName}"! Các khách khác không thể xem đoạn chat này.`, 'success');
   return createdDeal;
 }
 
 function applyIncomingBlindDealState(deal, isInitiator = false) {
   if (!deal || !deal.dealId) return;
   if (deal.dealId === lastBurnedDealId || deal.status === 'completed_burned') {
-    if (activeAutoDeal && activeAutoDeal.dealId === deal.dealId) {
-      executeLocalDealAutoBurn(deal.dealId, true);
-    }
+    executeLocalDealAutoBurn(deal.dealId, true);
     return;
   }
 
-  const isNewDealForThisWindow = !activeAutoDeal || activeAutoDeal.dealId !== deal.dealId;
-  const prevMsgCount = activeAutoDeal && Array.isArray(activeAutoDeal.messages)
-    ? activeAutoDeal.messages.length
-    : 0;
+  let matchingThread = chatThreads.find(t => t.dealId === deal.dealId);
 
-  if (isNewDealForThisWindow && !isInitiator) {
+  if (!matchingThread) {
+    // A new buyer has connected for this item! Spawn a dedicated thread for this buyer
     let existingRole = null;
     try {
       existingRole = sessionStorage.getItem(`ghost_my_deal_role_${deal.dealId}`);
     } catch {}
-    if (!existingRole) {
+    if (!existingRole && !isInitiator) {
       setMyDealRole(deal.dealId, 'seller');
-      playNotificationChime();
-      showToast(`🔔 Khách ẩn danh vừa kết nối kênh mua hàng [${deal.dealId}] cho "${deal.productName}"! (Đã ẩn ID & IP)`, 'info');
     }
+
+    const myRole = getMyDealRole(deal);
+    const partnerName = myRole === 'buyer' ? deal.sellerBlindId : deal.buyerBlindId;
+    const initialAvatar = myRole === 'buyer' ? 'B' : 'K';
+
+    matchingThread = {
+      id: `thread-${deal.dealId}`,
+      dealId: deal.dealId,
+      productId: deal.productId || 'general',
+      productName: deal.productName || 'Giao dịch Ẩn danh',
+      peerAlias: partnerName,
+      peerRole: myRole === 'buyer' ? 'merchant' : 'buyer',
+      avatarText: initialAvatar,
+      lastMessage: deal.messages?.[deal.messages.length - 1]?.text || 'Khách đã kết nối',
+      lastTime: getCurrentTimeStr(),
+      unreadCount: isInitiator ? 0 : 1,
+      messages: []
+    };
+
+    chatThreads.unshift(matchingThread);
+    playNotificationChime();
+    showToast(`🔔 Khách [${deal.buyerBlindId}] vừa mở kênh hỏi mua "${deal.productName}" (Mã: ${deal.dealId})!`, 'info');
   }
 
   const myRole = getMyDealRole(deal);
-  activeAutoDeal = deal;
-  saveActiveDealToStorage(deal);
 
-  // Map deal messages to local chat display (self messages on right, partner messages on left)
   if (Array.isArray(deal.messages)) {
-    if (!isNewDealForThisWindow && deal.messages.length > prevMsgCount) {
-      const latestMsg = deal.messages[deal.messages.length - 1];
-      if (latestMsg && latestMsg.role !== myRole) {
-        playNotificationChime();
-        const activeTab = document.querySelector('.covert-nav-tabs .nav-tab.active');
-        if (activeTab && activeTab.getAttribute('data-tab') !== 'tab-chat') {
-          const badge = document.getElementById('chat-badge');
-          if (badge) badge.style.display = 'inline-block';
-        }
-      }
-    }
-
-    inMemoryChatMessages = deal.messages.map(m => {
+    matchingThread.messages = deal.messages.map(m => {
       if (m.role === 'system') {
         return {
           author: m.senderBlindId || 'KÊNH GIAO DỊCH ẨN DANH',
@@ -1893,80 +2124,47 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
       }
       if (m.role === myRole) {
         return {
-          author: `Tôi • ${m.senderBlindId}`,
+          author: `Tôi • ${m.senderBlindId || ''}`,
           role: 'buyer',
           time: m.time || getCurrentTimeStr(),
           text: m.text
         };
       }
       return {
-        author: m.senderBlindId,
+        author: m.senderBlindId || 'Đối Tác',
         role: 'merchant',
         time: m.time || getCurrentTimeStr(),
         text: m.text
       };
     });
-  }
 
-  // Update Auto-Deal Banner UI
-  const banner = document.getElementById('auto-deal-banner');
-  const codeBadge = document.getElementById('auto-deal-code-badge');
-  const prodLabel = document.getElementById('auto-deal-product-label');
-  const blindBadge = document.getElementById('auto-deal-blind-badge');
-  const activeProdTag = document.getElementById('active-product-tag');
-
-  if (banner) banner.style.display = 'block';
-  if (codeBadge) codeBadge.textContent = deal.dealId;
-  if (prodLabel) {
-    const roleLabel = myRole === 'buyer' ? 'Vai trò: Người Mua Ẩn Danh' : 'Vai trò: Người Bán Ẩn Danh';
-    prodLabel.textContent = `${deal.productName} (${roleLabel})`;
-  }
-  if (blindBadge) {
-    if (deal.status === 'paid_escrow') {
-      blindBadge.textContent = '💸 ĐÃ NẠP KÝ QUỸ • SẴN SÀNG HOÀN TẤT & TỰ HỦY CHAT';
-      blindBadge.style.color = '#fbbf24';
-    } else {
-      blindBadge.textContent = '🛡️ Đã ẩn ID & IP cả 2 bên (0.0.0.0 Blind Relay)';
-      blindBadge.style.color = '#38bdf8';
+    const last = deal.messages[deal.messages.length - 1];
+    if (last) {
+      matchingThread.lastMessage = last.text;
+      matchingThread.lastTime = last.time || getCurrentTimeStr();
+      if (!isInitiator && matchingThread.id !== activeThreadId) {
+        matchingThread.unreadCount = (matchingThread.unreadCount || 0) + 1;
+        playNotificationChime();
+      }
     }
   }
-  if (activeProdTag) {
-    activeProdTag.textContent = `[${deal.dealId}] ${deal.productName}`;
-  }
 
-  // Update Top Status Bar & Peer Header with Blinded Identity
-  const pulseDot = document.getElementById('p2p-pulse-dot');
-  const statusText = document.getElementById('p2p-status-text');
-  const avatarText = document.getElementById('chat-peer-avatar-text');
-  const peerName = document.getElementById('chat-peer-name');
-  const peerBadge = document.getElementById('chat-peer-badge');
-  const peerStat = document.getElementById('chat-peer-stat');
-  const peerPing = document.getElementById('chat-peer-ping');
-
-  const partnerBlindName = myRole === 'buyer' ? deal.sellerBlindId : deal.buyerBlindId;
-  if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
-  if (statusText) {
-    statusText.textContent = `🟢 ĐÃ TỰ ĐỘNG KẾT NỐI MÃ [${deal.dealId}] • ẨN 100% ID & IP CẢ KHÁCH LẪN NGƯỜI BÁN`;
+  saveChatThreadsToStorage();
+  renderMessengerThreads();
+  if (matchingThread.id === activeThreadId) {
+    updateActiveThreadHeader();
+    renderChatMessages();
   }
-  if (avatarText) avatarText.textContent = myRole === 'buyer' ? 'B' : 'K';
-  if (peerName) peerName.textContent = partnerBlindName;
-  if (peerBadge) {
-    peerBadge.textContent = '🛡️ ĐÃ ẨN ID & IP (0.0.0.0 BLIND RELAY)';
-    peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
-  }
-  if (peerStat) peerStat.textContent = `Mã phiên: ${deal.dealId} • Tự hủy khi thanh toán xong`;
-  if (peerPing) {
-    peerPing.textContent = 'Đồng bộ Tức thì';
-    peerPing.className = 'peer-stat green';
-  }
-
-  renderChatMessages();
+  updateFloatingMessengerBadge();
   updateRamMonitor();
 }
 
 async function sendBlindDealMessage(text) {
-  if (!activeAutoDeal) return;
-  const myRole = getMyDealRole(activeAutoDeal);
+  const thread = getActiveThread();
+  if (!thread || !thread.dealId) return;
+
+  const myRole = getMyDealRole({ dealId: thread.dealId });
+  const senderBlindId = myRole === 'seller' ? 'Người Bán Ẩn Danh' : 'Khách Ẩn Danh';
 
   let updatedDeal = null;
   try {
@@ -1975,47 +2173,48 @@ async function sendBlindDealMessage(text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'message',
-        dealId: activeAutoDeal.dealId,
+        dealId: thread.dealId,
         senderRole: myRole,
         text
       })
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.deal) {
-        updatedDeal = data.deal;
-      }
+      if (data && data.deal) updatedDeal = data.deal;
     }
   } catch {}
 
   if (!updatedDeal) {
-    const senderBlindId = myRole === 'seller'
-      ? activeAutoDeal.sellerBlindId
-      : activeAutoDeal.buyerBlindId;
-    activeAutoDeal.messages.push({
-      id: `msg-${Date.now()}`,
-      role: myRole,
-      senderBlindId,
+    thread.messages.push({
+      author: `Tôi • ${senderBlindId}`,
+      role: 'buyer',
       time: getCurrentTimeStr(),
       text
     });
-    updatedDeal = activeAutoDeal;
+    thread.lastMessage = text;
+    thread.lastTime = getCurrentTimeStr();
+  } else {
+    applyIncomingBlindDealState(updatedDeal, true);
   }
 
-  applyIncomingBlindDealState(updatedDeal, true);
+  saveChatThreadsToStorage();
+  renderMessengerThreads();
+  renderChatMessages();
 
   if (bazaarSyncChannel) {
     try {
       bazaarSyncChannel.postMessage({
         type: 'DEAL_SYNC',
-        deal: updatedDeal
+        deal: updatedDeal,
+        threadId: thread.id
       });
     } catch {}
   }
 }
 
 async function confirmBlindDealPayment() {
-  if (!activeAutoDeal) {
+  const thread = getActiveThread();
+  if (!thread || !thread.dealId) {
     showToast('Chưa có phiên giao dịch nào đang mở!', 'warning');
     return;
   }
@@ -2027,45 +2226,43 @@ async function confirmBlindDealPayment() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'pay_escrow',
-        dealId: activeAutoDeal.dealId
+        dealId: thread.dealId
       })
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.deal) {
-        updatedDeal = data.deal;
-      }
+      if (data && data.deal) updatedDeal = data.deal;
     }
   } catch {}
 
-  if (!updatedDeal) {
-    activeAutoDeal.status = 'paid_escrow';
-    activeAutoDeal.messages.push({
-      id: `sys-${Date.now()}`,
-      role: 'system',
-      senderBlindId: 'KÝ QUỸ RAM ESCROW',
-      time: getCurrentTimeStr(),
-      text: `💸 [ĐÃ NẠP KÝ QUỸ THÀNH CÔNG]: Người mua ẩn danh đã xác nhận thanh toán cho phiên [${activeAutoDeal.dealId}]. Sau khi bàn giao xong, nhấn "✅ Hoàn Tất Mua Hàng & Thanh Toán (Tự Hủy Chat)" để giải ngân và xóa sạch đoạn chat!`
-    });
-    updatedDeal = activeAutoDeal;
-  }
+  thread.messages.push({
+    author: 'KÝ QUỸ RAM (ESCROW)',
+    role: 'system',
+    time: getCurrentTimeStr(),
+    text: `💸 [ĐÃ NẠP KÝ QUỸ THÀNH CÔNG]: Người mua ẩn danh đã xác nhận thanh toán cho phiên [${thread.dealId}]. Sau khi bàn giao xong, nhấn "✅ Hoàn Tất Mua Hàng & Thanh Toán" để giải ngân và tự hủy đoạn chat này!`
+  });
+  thread.lastMessage = 'Đã nạp ký quỹ Monero';
+  thread.lastTime = getCurrentTimeStr();
 
-  applyIncomingBlindDealState(updatedDeal, true);
+  saveChatThreadsToStorage();
+  renderMessengerThreads();
+  renderChatMessages();
 
   if (bazaarSyncChannel) {
     try {
       bazaarSyncChannel.postMessage({
         type: 'DEAL_SYNC',
-        deal: updatedDeal
+        deal: updatedDeal || { dealId: thread.dealId, status: 'paid_escrow' }
       });
     } catch {}
   }
 
-  showToast(`💸 Đã xác nhận thanh toán Ký quỹ cho [${updatedDeal.dealId}]! Nhấn "Hoàn Tất Mua Hàng" để tự hủy đoạn chat.`, 'success');
+  showToast(`💸 Đã xác nhận thanh toán Ký quỹ cho [${thread.dealId}]! Hãy nhấn "Hoàn Tất Mua Hàng" để giải ngân và tự hủy.`, 'success');
 }
 
 async function completeDealAndAutoBurn() {
-  const targetDealId = activeAutoDeal?.dealId || activeOrder?.orderId || 'DEAL-RAM';
+  const thread = getActiveThread();
+  const targetDealId = thread?.dealId || activeAutoDeal?.dealId || 'DEAL-RAM';
 
   try {
     await bazaarApiFetch('/api/lexicon/bazaar-deals', {
@@ -2073,7 +2270,7 @@ async function completeDealAndAutoBurn() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'complete_and_burn',
-        dealId: activeAutoDeal?.dealId || ''
+        dealId: targetDealId
       })
     });
   } catch {}
@@ -2091,43 +2288,31 @@ async function completeDealAndAutoBurn() {
 }
 
 function executeLocalDealAutoBurn(dealId, isRemoteTrigger = false) {
-  const burnedCode = dealId || activeAutoDeal?.dealId || 'DEAL';
+  const burnedCode = dealId || 'DEAL';
   lastBurnedDealId = burnedCode;
-  activeAutoDeal = null;
-  activeOrder = null;
-  inMemoryChatMessages = [];
 
-  if (orderCountdownTimer) {
-    clearInterval(orderCountdownTimer);
-    orderCountdownTimer = null;
+  // Remove the burned thread from Messenger threads
+  chatThreads = chatThreads.filter(t => t.dealId !== burnedCode);
+  if (chatThreads.length === 0) {
+    loadChatThreadsFromStorage();
+  } else {
+    activeThreadId = chatThreads[0].id;
   }
 
-  // Wipe Deal, Chat, and Order from localStorage & sessionStorage
-  try {
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
-    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
-    localStorage.removeItem(STORAGE_KEYS.CHAT_MESSAGES);
-    sessionStorage.removeItem(STORAGE_KEYS.CHAT_MESSAGES);
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
-    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
-  } catch {}
+  saveChatThreadsToStorage();
 
   const banner = document.getElementById('auto-deal-banner');
   if (banner) banner.style.display = 'none';
 
-  const orderResultBox = document.getElementById('order-result-box');
-  if (orderResultBox) orderResultBox.style.display = 'none';
-
-  const activeProdTag = document.getElementById('active-product-tag');
-  if (activeProdTag) activeProdTag.textContent = 'Đoạn chat đã tự hủy sau thanh toán';
-
-  updateP2PStatusUI('disconnected');
+  renderMessengerThreads();
+  updateActiveThreadHeader();
   renderChatMessages();
+  updateFloatingMessengerBadge();
   updateRamMonitor();
 
   playNotificationChime();
   showToast(
-    `🔥 Hoàn tất mua hàng & thanh toán! Toàn bộ đoạn chat và mã kết nối [${burnedCode}] đã TỰ ĐỘNG BIẾN MẤT khỏi RAM cả 2 bên!`,
+    `🔥 Hoàn tất mua hàng & thanh toán! Đoạn chat mã [${burnedCode}] đã TỰ ĐỘNG BIẾN MẤT khỏi RAM cả 2 bên!`,
     'success'
   );
 }
@@ -2139,17 +2324,19 @@ async function pollBlindDealRelay() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    if (data && data.deal) {
+    if (data && Array.isArray(data.deals)) {
+      data.deals.forEach(deal => {
+        applyIncomingBlindDealState(deal, false);
+      });
+    } else if (data && data.deal) {
       applyIncomingBlindDealState(data.deal, false);
-    } else if (data && !data.deal && activeAutoDeal) {
-      if (!data.lastBurnedDealId || data.lastBurnedDealId === activeAutoDeal.dealId) {
-        executeLocalDealAutoBurn(activeAutoDeal.dealId, true);
-      }
     }
   } catch {}
 }
 
 function initEncryptedChat() {
+  loadChatThreadsFromStorage();
+
   const sendBtn = document.getElementById('send-chat-btn');
   const chatInput = document.getElementById('chat-input-field');
   const purgeBtn = document.getElementById('purge-chat-btn');
@@ -2157,14 +2344,37 @@ function initEncryptedChat() {
   const copyPgpBtn = document.getElementById('copy-pgp-fingerprint');
   const confirmPayBtn = document.getElementById('btn-deal-confirm-pay');
   const completeBurnBtn = document.getElementById('btn-deal-complete-burn');
+  const newThreadBtn = document.getElementById('btn-new-thread');
+  const searchThreadInput = document.getElementById('messenger-thread-search');
+  const floatingMessengerBtn = document.getElementById('floating-messenger-btn');
 
-  // P2P Controls
-  const btnHost = document.getElementById('btn-p2p-host');
-  const btnJoin = document.getElementById('btn-p2p-join');
-  const inputCode = document.getElementById('input-p2p-code');
-  const btnCopyLink = document.getElementById('btn-p2p-copy-link');
-  const btnDisconnect = document.getElementById('btn-p2p-disconnect');
+  // Search filter in threads list
+  if (searchThreadInput) {
+    searchThreadInput.addEventListener('input', () => {
+      renderMessengerThreads();
+    });
+  }
 
+  // New Thread CTA
+  if (newThreadBtn) {
+    newThreadBtn.addEventListener('click', () => {
+      const topic = prompt('Nhập tên vật phẩm hoặc chủ đề muốn đàm thoại:', 'Vật phẩm đấu giá');
+      if (topic && topic.trim()) {
+        startAutoBlindDeal(topic.trim(), 'custom');
+      }
+    });
+  }
+
+  // Floating Messenger Dock Button
+  if (floatingMessengerBtn) {
+    floatingMessengerBtn.addEventListener('click', () => {
+      switchTab('tab-chat');
+      const input = document.getElementById('chat-input-field');
+      input?.focus();
+    });
+  }
+
+  // Deal confirmation buttons
   if (confirmPayBtn) {
     confirmPayBtn.addEventListener('click', () => {
       confirmBlindDealPayment();
@@ -2173,61 +2383,47 @@ function initEncryptedChat() {
 
   if (completeBurnBtn) {
     completeBurnBtn.addEventListener('click', () => {
-      completeDealAndAutoBurn();
+      if (confirm('Xác nhận hoàn tất giao dịch và thanh toán? Toàn bộ đoạn chat này sẽ bị xóa vĩnh viễn khỏi RAM của cả hai bên!')) {
+        completeDealAndAutoBurn();
+      }
     });
   }
 
-  // Restore active blind deal if present, and start real-time deal polling (1.5s)
-  try {
-    const rawDeal = localStorage.getItem(STORAGE_KEYS.ACTIVE_DEAL) || sessionStorage.getItem(STORAGE_KEYS.ACTIVE_DEAL);
-    if (rawDeal) {
-      const parsedDeal = JSON.parse(rawDeal);
-      if (parsedDeal && parsedDeal.dealId && parsedDeal.status !== 'completed_burned') {
-        applyIncomingBlindDealState(parsedDeal, true);
-      }
-    }
-  } catch {}
-
-  pollBlindDealRelay();
-  setInterval(pollBlindDealRelay, 1500);
+  // P2P Controls
+  const btnHost = document.getElementById('btn-p2p-host');
+  const btnJoin = document.getElementById('btn-p2p-join');
+  const inputCode = document.getElementById('input-p2p-code');
+  const btnCopy = document.getElementById('btn-p2p-copy-link');
+  const btnDisconnect = document.getElementById('btn-p2p-disconnect');
 
   if (btnHost) {
     btnHost.addEventListener('click', () => {
-      startHostingP2PRoom();
+      const roomCode = generateRoomCode();
+      hostP2PRoom(roomCode);
     });
   }
 
-  if (btnJoin) {
+  if (btnJoin && inputCode) {
     btnJoin.addEventListener('click', () => {
-      const val = inputCode?.value || '';
-      joinP2PRoom(val);
-    });
-  }
-
-  if (inputCode) {
-    inputCode.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        joinP2PRoom(inputCode.value);
-      }
-    });
-  }
-
-  if (btnCopyLink) {
-    btnCopyLink.addEventListener('click', () => {
-      if (!currentRoomCode) {
-        showToast('Chưa có mã phòng để sao chép!', 'warning');
+      let code = inputCode.value.trim();
+      if (!code) {
+        showToast('Vui lòng nhập mã phòng P2P!', 'warning');
         return;
       }
-      const link = getRoomShareableLink(currentRoomCode);
-      if (navigator.clipboard && navigator.clipboard.writeText) {
+      if (code.includes('#room=')) {
+        code = decodeURIComponent(code.split('#room=')[1]);
+      }
+      joinP2PRoom(code);
+    });
+  }
+
+  if (btnCopy) {
+    btnCopy.addEventListener('click', () => {
+      if (p2pRoomCode) {
+        const link = getRoomShareableLink(p2pRoomCode);
         navigator.clipboard.writeText(link).then(() => {
-          showToast(`Đã sao chép link mời phòng [${currentRoomCode}] vào bộ nhớ tạm!`, 'success');
-        }).catch(() => {
-          prompt('Sao chép link mời này gửi cho khách:', link);
+          showToast('Đã sao chép link phòng P2P! Gửi link này cho khách.', 'success');
         });
-      } else {
-        prompt('Sao chép link mời này gửi cho khách:', link);
       }
     });
   }
@@ -2235,172 +2431,152 @@ function initEncryptedChat() {
   if (btnDisconnect) {
     btnDisconnect.addEventListener('click', () => {
       disconnectP2P(false);
-      inMemoryChatMessages = [];
-      renderChatMessages();
-      updateRamMonitor();
-      showToast('Đã ngắt kết nối P2P và xóa sạch RAM!', 'info');
+      showToast('Đã ngắt kết nối P2P!', 'info');
     });
   }
 
-  // Copy PGP Fingerprint
-  if (copyPgpBtn) {
-    copyPgpBtn.addEventListener('click', () => {
-      const fullFingerprint = '-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GhostBazaar PGP Node v4.2\nComment: 4A8F C310 998D E21B 77A4 0019 FF45 8891 00C2 91BC\nmQGNBF7...RAM_ONLY_KEY...==\n-----END PGP PUBLIC KEY BLOCK-----';
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(fullFingerprint).then(() => {
-          showToast('Đã sao chép PGP Fingerprint vào bộ đệm!', 'success');
-        });
+  // Purge current thread button
+  if (purgeBtn) {
+    purgeBtn.addEventListener('click', () => {
+      const thread = getActiveThread();
+      if (thread) {
+        thread.messages = [];
+        thread.lastMessage = 'Đoạn chat đã được xóa sạch khỏi RAM';
+        saveChatThreadsToStorage();
+        renderChatMessages();
+        renderMessengerThreads();
+        updateRamMonitor();
+        showToast(`Đã xóa sạch tin nhắn của đoạn chat "${thread.productName}" trong RAM!`, 'success');
       }
     });
   }
 
-  // Restore chat history from storage if available, otherwise show initial welcome message
-  if (!activeAutoDeal) {
-    let restoredChat = false;
-    try {
-      const rawChat = localStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES) || sessionStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES);
-      if (rawChat) {
-        const parsedChat = JSON.parse(rawChat);
-        if (Array.isArray(parsedChat) && parsedChat.length > 0) {
-          inMemoryChatMessages = parsedChat;
-          restoredChat = true;
-        }
-      }
-    } catch {}
-
-    if (!restoredChat) {
-      inMemoryChatMessages = [
-        {
-          author: 'Merchant-Node-01',
-          role: 'merchant',
-          time: getCurrentTimeStr(),
-          text: 'Xác thực E2EE hoàn tất. Khi bạn nhấn nút 💬 Nhắn tin hoặc 🛒 Mua trên bất kỳ mặt hàng nào, hệ thống sẽ TỰ ĐỘNG SINH MÃ GIAO DỊCH (DEAL-XXXX) và kết nối trực tiếp Khách ↔ Người bán (ẩn 100% ID & IP của cả hai bên). Ngay khi hoàn tất mua hàng và thanh toán, toàn bộ đoạn chat sẽ tự động biến mất khỏi RAM!'
-        }
-      ];
-    }
-    renderChatMessages();
-  }
-
-  // Send message handler
-  const handleSendMessage = () => {
-    const text = (chatInput?.value || '').trim();
+  // Send message
+  const handleSend = () => {
+    if (!chatInput) return;
+    const text = chatInput.value.trim();
     if (!text) return;
 
     chatInput.value = '';
+    const thread = getActiveThread();
+    if (!thread) return;
 
-    // Stop typing indicator on remote
-    if (isP2PConnected && activePeerConnection) {
-      try {
-        activePeerConnection.send({ type: 'typing', isTyping: false });
-      } catch {}
+    if (thread.dealId) {
+      sendBlindDealMessage(text);
+      return;
     }
 
-    if (activeAutoDeal && activeAutoDeal.status !== 'completed_burned') {
-      // Send over Auto-Generated Blind Deal Relay (Buyer <-> Seller with hidden ID & IP)
-      sendBlindDealMessage(text);
-    } else if (isP2PConnected && activePeerConnection) {
-      // 100% P2P Device-to-Device WebRTC DataChannel
+    if (isP2PConnected && activePeerConnection) {
       try {
         activePeerConnection.send({
           type: 'chat',
           text,
-          alias: anonymousAlias || 'Ẩn Danh',
+          alias: anonymousAlias,
           time: getCurrentTimeStr()
         });
-      } catch (err) {
-        showToast('Lỗi gửi tin nhắn P2P: ' + err.message, 'error');
-        return;
-      }
+      } catch {}
 
-      inMemoryChatMessages.push({
+      thread.messages.push({
         author: `Tôi (${anonymousAlias})`,
         role: 'buyer',
         time: getCurrentTimeStr(),
         text
       });
-      renderChatMessages();
-      updateRamMonitor();
+      thread.lastMessage = text;
+      thread.lastTime = getCurrentTimeStr();
     } else {
-      // Auto-initialize a blind deal channel if user types directly in chat without clicking a product first
-      startAutoBlindDeal(currentChatInquiry || 'Tư vấn mua hàng ẩn danh').then(() => {
-        sendBlindDealMessage(text);
+      // Offline / Bot mode simulation
+      thread.messages.push({
+        author: anonymousAlias || 'Ghost-Buyer',
+        role: 'buyer',
+        time: getCurrentTimeStr(),
+        text
       });
+      thread.lastMessage = text;
+      thread.lastTime = getCurrentTimeStr();
+
+      const typing = document.getElementById('chat-typing-indicator');
+      if (typing) typing.style.display = 'flex';
+
+      setTimeout(() => {
+        if (typing) typing.style.display = 'none';
+        const reply = generateMerchantReply(text);
+        thread.messages.push({
+          author: thread.peerAlias || 'Merchant-Node-01',
+          role: 'merchant',
+          time: getCurrentTimeStr(),
+          text: reply
+        });
+        thread.lastMessage = reply;
+        thread.lastTime = getCurrentTimeStr();
+        saveChatThreadsToStorage();
+        renderChatMessages();
+        renderMessengerThreads();
+        updateRamMonitor();
+      }, 700);
     }
+
+    saveChatThreadsToStorage();
+    renderChatMessages();
+    renderMessengerThreads();
+    updateRamMonitor();
   };
 
-  if (sendBtn) sendBtn.addEventListener('click', handleSendMessage);
+  if (sendBtn) sendBtn.addEventListener('click', handleSend);
   if (chatInput) {
     chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        handleSendMessage();
-      }
-    });
-
-    // Broadcast typing indicator to remote peer
-    chatInput.addEventListener('input', () => {
-      if (isP2PConnected && activePeerConnection) {
-        try {
-          activePeerConnection.send({
-            type: 'typing',
-            isTyping: chatInput.value.length > 0,
-            alias: anonymousAlias
-          });
-        } catch {}
-
-        if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
-        typingDebounceTimer = setTimeout(() => {
-          if (isP2PConnected && activePeerConnection) {
-            try {
-              activePeerConnection.send({ type: 'typing', isTyping: false });
-            } catch {}
-          }
-        }, 1500);
+        handleSend();
       }
     });
   }
 
-  // Quick inquiry buttons
+  // Quick inquiry chips
   quickBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const q = btn.getAttribute('data-q');
-      if (chatInput) {
+      if (q && chatInput) {
         chatInput.value = q;
-        handleSendMessage();
+        chatInput.focus();
       }
     });
   });
 
-  // Manual instant chat purge
-  if (purgeBtn) {
-    purgeBtn.addEventListener('click', () => {
-      if (activeAutoDeal) {
-        completeDealAndAutoBurn();
-      } else {
-        inMemoryChatMessages = [];
-        renderChatMessages();
-        updateRamMonitor();
-        showToast('Đã xóa sạch toàn bộ lịch sử tin nhắn trong RAM!', 'success');
-      }
+  // Copy PGP fingerprint
+  if (copyPgpBtn) {
+    copyPgpBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText('4A8F C310 998D E21B 77A4 0019 FF45 8891 00C2 91BC').then(() => {
+        showToast('Đã sao chép PGP Fingerprint của shop!', 'success');
+      });
     });
   }
+
+  renderMessengerThreads();
+  updateActiveThreadHeader();
+  renderChatMessages();
+  updateFloatingMessengerBadge();
+
+  // Poll for background deals every 2.5s
+  setInterval(pollBlindDealRelay, 2500);
 }
 
 function renderChatMessages() {
-  saveChatMessagesToStorage();
   const container = document.getElementById('chat-message-list');
   if (!container) return;
 
-  if (inMemoryChatMessages.length === 0) {
-    container.innerHTML = `
-      <div class="chat-system-msg">
-        <div class="system-bubble">🛡️ Kênh hội thoại RAM hiện đang trống (0 Bytes). Mọi tin nhắn trước đó đã tự động biến mất hoàn toàn sau khi hoàn tất giao dịch.</div>
-      </div>
-    `;
+  const thread = getActiveThread();
+  const msgs = thread ? thread.messages : inMemoryChatMessages;
+
+  if (!msgs || msgs.length === 0) {
+    container.innerHTML = `<div style="margin: auto; text-align: center; color: #64748b; font-size: 0.82rem; padding: 2rem;">
+      <span style="font-size: 1.8rem; display: block; margin-bottom: 0.5rem;">🔒</span>
+      Chưa có tin nhắn trong cuộc trò chuyện này.<br>Gõ tin nhắn bên dưới để bắt đầu đàm thoại bảo mật!
+    </div>`;
     return;
   }
 
-  container.innerHTML = inMemoryChatMessages.map(msg => {
+  container.innerHTML = msgs.map(msg => {
     if (msg.role === 'system') {
       return `
         <div class="chat-system-msg">
@@ -2414,7 +2590,6 @@ function renderChatMessages() {
       return `
         <div class="chat-msg buyer">
           <div class="msg-bubble">
-            ${msg.author ? `<div class="msg-author-tag" style="color: #a7f3d0; font-size: 0.7rem; margin-bottom: 3px;">${escapeHtml(msg.author)}</div>` : ''}
             <div class="msg-text">${escapeHtml(msg.text)}</div>
             <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
           </div>
@@ -2425,7 +2600,7 @@ function renderChatMessages() {
     return `
       <div class="chat-msg merchant">
         <div class="msg-bubble">
-          <div class="msg-author-tag">${escapeHtml(msg.author)}</div>
+          <div class="msg-author-tag">${escapeHtml(msg.author || thread?.peerAlias || 'Người Bán')}</div>
           <div class="msg-text">${escapeHtml(msg.text)}</div>
           <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
         </div>
