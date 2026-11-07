@@ -585,6 +585,11 @@ function formatPriceNum(val) {
   return num.toFixed(2);
 }
 
+// Cross-tab real-time broadcast channel for instantaneous multi-desk synchronization
+const bazaarSyncChannel = (typeof window !== 'undefined' && 'BroadcastChannel' in window)
+  ? new BroadcastChannel('ghost_bazaar_catalog_sync_v1')
+  : null;
+
 /**
  * Fetch synchronized product catalog from volatile server RAM
  */
@@ -625,13 +630,71 @@ function initMarketCatalog() {
   populateOrderProductSelect(MARKET_PRODUCTS);
   updateOrderPreviewCard();
 
+  // Cross-tab real-time sync listener (Desktops, Windows & Tabs)
+  if (bazaarSyncChannel) {
+    bazaarSyncChannel.onmessage = (event) => {
+      const msg = event.data;
+      if (!msg || !msg.type) return;
+
+      if (msg.type === 'NEW_PRODUCT') {
+        const prod = msg.product;
+        const idx = MARKET_PRODUCTS.findIndex(p => p.id === prod.id);
+        if (idx === -1) {
+          MARKET_PRODUCTS.unshift(prod);
+        } else {
+          MARKET_PRODUCTS[idx] = prod;
+        }
+        updateCategoryPillCounts();
+        populateOrderProductSelect(MARKET_PRODUCTS);
+        filterAndRenderProducts();
+        updateRamMonitor();
+        showToast(`📢 Gian hàng vừa có mặt hàng mới: "${prod.name}"!`, 'info');
+      } else if (msg.type === 'BID_PLACED') {
+        const prod = MARKET_PRODUCTS.find(p => p.id === msg.productId);
+        if (prod) {
+          prod.currentBidXMR = msg.amount;
+          prod.rawPriceXMR = msg.amount;
+          prod.highestBidder = msg.bidder;
+          prod.bidCount = (prod.bidCount || 0) + 1;
+          if (!prod.bids) prod.bids = [];
+          prod.bids.unshift({
+            bidder: msg.bidder,
+            amount: msg.amount,
+            currency: msg.currency || 'XMR',
+            note: 'Dẫn đầu',
+            time: 'Vừa xong'
+          });
+          filterAndRenderProducts();
+          updateRamMonitor();
+          showToast(`🔨 "${prod.name}" vừa có lượt trả giá: ${msg.amount} ${msg.currency || 'XMR'} từ ${msg.bidder}!`, 'info');
+        }
+      } else if (msg.type === 'REVOKE_PRODUCT') {
+        MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== msg.productId);
+        updateCategoryPillCounts();
+        populateOrderProductSelect(MARKET_PRODUCTS);
+        filterAndRenderProducts();
+        updateRamMonitor();
+      }
+    };
+  }
+
   // Load latest live listings from server RAM
   fetchBazaarProducts(true);
 
-  // Background auto-sync interval every 8 seconds
+  // Background auto-sync interval every 2.5 seconds (fast real-time poll)
   setInterval(() => {
     fetchBazaarProducts(true);
-  }, 8000);
+  }, 2500);
+
+  // Auto-sync when user switches back to this desk or window
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      fetchBazaarProducts(true);
+    }
+  });
+  window.addEventListener('focus', () => {
+    fetchBazaarProducts(true);
+  });
 
   if (refreshMarketBtn) {
     refreshMarketBtn.addEventListener('click', () => {
@@ -1131,6 +1194,17 @@ function setupP2PConnection(conn) {
       time: getCurrentTimeStr()
     });
 
+    // Exchange custom vendor listings with remote peer
+    const myCustomListings = MARKET_PRODUCTS.filter(p => p.isUserCreated);
+    if (myCustomListings.length > 0) {
+      try {
+        conn.send({
+          type: 'market_sync_batch',
+          products: myCustomListings
+        });
+      } catch {}
+    }
+
     inMemoryChatMessages.push({
       author: 'HỆ THỐNG P2P',
       role: 'system',
@@ -1177,6 +1251,52 @@ function setupP2PConnection(conn) {
         } else {
           typingIndicator.style.display = 'none';
         }
+      }
+    } else if (packet.type === 'market_item_created') {
+      const prod = packet.product;
+      const idx = MARKET_PRODUCTS.findIndex(p => p.id === prod.id);
+      if (idx === -1) {
+        MARKET_PRODUCTS.unshift(prod);
+      } else {
+        MARKET_PRODUCTS[idx] = prod;
+      }
+      updateCategoryPillCounts();
+      populateOrderProductSelect(MARKET_PRODUCTS);
+      filterAndRenderProducts();
+      updateRamMonitor();
+      playNotificationChime();
+      showToast(`🔔 Đối tác P2P vừa niêm yết: "${prod.name}"!`, 'info');
+    } else if (packet.type === 'market_sync_batch' && Array.isArray(packet.products)) {
+      packet.products.forEach(prod => {
+        const idx = MARKET_PRODUCTS.findIndex(p => p.id === prod.id);
+        if (idx === -1) {
+          MARKET_PRODUCTS.unshift(prod);
+        } else {
+          MARKET_PRODUCTS[idx] = prod;
+        }
+      });
+      updateCategoryPillCounts();
+      populateOrderProductSelect(MARKET_PRODUCTS);
+      filterAndRenderProducts();
+      updateRamMonitor();
+    } else if (packet.type === 'market_bid_placed') {
+      const prod = MARKET_PRODUCTS.find(p => p.id === packet.productId);
+      if (prod) {
+        prod.currentBidXMR = packet.amount;
+        prod.rawPriceXMR = packet.amount;
+        prod.highestBidder = packet.bidder;
+        prod.bidCount = (prod.bidCount || 0) + 1;
+        if (!prod.bids) prod.bids = [];
+        prod.bids.unshift({
+          bidder: packet.bidder,
+          amount: packet.amount,
+          currency: packet.currency || 'XMR',
+          time: 'Vừa xong'
+        });
+        filterAndRenderProducts();
+        updateRamMonitor();
+        playNotificationChime();
+        showToast(`🔨 Đối tác P2P vừa trả giá: ${packet.amount} ${packet.currency || 'XMR'} cho "${prod.name}"!`, 'info');
       }
     } else if (packet.type === 'disconnect') {
       showToast('Đối tác đã ngắt kết nối P2P!', 'warning');
@@ -1910,6 +2030,32 @@ function initAuctionBidding() {
       }
 
       populateOrderProductSelect(MARKET_PRODUCTS);
+
+      // Broadcast bid across local tabs/desks & P2P connected peers
+      if (bazaarSyncChannel) {
+        try {
+          bazaarSyncChannel.postMessage({
+            type: 'BID_PLACED',
+            productId: product.id,
+            amount: bidVal,
+            currency,
+            bidder: anonymousAlias
+          });
+        } catch {}
+      }
+
+      if (isP2PConnected && activePeerConnection) {
+        try {
+          activePeerConnection.send({
+            type: 'market_bid_placed',
+            productId: product.id,
+            amount: bidVal,
+            currency,
+            bidder: anonymousAlias
+          });
+        } catch {}
+      }
+
       showToast(`Đã ghi nhận mức giá ${formatPriceNum(bidVal)} ${currency} cho "${product.name}"!`, 'success');
       closeModal();
       filterAndRenderProducts();
@@ -2281,6 +2427,26 @@ async function handlePublishListing() {
     MARKET_PRODUCTS.unshift(newProduct);
   }
 
+  // Broadcast in real-time across tabs / virtual desktops
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'NEW_PRODUCT',
+        product: newProduct
+      });
+    } catch {}
+  }
+
+  // Broadcast to P2P connected remote peer
+  if (isP2PConnected && activePeerConnection) {
+    try {
+      activePeerConnection.send({
+        type: 'market_item_created',
+        product: newProduct
+      });
+    } catch {}
+  }
+
   myVendorListings.unshift(newProduct);
   try {
     sessionStorage.setItem('ghost_my_vendor_listings', JSON.stringify(myVendorListings));
@@ -2384,6 +2550,25 @@ async function revokeUserListing(productId) {
 
   MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== productId);
   myVendorListings = myVendorListings.filter(p => p.id !== productId);
+
+  if (bazaarSyncChannel) {
+    try {
+      bazaarSyncChannel.postMessage({
+        type: 'REVOKE_PRODUCT',
+        productId
+      });
+    } catch {}
+  }
+
+  if (isP2PConnected && activePeerConnection) {
+    try {
+      activePeerConnection.send({
+        type: 'market_item_revoked',
+        productId
+      });
+    } catch {}
+  }
+
   try {
     sessionStorage.setItem('ghost_my_vendor_listings', JSON.stringify(myVendorListings));
   } catch {}
