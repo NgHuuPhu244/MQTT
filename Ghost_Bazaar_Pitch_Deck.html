@@ -652,17 +652,17 @@
         </div>
 
         <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.32);">
-          <span class="card-badge" style="color:var(--amber-gold);">03 // BRUTE-FORCE SHIELD</span>
-          <h3 class="card-title">PBKDF2-HMAC-SHA256 (310,000 Vòng)</h3>
-          <p class="card-desc">Bảo vệ 2 lớp bằng mật khẩu kết hợp Salt 128-bit ngẫu nhiên, lặp 310,000 vòng băm chống tấn công vét cạn.</p>
-          <div class="code-pill"><span>PBKDF2(passphrase, salt_128b, 310000)</span><span>OWASP Std</span></div>
+          <span class="card-badge" style="color:var(--amber-gold);">03 // DUAL-FACTOR COMPOSITE KEY</span>
+          <h3 class="card-title">PBKDF2-HMAC-SHA256 (100,000 Vòng)</h3>
+          <p class="card-desc">Bảo vệ 2 lớp bằng mật khẩu kết hợp Salt 128-bit ngẫu nhiên, lặp 100,000 vòng băm hòa trộn qua HKDF Composite Key.</p>
+          <div class="code-pill"><span>PBKDF2(passphrase, salt_16B, 100000) + HKDF</span><span>Composite Key</span></div>
         </div>
 
         <div class="bento-card" style="--inner-glow: rgba(52, 211, 153, 0.32);">
           <span class="card-badge" style="color:var(--emerald-mono);">04 // TRAFFIC ANALYSIS DEFENSE</span>
-          <h3 class="card-title">Constant-Boundary Random Padding</h3>
-          <p class="card-desc">Đệm ngẫu nhiên kích thước bản rõ theo bội số 1024-byte để che giấu độ dài thật, chống phân tích lưu lượng mạng.</p>
-          <div class="code-pill"><span>Pad(Plaintext) ➔ N × 1024-Byte Block</span><span>Anti-DPI</span></div>
+          <h3 class="card-title">Constant-Boundary Padding (256B)</h3>
+          <p class="card-desc">Đệm ngẫu nhiên kích thước bản rõ theo bội số 256-byte để che giấu độ dài thật, chống phân tích lưu lượng mạng.</p>
+          <div class="code-pill"><span>Pad(Plaintext) ➔ N × 256-Byte Block</span><span>Anti-DPI</span></div>
         </div>
       </div>
     </section>
@@ -937,7 +937,7 @@
         <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.35);">
           <span class="card-badge" style="color:var(--emerald-bright);">02 // MILITARY-GRADE CRYPTO</span>
           <h3 class="card-title">Mã Hóa Chuẩn Quân Sự</h3>
-          <p class="card-desc">Kết hợp chặt chẽ <code>AES-256-GCM</code> + <code>ECDH P-256</code> + <code>PBKDF2 (310,000 vòng)</code> cùng đệm ngẫu nhiên 1024-byte.</p>
+          <p class="card-desc">Kết hợp chặt chẽ <code>AES-256-GCM</code> + <code>ECDH P-256</code> + <code>PBKDF2 (100,000 vòng)</code> cùng đệm ngẫu nhiên 256-byte.</p>
         </div>
 
         <div class="bento-card" style="--inner-glow: rgba(244, 63, 94, 0.35);">
