@@ -1778,7 +1778,7 @@ function getActiveThread() {
 
 function loadChatThreadsFromStorage() {
   try {
-    const raw = localStorage.getItem('ghost_messenger_threads_v2') || sessionStorage.getItem('ghost_messenger_threads_v2');
+    const raw = sessionStorage.getItem('ghost_messenger_threads_v2');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1788,7 +1788,7 @@ function loadChatThreadsFromStorage() {
   } catch {}
 
   try {
-    const savedId = localStorage.getItem('ghost_active_thread_v2') || sessionStorage.getItem('ghost_active_thread_v2');
+    const savedId = sessionStorage.getItem('ghost_active_thread_v2');
     if (savedId && chatThreads.some(t => t.id === savedId)) {
       activeThreadId = savedId;
     }
@@ -1801,16 +1801,16 @@ function loadChatThreadsFromStorage() {
         dealId: null,
         productId: 'general',
         productName: 'Tư vấn chung',
-        peerAlias: 'Merchant-Node-01',
+        peerAlias: 'ID-Bán #BOT01',
         peerRole: 'merchant',
-        avatarText: 'M',
+        avatarText: 'B',
         lastMessage: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar...',
         lastTime: getCurrentTimeStr(),
         unreadCount: 0,
         messages: [
           {
             id: 'msg-init-1',
-            author: 'Merchant-Node-01',
+            author: 'ID-Bán #BOT01',
             role: 'merchant',
             time: getCurrentTimeStr(),
             text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC.'
@@ -1829,10 +1829,8 @@ function saveChatThreadsToStorage() {
   if (isPurgingNow) return;
   try {
     const json = JSON.stringify(chatThreads);
-    localStorage.setItem('ghost_messenger_threads_v2', json);
     sessionStorage.setItem('ghost_messenger_threads_v2', json);
     if (activeThreadId) {
-      localStorage.setItem('ghost_active_thread_v2', activeThreadId);
       sessionStorage.setItem('ghost_active_thread_v2', activeThreadId);
     }
   } catch {}
@@ -1891,6 +1889,9 @@ function renderMessengerThreads() {
     const initial = (t.avatarText || t.peerAlias || 'M').charAt(0).toUpperCase();
     const unreadHtml = t.unreadCount > 0 ? `<span class="thread-unread-pill">${t.unreadCount}</span>` : '';
     const dealBadge = t.dealId ? `<span style="color: #34d399; font-size: 0.65rem; font-family: var(--font-mono); margin-left: 4px;">[${t.dealId}]</span>` : '';
+    const subBadgeText = t.dealId
+      ? `${t.buyerBlindId || 'ID-Mua'} ↔ ${t.sellerBlindId || 'ID-Bán'}`
+      : `📦 ${t.productName || 'Tư vấn chung'}`;
 
     return `
       <div class="messenger-thread-item ${isActive ? 'active' : ''}" data-thread-id="${escapeHtml(t.id)}">
@@ -1900,11 +1901,11 @@ function renderMessengerThreads() {
         </div>
         <div class="thread-content">
           <div class="thread-top-row">
-            <span class="thread-peer-name">${escapeHtml(t.peerAlias || 'Ẩn Danh')}${dealBadge}</span>
+            <span class="thread-peer-name">${escapeHtml(t.peerAlias || 'ID-Ẩn-Danh')}${dealBadge}</span>
             <span class="thread-time">${escapeHtml(t.lastTime || '')}</span>
           </div>
           <div>
-            <span class="thread-product-badge">📦 ${escapeHtml(t.productName || 'Vật phẩm')}</span>
+            <span class="thread-product-badge">${escapeHtml(subBadgeText)}</span>
           </div>
           <div class="thread-snippet">${escapeHtml(t.lastMessage || 'Chưa có tin nhắn')}</div>
         </div>
@@ -1952,17 +1953,20 @@ function updateActiveThreadHeader() {
   const pulseDot = document.getElementById('p2p-pulse-dot');
 
   if (avatarText) avatarText.textContent = (thread.avatarText || thread.peerAlias || 'M').charAt(0).toUpperCase();
-  if (peerName) peerName.textContent = thread.peerAlias || 'Merchant-Node-01';
-  if (prodTag) prodTag.textContent = `Về: ${thread.productName || 'Tư vấn chung'}`;
+  if (peerName) peerName.textContent = thread.peerAlias || 'ID-Bán #BOT01';
 
   if (thread.dealId) {
+    const myId = thread.myBlindId || (getMyDealRole(thread) === 'buyer' ? thread.buyerBlindId : thread.sellerBlindId) || 'ID-Ẩn-Danh';
+    const pairLabel = `${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
+    if (prodTag) prodTag.textContent = pairLabel;
     if (peerBadge) {
-      peerBadge.textContent = `🛡️ PHIÊN RIÊNG BIỆT [${thread.dealId}]`;
+      peerBadge.textContent = `Bạn: ${myId}`;
       peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
     }
-    if (statusText) statusText.textContent = `🟢 Kênh đàm thoại riêng cho "${thread.productName}" • Cách ly 100% với các khách khác`;
+    if (statusText) statusText.textContent = `🟢 ${pairLabel} • [${thread.dealId}]`;
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
   } else {
+    if (prodTag) prodTag.textContent = 'ID-Mua ↔ ID-Bán #BOT01';
     if (peerBadge) {
       peerBadge.textContent = '✓ ĐÃ XÁC MINH PGP';
       peerBadge.className = 'verified-vendor-badge';
@@ -1979,7 +1983,7 @@ function updateActiveThreadHeader() {
   if (thread.dealId) {
     if (banner) banner.style.display = 'flex';
     if (codeBadge) codeBadge.textContent = thread.dealId;
-    if (prodLabel) prodLabel.textContent = `${thread.productName} (Đàm thoại riêng)`;
+    if (prodLabel) prodLabel.textContent = `${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
   } else {
     if (banner) banner.style.display = 'none';
   }
@@ -1991,7 +1995,7 @@ function getMyDealRole(deal) {
     const savedRole = sessionStorage.getItem(`ghost_my_deal_role_${deal.dealId}`);
     if (savedRole === 'buyer' || savedRole === 'seller') return savedRole;
   } catch {}
-  return 'buyer';
+  return 'seller';
 }
 
 function setMyDealRole(dealId, role) {
@@ -2036,17 +2040,17 @@ async function startAutoBlindDeal(productName, productId = '') {
       dealId,
       productId: productId || 'custom',
       productName: productName || 'Mặt hàng ẩn danh',
-      buyerBlindId: `Khách-Ẩn-Danh #${bMask} [IP & ID: ĐÃ ẨN]`,
-      sellerBlindId: `Người-Bán-Ẩn-Danh #${sMask} [IP & ID: ĐÃ ẨN]`,
+      buyerBlindId: `ID-Mua #${bMask}`,
+      sellerBlindId: `ID-Bán #${sMask}`,
       status: 'connected',
       createdAt: Date.now(),
       messages: [
         {
           id: `sys-${Date.now()}`,
           role: 'system',
-          senderBlindId: 'HỆ THỐNG KẾT NỐI TỰ ĐỘNG',
+          senderBlindId: 'HỆ THỐNG',
           time: getCurrentTimeStr(),
-          text: `🔐 ĐÃ TỰ SINH PHÒNG CHAT RIÊNG BIỆT [${dealId}] cho mặt hàng "${productName}". Danh tính và IP (0.0.0.0) được che giấu tuyệt đối. Mọi tin nhắn cách ly hoàn toàn với các khách mua khác!`
+          text: `🔐 [${dealId}] Đã kết nối ẩn danh: ${`ID-Mua #${bMask}`} ↔ ${`ID-Bán #${sMask}`}`
         }
       ]
     };
@@ -2060,14 +2064,17 @@ async function startAutoBlindDeal(productName, productId = '') {
     dealId: createdDeal.dealId,
     productId: productId || 'general',
     productName: productName,
-    peerAlias: createdDeal.sellerBlindId || 'Merchant-Node-01',
+    buyerBlindId: createdDeal.buyerBlindId,
+    sellerBlindId: createdDeal.sellerBlindId,
+    myBlindId: createdDeal.buyerBlindId,
+    peerAlias: createdDeal.sellerBlindId || 'ID-Bán',
     peerRole: 'merchant',
-    avatarText: 'M',
-    lastMessage: `Bắt đầu hỏi mua "${productName}"`,
+    avatarText: 'B',
+    lastMessage: `${createdDeal.buyerBlindId} ↔ ${createdDeal.sellerBlindId}`,
     lastTime: getCurrentTimeStr(),
     unreadCount: 0,
     messages: createdDeal.messages.map(m => ({
-      author: m.senderBlindId || 'HỆ THỐNG GIAO DỊCH',
+      author: m.senderBlindId || 'HỆ THỐNG',
       role: 'system',
       time: m.time || getCurrentTimeStr(),
       text: m.text
@@ -2096,7 +2103,7 @@ async function startAutoBlindDeal(productName, productId = '') {
   renderChatMessages();
   updateFloatingMessengerBadge();
 
-  showToast(`🔗 Đã mở cuộc trò chuyện riêng [${createdDeal.dealId}] cho "${productName}"! Các khách khác không thể xem đoạn chat này.`, 'success');
+  showToast(`🔗 Đã kết nối [${createdDeal.dealId}]: ${createdDeal.buyerBlindId} ↔ ${createdDeal.sellerBlindId}`, 'success');
   return createdDeal;
 }
 
@@ -2125,32 +2132,45 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
 
     const myRole = getMyDealRole(deal);
     const partnerName = myRole === 'buyer' ? deal.sellerBlindId : deal.buyerBlindId;
-    const initialAvatar = myRole === 'buyer' ? 'B' : 'K';
+    const myBlindId = myRole === 'buyer' ? deal.buyerBlindId : deal.sellerBlindId;
+    const initialAvatar = myRole === 'buyer' ? 'B' : 'M';
 
     matchingThread = {
       id: `thread-${deal.dealId}`,
       dealId: deal.dealId,
       productId: deal.productId || 'general',
       productName: deal.productName || 'Giao dịch Ẩn danh',
+      buyerBlindId: deal.buyerBlindId,
+      sellerBlindId: deal.sellerBlindId,
+      myBlindId: myBlindId,
       peerAlias: partnerName,
       peerRole: myRole === 'buyer' ? 'merchant' : 'buyer',
       avatarText: initialAvatar,
-      lastMessage: deal.messages?.[deal.messages.length - 1]?.text || 'Khách đã kết nối',
+      lastMessage: deal.messages?.[deal.messages.length - 1]?.text || `${deal.buyerBlindId} ↔ ${deal.sellerBlindId}`,
       lastTime: getCurrentTimeStr(),
       unreadCount: isInitiator ? 0 : 1,
       messages: []
     };
 
     chatThreads.unshift(matchingThread);
+    if (!isInitiator) {
+      activeThreadId = matchingThread.id;
+    }
 
     // Only notify ONCE per unique dealId
     if (!seenDealNotifications.has(deal.dealId)) {
       seenDealNotifications.add(deal.dealId);
       if (!isInitiator) {
         playNotificationChime();
-        showToast(`🔔 Khách [${deal.buyerBlindId}] vừa mở kênh hỏi mua "${deal.productName}" (Mã: ${deal.dealId})!`, 'info');
+        showToast(`🔔 Kết nối mới [${deal.dealId}]: ${deal.buyerBlindId} ↔ ${deal.sellerBlindId}`, 'info');
       }
     }
+  } else {
+    const myRole = getMyDealRole(deal);
+    matchingThread.buyerBlindId = deal.buyerBlindId;
+    matchingThread.sellerBlindId = deal.sellerBlindId;
+    matchingThread.myBlindId = myRole === 'buyer' ? deal.buyerBlindId : deal.sellerBlindId;
+    matchingThread.peerAlias = myRole === 'buyer' ? deal.sellerBlindId : deal.buyerBlindId;
   }
 
   const myRole = getMyDealRole(deal);
@@ -2161,7 +2181,7 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
     matchingThread.messages = incomingMsgs.map(m => {
       if (m.role === 'system') {
         return {
-          author: m.senderBlindId || 'KÊNH GIAO DỊCH ẨN DANH',
+          author: m.senderBlindId || 'HỆ THỐNG',
           role: 'system',
           time: m.time || getCurrentTimeStr(),
           text: m.text
@@ -2169,14 +2189,14 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
       }
       if (m.role === myRole) {
         return {
-          author: `Tôi • ${m.senderBlindId || ''}`,
+          author: m.senderBlindId || matchingThread.myBlindId || (myRole === 'buyer' ? 'ID-Mua' : 'ID-Bán'),
           role: 'buyer',
           time: m.time || getCurrentTimeStr(),
           text: m.text
         };
       }
       return {
-        author: m.senderBlindId || 'Đối Tác',
+        author: m.senderBlindId || matchingThread.peerAlias || (myRole === 'buyer' ? 'ID-Bán' : 'ID-Mua'),
         role: 'merchant',
         time: m.time || getCurrentTimeStr(),
         text: m.text
@@ -2194,10 +2214,12 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
       const newMessages = incomingMsgs.slice(prevMsgCount);
       const otherMessages = newMessages.filter(m => m.role !== myRole && m.role !== 'system');
 
-      if (otherMessages.length > 0 && !isInitiator && matchingThread.id !== activeThreadId) {
-        matchingThread.unreadCount = (matchingThread.unreadCount || 0) + otherMessages.length;
+      if (otherMessages.length > 0 && !isInitiator) {
+        if (matchingThread.id !== activeThreadId) {
+          matchingThread.unreadCount = (matchingThread.unreadCount || 0) + otherMessages.length;
+        }
         playNotificationChime();
-        showToast(`💬 Tin nhắn mới từ [${matchingThread.peerAlias}] cho "${matchingThread.productName}"!`, 'info');
+        showToast(`💬 Tin nhắn mới từ ${matchingThread.peerAlias}`, 'info');
       }
     }
   }
@@ -2217,7 +2239,7 @@ async function sendBlindDealMessage(text) {
   if (!thread || !thread.dealId) return;
 
   const myRole = getMyDealRole({ dealId: thread.dealId });
-  const senderBlindId = myRole === 'seller' ? 'Người Bán Ẩn Danh' : 'Khách Ẩn Danh';
+  const senderBlindId = thread.myBlindId || (myRole === 'seller' ? (thread.sellerBlindId || 'ID-Bán') : (thread.buyerBlindId || 'ID-Mua'));
 
   let updatedDeal = null;
   try {
@@ -2239,7 +2261,7 @@ async function sendBlindDealMessage(text) {
 
   if (!updatedDeal) {
     thread.messages.push({
-      author: `Tôi • ${senderBlindId}`,
+      author: senderBlindId,
       role: 'buyer',
       time: getCurrentTimeStr(),
       text
@@ -2739,9 +2761,11 @@ function renderChatMessages() {
     }
 
     if (msg.role === 'buyer') {
+      const myAuthor = msg.author || thread?.myBlindId || 'ID-Mua';
       return `
         <div class="chat-msg buyer">
           <div class="msg-bubble">
+            <div class="msg-author-tag" style="color: #a7f3d0;">${escapeHtml(myAuthor)}</div>
             <div class="msg-text">${escapeHtml(msg.text)}</div>
             <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
           </div>
@@ -2752,7 +2776,7 @@ function renderChatMessages() {
     return `
       <div class="chat-msg merchant">
         <div class="msg-bubble">
-          <div class="msg-author-tag">${escapeHtml(msg.author || thread?.peerAlias || 'Người Bán')}</div>
+          <div class="msg-author-tag">${escapeHtml(msg.author || thread?.peerAlias || 'ID-Bán')}</div>
           <div class="msg-text">${escapeHtml(msg.text)}</div>
           <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
         </div>

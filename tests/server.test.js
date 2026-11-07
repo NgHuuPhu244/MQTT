@@ -276,8 +276,8 @@ describe('Server RAM-Only & Ephemeral Drop Tests', () => {
     assert.strictEqual(initRes.statusCode, 201);
     const initData = JSON.parse(initRes.body);
     assert.ok(initData.deal.dealId.startsWith('DEAL-'));
-    assert.ok(initData.deal.buyerBlindId.includes('[IP & ID: ĐÃ ẨN]'));
-    assert.ok(initData.deal.sellerBlindId.includes('[IP & ID: ĐÃ ẨN]'));
+    assert.ok(initData.deal.buyerBlindId.startsWith('ID-Mua #'));
+    assert.ok(initData.deal.sellerBlindId.startsWith('ID-Bán #'));
 
     const dealId = initData.deal.dealId;
 
