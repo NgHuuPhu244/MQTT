@@ -1176,7 +1176,7 @@ export function createServer() {
       // -------------------------------------------------------------
       // MULTI-BUYER BLIND DEAL & EPHEMERAL RELAY: GET / POST /api/lexicon/bazaar-deals
       if ((pathname === '/api/lexicon/bazaar-deals' || pathname === '/api/bazaar/deals') && method === 'GET') {
-        const queryDealId = parsedUrl.query?.dealId;
+        const queryDealId = parsedUrl.searchParams ? parsedUrl.searchParams.get('dealId') : null;
         const activeList = Array.from(inMemoryActiveDeals.values()).filter(d => d.status !== 'completed_burned');
         
         let targetDeal = null;

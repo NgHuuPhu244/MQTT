@@ -865,6 +865,13 @@ function switchTab(tabId) {
   if (tabId === 'tab-chat') {
     const chatBadge = document.getElementById('chat-badge');
     if (chatBadge) chatBadge.style.display = 'none';
+    renderMessengerThreads();
+    updateActiveThreadHeader();
+    renderChatMessages();
+    setTimeout(() => {
+      const input = document.getElementById('chat-input-field');
+      input?.focus();
+    }, 50);
   }
 
   updateRamMonitor();
@@ -1630,12 +1637,21 @@ function setupP2PConnection(conn) {
       }
     } else if (packet.type === 'chat') {
       playNotificationChime();
-      inMemoryChatMessages.push({
+      const p2pMsg = {
         author: packet.alias || p2pPeerAlias || 'Đối Tác',
         role: 'merchant',
         time: packet.time || getCurrentTimeStr(),
         text: packet.text
-      });
+      };
+      inMemoryChatMessages.push(p2pMsg);
+      const activeTh = getActiveThread();
+      if (activeTh) {
+        if (!activeTh.messages) activeTh.messages = [];
+        activeTh.messages.push(p2pMsg);
+        activeTh.lastMessage = packet.text;
+        activeTh.lastTime = p2pMsg.time;
+      }
+      renderMessengerThreads();
       renderChatMessages();
       updateRamMonitor();
 
@@ -2016,6 +2032,8 @@ function updateActiveThreadHeader() {
     if (banner) banner.style.display = 'flex';
     if (codeBadge) codeBadge.textContent = thread.dealId;
     if (prodLabel) prodLabel.textContent = `${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
+    const blindBadge = document.getElementById('auto-deal-blind-badge');
+    if (blindBadge) blindBadge.textContent = `🛡️ ${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
   } else {
     if (banner) banner.style.display = 'none';
   }
@@ -2186,7 +2204,9 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
 
     chatThreads.unshift(matchingThread);
     if (!isInitiator) {
-      activeThreadId = matchingThread.id;
+      if (activeThreadId === 'thread-merchant-general' || !activeThreadId) {
+        activeThreadId = matchingThread.id;
+      }
     }
 
     // Only notify ONCE per unique dealId
@@ -2763,8 +2783,9 @@ function initEncryptedChat() {
   renderChatMessages();
   updateFloatingMessengerBadge();
 
-  // Poll for background deals every 2.5s
-  setInterval(pollBlindDealRelay, 4000);
+  // Initial poll and near real-time background sync (every 1.2s)
+  pollBlindDealRelay();
+  setInterval(pollBlindDealRelay, 1200);
 }
 
 function renderChatMessages() {
