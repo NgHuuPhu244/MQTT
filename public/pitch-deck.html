@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GHOST BAZAAR — Zero-Knowledge Ephemeral RAM Marketplace (Slide Deck)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-obsidian-deep: #050811;
+      --bg-obsidian-mid: #090E1A;
+      --card-glass: rgba(15, 23, 42, 0.75);
+      --card-glass-hover: rgba(19, 30, 56, 0.85);
+      --border-outer: rgba(255, 255, 255, 0.10);
+      --border-inner: rgba(52, 211, 153, 0.22);
+      --emerald-primary: #10B981;
+      --emerald-bright: #34D399;
+      --emerald-mono: #6EE7B7;
+      --cyan-stealth: #38BDF8;
+      --amber-gold: #FBBF24;
+      --crimson-burn: #F43F5E;
+      --text-white: #F8FAFC;
+      --text-silver: #94A3B8;
+      --text-muted: #64748B;
+      --spring-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 42%, rgba(16, 185, 129, 0.08) 0%, rgba(56, 189, 248, 0.03) 38%, var(--bg-obsidian-deep) 75%),
+                  linear-gradient(135deg, var(--bg-obsidian-deep) 0%, var(--bg-obsidian-mid) 100%);
+      color: var(--text-white);
+      font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      perspective: 1400px;
+    }
+
+    /* Spatial Cyber Grid Backdrop */
+    .spatial-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(circle at 50% 50%, black 35%, transparent 88%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Particle Dissolve Canvas */
+    #vaporCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 90;
+    }
+
+    /* Top Laser Bar */
+    .top-laser {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 100%;
+      background: linear-gradient(90deg, var(--emerald-primary), var(--emerald-bright), var(--cyan-stealth));
+      z-index: 50;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.65);
+    }
+
+    /* Decoy Camouflage Overlay (Stealth Morph Effect) */
+    #decoyVeneer {
+      position: fixed;
+      inset: 0;
+      background: #F8FAFC;
+      color: #0F172A;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(1.04);
+      filter: blur(12px);
+      transition: opacity 0.65s var(--spring-ease), transform 0.65s var(--spring-ease), filter 0.65s var(--spring-ease);
+    }
+    #decoyVeneer.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+      filter: blur(0px);
+    }
+    .decoy-card {
+      max-width: 680px;
+      width: 100%;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 20px;
+      padding: 36px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+      text-align: center;
+    }
+    .decoy-omnibox {
+      margin: 22px 0;
+      display: flex;
+      align-items: center;
+      border: 2px solid #10B981;
+      border-radius: 12px;
+      padding: 12px 18px;
+      background: #F1F5F9;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      color: #0F172A;
+      justify-content: space-between;
+    }
+
+    /* Deck Stage */
+    .deck-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      padding: 40px 64px 76px;
+    }
+
+    .slide {
+      position: absolute;
+      width: min(1280px, 92vw);
+      height: min(680px, 84vh);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(28px) scale(0.975);
+      filter: blur(10px);
+      transition:
+        opacity 0.65s var(--spring-ease),
+        transform 0.65s var(--spring-ease),
+        filter 0.65s var(--spring-ease);
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+      filter: blur(0px);
+    }
+
+    /* Staggered Reveal for Bento Cards */
+    .slide .bento-card {
+      opacity: 0;
+      transform: translateY(24px) translateZ(0);
+      filter: blur(8px);
+      transition:
+        opacity 0.6s var(--spring-ease),
+        transform 0.6s var(--spring-ease),
+        filter 0.6s var(--spring-ease),
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
+    }
+    .slide.active .bento-card {
+      opacity: 1;
+      transform: translateY(0) translateZ(0);
+      filter: blur(0px);
+    }
+    .slide.active .bento-card:nth-child(1) { transition-delay: 60ms; }
+    .slide.active .bento-card:nth-child(2) { transition-delay: 120ms; }
+    .slide.active .bento-card:nth-child(3) { transition-delay: 180ms; }
+    .slide.active .bento-card:nth-child(4) { transition-delay: 240ms; }
+
+    /* Header Zone */
+    .slide-header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .header-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .eyebrow-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(11, 25, 44, 0.85);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.15);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--emerald-mono);
+      letter-spacing: 0.5px;
+    }
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald-primary);
+      box-shadow: 0 0 10px var(--emerald-bright);
+    }
+    .telemetry-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-outer);
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+    .slide-title {
+      font-size: clamp(28px, 3.1vw, 40px);
+      font-weight: 800;
+      color: var(--text-white);
+      letter-spacing: -0.02em;
+      line-height: 1.18;
+    }
+    .slide-subtitle {
+      font-size: 16px;
+      color: var(--text-silver);
+      font-weight: 400;
+      max-width: 820px;
+    }
+
+    /* Double-Bezel Ethereal Glass Card */
+    .bento-card {
+      position: relative;
+      background: var(--card-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 22px;
+      border: 1px solid var(--border-outer);
+      box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.55),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+      padding: 28px 30px;
+      overflow: hidden;
+    }
+    .bento-card::before {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border-radius: 16px;
+      border: 1px solid var(--inner-glow, rgba(16, 185, 129, 0.22));
+      pointer-events: none;
+    }
+    .bento-card:hover {
+      background: var(--card-glass-hover);
+      border-color: rgba(52, 211, 153, 0.35);
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.68),
+        0 0 28px rgba(16, 185, 129, 0.12);
+    }
+
+    .card-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+    .card-title {
+      font-size: 21px;
+      font-weight: 800;
+      color: var(--text-white);
+      margin-bottom: 10px;
+    }
+    .card-desc {
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: var(--text-silver);
+    }
+    .code-pill {
+      margin-top: 14px;
+      background: rgba(5, 8, 17, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      color: var(--emerald-mono);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Grid Layouts (Strict 3-4-40 Macro-Whitespace Rule) */
+    .grid-2-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      flex: 1;
+      align-items: stretch;
+      margin: 12px 0;
+    }
+    .grid-2x2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 22px;
+      flex: 1;
+      margin: 10px 0;
+    }
+    .grid-3-col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      flex: 1;
+      align-items: stretch;
+      margin: 12px 0;
+    }
+
+    .clean-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .clean-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--text-silver);
+      line-height: 1.45;
+    }
+    .clean-list li strong {
+      color: var(--text-white);
+      display: block;
+      margin-bottom: 2px;
+      font-size: 16px;
+    }
+    .bullet-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+
+    /* Slide 1 Cover Hero */
+    .cover-layout {
+      display: grid;
+      grid-template-columns: 1.35fr 0.95fr;
+      gap: 40px;
+      align-items: center;
+      flex: 1;
+    }
+    .cover-title {
+      font-size: clamp(54px, 6vw, 82px);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      line-height: 1.02;
+      background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 60%, #34D399 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 18px 0 14px;
+    }
+    .pulse-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      position: relative;
+    }
+    .pulse-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      animation: pulseExpand 3.6s infinite cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .pulse-ring.r1 { width: 170px; height: 170px; animation-delay: 0s; }
+    .pulse-ring.r2 { width: 250px; height: 250px; animation-delay: 0.9s; border-style: dashed; }
+    .pulse-ring.r3 { width: 330px; height: 330px; animation-delay: 1.8s; border-color: rgba(56, 189, 248, 0.25); }
+
+    @keyframes pulseExpand {
+      0% { transform: scale(0.88); opacity: 0.85; }
+      50% { transform: scale(1.04); opacity: 0.35; }
+      100% { transform: scale(0.88); opacity: 0.85; }
+    }
+
+    .emerald-core {
+      width: 128px;
+      height: 128px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, rgba(6, 40, 30, 0.92) 100%);
+      border: 2px solid var(--emerald-bright);
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.45), inset 0 0 20px rgba(52, 211, 153, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    /* Footer Navigation & Controls */
+    .deck-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      padding: 0 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(148, 163, 184, 0.10);
+      background: rgba(5, 8, 17, 0.78);
+      backdrop-filter: blur(16px);
+      z-index: 60;
+    }
+    .footer-brand {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .slide-dots {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dot-btn {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #334155;
+      border: none;
+      cursor: pointer;
+      transition: all 0.35s var(--spring-ease);
+    }
+    .dot-btn.active {
+      width: 28px;
+      background: var(--emerald-primary);
+      box-shadow: 0 0 12px var(--emerald-primary);
+    }
+    .footer-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ctrl-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: var(--text-white);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .ctrl-btn:hover {
+      border-color: var(--emerald-bright);
+      color: var(--emerald-mono);
+    }
+    .ctrl-btn.danger {
+      border-color: rgba(244, 63, 94, 0.45);
+      color: #FDA4AF;
+    }
+    .ctrl-btn.danger:hover {
+      background: rgba(244, 63, 94, 0.18);
+      border-color: var(--crimson-burn);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-laser"></div>
+  <div class="spatial-grid"></div>
+  <canvas id="vaporCanvas"></canvas>
+
+  <!-- STEALTH CAMOUFLAGE VENEER (ILLUSION #1: DECOY DICTIONARY MORPH) -->
+  <div id="decoyVeneer">
+    <div class="decoy-card">
+      <div style="font-size:12px; font-weight:700; color:#64748B; letter-spacing:1px;">NGỤY TRANG HỌC THUẬT // ACADEMIC DECOY VENEER</div>
+      <h1 style="font-size:32px; margin-top:8px; color:#0F172A;">Từ Điển Bách Khoa Đa Ngôn Ngữ</h1>
+      <p style="color:#475569; margin-top:6px; font-size:15px;">Tra cứu ngữ nghĩa học thuật Việt - Anh - Pháp - Nhật &amp; Wikipedia OpenSearch</p>
+      <div class="decoy-omnibox">
+        <span>🔍 <strong style="color:#059669;">:vault</strong> // kích hoạt khóa mật mã RAM...</span>
+        <span style="background:#10B981; color:#fff; font-size:11px; padding:4px 10px; border-radius:6px;">UNLOCKING</span>
+      </div>
+      <button class="ctrl-btn" style="background:#0F172A; color:#34D399; padding:10px 22px;" onclick="toggleDecoyMorph()">
+        ⚡ Lật Sang Không Gian Ngầm GHOST BAZAAR (Morph)
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN 10-SLIDE STAGE -->
+  <main class="deck-viewport" id="deckViewport">
+
+    <!-- ==================== SLIDE 1: COVER ==================== -->
+    <section class="slide active" data-slide="1">
+      <div class="cover-layout">
+        <div>
+          <div class="eyebrow-pill">
+            <span class="eyebrow-dot"></span>
+            <span class="cipher-text" data-final="[ RAM-VOLATILE v3.2 • ZERO-LOG MARKETPLACE ]">[ RAM-VOLATILE v3.2 • ZERO-LOG MARKETPLACE ]</span>
+          </div>
+          <h1 class="cover-title cipher-text" data-final="GHOST BAZAAR">GHOST BAZAAR</h1>
+          <p style="font-size:22px; font-weight:700; color:#E2E8F0; line-height:1.45; margin-bottom:10px;">
+            Kiến Trúc Chợ Ẩn Danh &amp; Đấu Giá Bảo Mật<br/>Trên Bộ Nhớ Khả Biến (RAM-Only)
+          </p>
+          <p style="font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--emerald-mono); margin-bottom:32px;">
+            Zero-Knowledge Ephemeral RAM Marketplace
+          </p>
+          <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div class="code-pill" style="margin:0; min-width:175px;">
+              <div>
+                <div style="font-size:10px; color:var(--text-silver);">CIPHER ENGINE</div>
+                <div style="font-size:14px; font-weight:800; color:var(--emerald-bright);">AES-256-GCM</div>
+              </div>
+            </div>
+            <div class="code-pill" style="margin:0; min-width:175px;">
+              <div>
+                <div style="font-size:10px; color:var(--text-silver);">KEY EXCHANGE</div>
+                <div style="font-size:14px; font-weight:800; color:var(--cyan-stealth);">ECDH P-256</div>
+              </div>
+            </div>
+            <div class="code-pill" style="margin:0; min-width:175px;">
+              <div>
+                <div style="font-size:10px; color:var(--text-silver);">NETWORK TRACE</div>
+                <div style="font-size:14px; font-weight:800; color:var(--amber-gold);">0.0.0.0 (RAM)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bento-card pulse-stage" style="--inner-glow: rgba(16, 185, 129, 0.32); min-height:410px;">
+          <div class="pulse-ring r1"></div>
+          <div class="pulse-ring r2"></div>
+          <div class="pulse-ring r3"></div>
+          <div class="emerald-core">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+          </div>
+          <div style="margin-top:115px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--emerald-mono); letter-spacing:1px;">
+            [ HOLOGRAPHIC RAM VAULT ACTIVE ]
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 2: STEALTH ARCHITECTURE ==================== -->
+    <section class="slide" data-slide="2">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ THE PROBLEM & CAMOUFLAGE CONCEPT ]">[ THE PROBLEM &amp; CAMOUFLAGE CONCEPT ]</span></div>
+          <div class="telemetry-chip">STEALTH MORPH // 0x4C2A</div>
+        </div>
+        <h2 class="slide-title">Bài Toán Rủi Ro &amp; Ý Tưởng "Ảo Ảnh Ngụy Trang"</h2>
+        <p class="slide-subtitle">Đối sánh kiến trúc lưu vết truyền thống và mô hình ẩn mình kép dưới lớp vỏ Từ Điển Học Thuật</p>
+      </div>
+
+      <div class="grid-2-col">
+        <div class="bento-card" style="--inner-glow: rgba(244, 63, 94, 0.30);">
+          <span class="card-badge" style="color:var(--crimson-burn);">LEGACY SYSTEM // RỦI RO TRUYỀN THỐNG</span>
+          <h3 class="card-title">Lộ Dấu Vết &amp; Lưu Trữ Cố Định</h3>
+          <ul class="clean-list">
+            <li>
+              <span class="bullet-dot" style="background:var(--crimson-burn);"></span>
+              <div><strong>Lưu nhật ký IP thật &amp; Access Log</strong>Ghi nhận địa chỉ mạng, thiết bị và dấu thời gian truy cập trên máy chủ.</div>
+            </li>
+            <li>
+              <span class="bullet-dot" style="background:var(--crimson-burn);"></span>
+              <div><strong>Lưu Database trên ổ cứng (SQL / Disk)</strong>Dữ liệu tồn tại vĩnh viễn trên đĩa, dễ bị trích xuất pháp y (Disk Forensics).</div>
+            </li>
+            <li>
+              <span class="bullet-dot" style="background:var(--crimson-burn);"></span>
+              <div><strong>Lộ danh tính Người Mua &amp; Người Bán</strong>Tài khoản cố định làm lộ mối liên kết giao dịch giữa hai bên.</div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.35);">
+          <span class="card-badge" style="color:var(--emerald-bright);">GHOST BAZAAR // ẢO ẢNH NGỤY TRANG</span>
+          <h3 class="card-title">Lớp Vỏ Từ Điển &amp; 100% RAM Khả Biến</h3>
+          <ul class="clean-list">
+            <li>
+              <span class="bullet-dot" style="background:var(--emerald-primary);"></span>
+              <div><strong>Ẩn mình dưới "Từ Điển Đa Ngôn Ngữ Học Thuật"</strong>Hoạt động như từ điển tra cứu thật; chỉ lật sang chợ ngầm khi kích hoạt khóa.</div>
+            </li>
+            <li>
+              <span class="bullet-dot" style="background:var(--emerald-primary);"></span>
+              <div><strong>Vận hành 100% trên RAM khả biến</strong>Không cơ sở dữ liệu đĩa cứng, toàn bộ phiên chợ chỉ tồn tại tạm thời trên bộ nhớ.</div>
+            </li>
+            <li>
+              <span class="bullet-dot" style="background:var(--emerald-primary);"></span>
+              <div><strong>Tự xóa sạch dấu vết (Zero-Trace)</strong>Bốc hơi hoàn toàn khi hoàn tất đơn hàng hoặc nhấn phím khẩn cấp ESC.</div>
+            </li>
+          </ul>
+          <div class="code-pill">
+            <span>Thử nghiệm hiệu ứng lật ngụy trang:</span>
+            <button class="ctrl-btn" onclick="toggleDecoyMorph()">🔄 Kích Hoạt Morph</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 3: CRYPTOGRAPHIC ENGINE ==================== -->
+    <section class="slide" data-slide="3">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ END-TO-END CRYPTOGRAPHY ]">[ END-TO-END CRYPTOGRAPHY ]</span></div>
+          <div class="telemetry-chip">W3C WEB CRYPTO API</div>
+        </div>
+        <h2 class="slide-title">Phương Thức Bảo Mật Lõi (Cryptographic Engine)</h2>
+        <p class="slide-subtitle">4 phương thức mật mã thực tế vận hành trực tiếp phía Client — Máy chủ hoàn toàn mù thông tin</p>
+      </div>
+
+      <div class="grid-2x2">
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.32);">
+          <span class="card-badge" style="color:var(--emerald-bright);">01 // SYMMETRIC AEAD CIPHER</span>
+          <h3 class="card-title">AES-256-GCM Phía Client</h3>
+          <p class="card-desc">Mã hóa đối xứng xác thực trực tiếp trên trình duyệt với IV 96-bit ngẫu nhiên và Auth Tag 128-bit chống giả mạo gói tin.</p>
+          <div class="code-pill"><span>crypto.subtle.encrypt('AES-GCM', key, iv_96b)</span><span>128-bit Tag</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.32);">
+          <span class="card-badge" style="color:var(--cyan-stealth);">02 // ELLIPTIC CURVE KEY EXCHANGE</span>
+          <h3 class="card-title">ECDH (P-256) + HKDF-SHA256</h3>
+          <p class="card-desc">Trao đổi khóa bất đối xứng đường cong Elliptic chuẩn NIST P-256, thiết lập khóa phiên dùng 1 lần (Forward Secrecy).</p>
+          <div class="code-pill"><span>ECDH NIST P-256 ➔ HKDF-SHA256</span><span>PFS Active</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.32);">
+          <span class="card-badge" style="color:var(--amber-gold);">03 // BRUTE-FORCE SHIELD</span>
+          <h3 class="card-title">PBKDF2-HMAC-SHA256 (310,000 Vòng)</h3>
+          <p class="card-desc">Bảo vệ 2 lớp bằng mật khẩu kết hợp Salt 128-bit ngẫu nhiên, lặp 310,000 vòng băm chống tấn công vét cạn.</p>
+          <div class="code-pill"><span>PBKDF2(passphrase, salt_128b, 310000)</span><span>OWASP Std</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(52, 211, 153, 0.32);">
+          <span class="card-badge" style="color:var(--emerald-mono);">04 // TRAFFIC ANALYSIS DEFENSE</span>
+          <h3 class="card-title">Constant-Boundary Random Padding</h3>
+          <p class="card-desc">Đệm ngẫu nhiên kích thước bản rõ theo bội số 1024-byte để che giấu độ dài thật, chống phân tích lưu lượng mạng.</p>
+          <div class="code-pill"><span>Pad(Plaintext) ➔ N × 1024-Byte Block</span><span>Anti-DPI</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 4: VOLATILE MEMORY & ZERO-LOG ==================== -->
+    <section class="slide" data-slide="4">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ VOLATILE MEMORY & ZERO-TRACE ]">[ VOLATILE MEMORY &amp; ZERO-TRACE ]</span></div>
+          <div class="telemetry-chip">DISK FOOTPRINT: 0 BYTES</div>
+        </div>
+        <h2 class="slide-title">Kiến Trúc Lưu Trữ 100% RAM Khả Biến &amp; Zero-Log IP</h2>
+        <p class="slide-subtitle">Luồng 3 bước triệt tiêu định danh mạng và hủy vùng nhớ vật lý ngay sau khi truy xuất</p>
+      </div>
+
+      <div class="grid-3-col">
+        <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.30);">
+          <span class="card-badge" style="color:var(--cyan-stealth);">STEP 01 // NETWORK ANONYMIZER</span>
+          <h3 class="card-title">Zero-Log IP Middleware</h3>
+          <p class="card-desc">Máy chủ tự động cắt bỏ địa chỉ IP thật ngay từ tầng tiếp nhận request, quy toàn bộ thông tin mạng về 0.0.0.0.</p>
+          <div class="code-pill"><span>clientIp ➔ "0.0.0.0"</span><span>No Access Log</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.35);">
+          <span class="card-badge" style="color:var(--emerald-bright);">STEP 02 // VOLATILE HEAP</span>
+          <h3 class="card-title">100% In-Memory Map</h3>
+          <p class="card-desc">Không SQL, không ổ cứng. Toàn bộ sản phẩm, phiên đấu giá và tin nhắn chỉ tồn tại tạm thời trên RAM máy chủ &amp; trình duyệt.</p>
+          <div class="code-pill"><span>const store = new Map()</span><span>RAM-Only</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(244, 63, 94, 0.32);">
+          <span class="card-badge" style="color:var(--crimson-burn);">STEP 03 // ANTI-FORENSIC WIPE</span>
+          <h3 class="card-title">Cryptographic Memory Wipe</h3>
+          <p class="card-desc">Ghi đè bộ nhớ bằng bit 0 và luồng byte ngẫu nhiên trước khi giải phóng khỏi RAM, chống phục hồi dữ liệu.</p>
+          <div class="code-pill"><span>Buffer.fill(0) + getRandomValues</span><span>Zeroized</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 5: HYBRID COMMUNICATION PROTOCOLS ==================== -->
+    <section class="slide" data-slide="5">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ SECURE COMMUNICATION CHANNELS ]">[ SECURE COMMUNICATION CHANNELS ]</span></div>
+          <div class="telemetry-chip">HYBRID MESH // 3 CHANNELS</div>
+        </div>
+        <h2 class="slide-title">Phương Thức Giao Tiếp Đa Kênh (Hybrid Protocols)</h2>
+        <p class="slide-subtitle">Đảm bảo kết nối thông suốt, ẩn danh và tách biệt phiên tuyệt đối giữa Người Mua và Người Bán</p>
+      </div>
+
+      <div class="grid-3-col">
+        <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.32);">
+          <span class="card-badge" style="color:var(--cyan-stealth);">01 // PEER-TO-PEER DIRECT</span>
+          <h3 class="card-title">WebRTC P2P DataChannel</h3>
+          <p class="card-desc">Truyền tin nhắn và đồng bộ trực tiếp ngang hàng giữa 2 trình duyệt (PeerJS) qua tầng giao vận DTLS/SCTP mã hóa.</p>
+          <div class="code-pill"><span>DTLS 1.3 / SCTP Stream</span><span>Zero-Server</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.32);">
+          <span class="card-badge" style="color:var(--emerald-bright);">02 // RAM BLIND RELAY</span>
+          <h3 class="card-title">Blind Relay REST API</h3>
+          <p class="card-desc">Kênh chuyển tiếp mù trên RAM máy chủ, giúp giao tiếp xuyên tường lửa mà không cần lộ IP hay Peer ID của hai bên.</p>
+          <div class="code-pill"><span>/api/lexicon/bazaar-deals</span><span>Blind Queue</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.32);">
+          <span class="card-badge" style="color:var(--amber-gold);">03 // MULTI-WINDOW ISOLATION</span>
+          <h3 class="card-title">BroadcastChannel &amp; Isolation</h3>
+          <p class="card-desc">Đồng bộ tức thời đa cửa sổ trên máy cục bộ nhưng vẫn tách biệt hoàn toàn vai trò Mua và Bán qua SessionStorage riêng.</p>
+          <div class="code-pill"><span>BroadcastChannel('bazaar_bus')</span><span>Isolated</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 6: AUTO-BLIND DEAL & ANONYMOUS ID ==================== -->
+    <section class="slide" data-slide="6">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ BLIND MATCHMAKING PROTOCOL ]">[ BLIND MATCHMAKING PROTOCOL ]</span></div>
+          <div class="telemetry-chip">AUTO-DEAL // MULTI-THREAD</div>
+        </div>
+        <h2 class="slide-title">Kết Nối Mù Tự Động (Auto-Blind Deal &amp; Anonymous ID)</h2>
+        <p class="slide-subtitle">Thiết lập phòng thương lượng riêng biệt tức thì mà không yêu cầu đăng ký hay định danh cá nhân</p>
+      </div>
+
+      <div class="bento-card" style="margin-bottom:18px; padding:20px 28px; --inner-glow: rgba(56, 189, 248, 0.35);">
+        <div style="display:flex; align-items:center; justify-content:space-between; text-align:center; gap:16px;">
+          <div style="flex:1; background:#050811; padding:14px; border-radius:14px; border:1px solid var(--cyan-stealth);">
+            <div style="font-size:11px; color:var(--cyan-stealth); font-family:'JetBrains Mono',monospace;">NGƯỜI MUA ẨN DANH</div>
+            <div style="font-size:20px; font-weight:800; font-family:'JetBrains Mono',monospace; margin-top:4px;">[ID-Mua #4829]</div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; color:var(--emerald-bright); font-weight:800; font-size:15px;">
+            ◄─── Phiên Độc Lập <span style="background:#06281E; padding:6px 12px; border-radius:8px; border:1px solid var(--emerald-primary);">[DEAL-9F4A]</span> ───►
+          </div>
+          <div style="flex:1; background:#050811; padding:14px; border-radius:14px; border:1px solid var(--amber-gold);">
+            <div style="font-size:11px; color:var(--amber-gold); font-family:'JetBrains Mono',monospace;">NGƯỜI BÁN ẨN DANH</div>
+            <div style="font-size:20px; font-weight:800; font-family:'JetBrains Mono',monospace; margin-top:4px;">[ID-Bán #7104]</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-3-col" style="margin-top:0;">
+        <div class="bento-card">
+          <span class="card-badge" style="color:var(--emerald-bright);">01 // INSTANT DEAL ID</span>
+          <h3 class="card-title">Tự Sinh Mã [DEAL-XXXX]</h3>
+          <p class="card-desc">Ngay khi nhấn "Nhắn tin" hoặc "Mua", hệ thống tự động khởi tạo mã phiên giao dịch độc lập trong bộ nhớ RAM.</p>
+        </div>
+        <div class="bento-card">
+          <span class="card-badge" style="color:var(--cyan-stealth);">02 // EPHEMERAL ALIAS</span>
+          <h3 class="card-title">Định Danh Ngắn Gọn</h3>
+          <p class="card-desc">Hai bên chỉ nhìn thấy định danh tạm thời [ID-Mua #XXXX] ↔ [ID-Bán #YYYY], hoàn toàn không lộ thông tin gốc.</p>
+        </div>
+        <div class="bento-card">
+          <span class="card-badge" style="color:var(--amber-gold);">03 // MULTI-THREAD MESSENGER</span>
+          <h3 class="card-title">Cách Ly 100% Khách Mua</h3>
+          <p class="card-desc">Giao diện đa luồng cô lập tuyệt đối cuộc trò chuyện giữa từng khách mua khác nhau trên cùng mặt hàng.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 7: UNRESTRICTED SILENT AUCTION ==================== -->
+    <section class="slide" data-slide="7">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ SILENT BID & INSTANT MARKETPLACE ]">[ SILENT BID &amp; INSTANT MARKETPLACE ]</span></div>
+          <div class="telemetry-chip">KILL-TOKEN // ENABLED</div>
+        </div>
+        <h2 class="slide-title">Sàn Đấu Giá Kín &amp; Đăng Bán Tự Do (Silent Auction)</h2>
+        <p class="slide-subtitle">Tự do niêm yết tài sản giá trị cao, kết hợp đấu giá thầu mù và quyền thu hồi tức thì</p>
+      </div>
+
+      <div class="grid-3-col">
+        <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.32);">
+          <span class="card-badge" style="color:var(--amber-gold);">01 // UNRESTRICTED CATEGORIES</span>
+          <h3 class="card-title">Đăng Bán Không Giới Hạn</h3>
+          <p class="card-desc">Tự do đăng bán &amp; đấu giá đa danh mục: Vật phẩm hiếm, Tài sản số, Phần cứng bảo mật HSM, Khóa mật mã.</p>
+          <div class="code-pill"><span>EXIF &amp; Metadata Stripped</span><span>100% Clean</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.32);">
+          <span class="card-badge" style="color:var(--emerald-bright);">02 // DUAL TRADING MODE</span>
+          <h3 class="card-title">Silent Bid &amp; Buy Now</h3>
+          <p class="card-desc">Hỗ trợ song song "Đặt Giá Thầu Kín (Silent Bid)" chống lộ chiến thuật giá và "Mua Đứt (Buy Now)" chốt đơn tức thì.</p>
+          <div class="code-pill"><span>Sealed-Bid + Instant Buy</span><span>Atomic Lock</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(244, 63, 94, 0.32);">
+          <span class="card-badge" style="color:var(--crimson-burn);">03 // VENDOR REVOCATION</span>
+          <h3 class="card-title">Mã "Vendor Kill Token"</h3>
+          <p class="card-desc">Cấp mã KILL-XXXX-XXXX độc quyền khi đăng bài để người bán chủ động thu hồi và xóa mặt hàng khỏi RAM bất cứ lúc nào.</p>
+          <div class="code-pill"><span style="color:#FDA4AF;">KILL-9A4F-82C1</span><span>Instant Purge</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 8: MONERO ESCROW & AUTO-BURN ==================== -->
+    <section class="slide" data-slide="8">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ ESCROW & EPHEMERAL LIFECYCLE ]">[ ESCROW &amp; EPHEMERAL LIFECYCLE ]</span></div>
+          <div class="telemetry-chip">MONERO (XMR) // AUTO-BURN</div>
+        </div>
+        <h2 class="slide-title">Ký Quỹ Monero (XMR) &amp; Cơ Chế Tự Động Biến Mất</h2>
+        <p class="slide-subtitle">Chu trình 3 bước khép kín: Thanh toán ẩn danh và tự động bốc hơi toàn bộ dấu vết giao dịch</p>
+      </div>
+
+      <div class="grid-3-col" id="burnStageGrid">
+        <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.35);">
+          <span class="card-badge" style="color:var(--amber-gold);">BƯỚC 01 // EPHEMERAL ESCROW</span>
+          <h3 class="card-title">Ví Ký Quỹ Monero 1 Lần</h3>
+          <p class="card-desc">Tạo đơn hàng và sinh địa chỉ ví ký quỹ Monero (XMR) dùng 1 lần ngay trong RAM, ẩn danh hoàn toàn dòng tiền.</p>
+          <div class="code-pill"><span style="color:var(--amber-gold);">XMR Subaddress: 48x9...A7F2</span><span>In-RAM</span></div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.35);">
+          <span class="card-badge" style="color:var(--emerald-bright);">BƯỚC 02 // AUTO DELISTING</span>
+          <h3 class="card-title">Mặt Hàng Tự Biến Mất</h3>
+          <p class="card-desc">Ngay khi có người mua và xác nhận thanh toán, mặt hàng TỰ ĐỘNG BIẾN MẤT khỏi sàn giao dịch không để lại lịch sử.</p>
+          <div class="code-pill"><span>marketMap.delete(itemId)</span><span>Vanished</span></div>
+        </div>
+
+        <div class="bento-card" id="vaporTargetCard" style="--inner-glow: rgba(244, 63, 94, 0.38);">
+          <span class="card-badge" style="color:var(--crimson-burn);">BƯỚC 03 // CHAT VAPORIZE</span>
+          <h3 class="card-title">Đoạn Chat Tự Động Bốc Hơi</h3>
+          <p class="card-desc">Hoàn tất giao dịch, toàn bộ đoạn chat giữa [ID-Mua #XXXX] và [ID-Bán #YYYY] TỰ ĐỘNG BỐC HƠI vĩnh viễn khỏi bộ nhớ.</p>
+          <div class="code-pill">
+            <span style="color:#FDA4AF;">Burn-After-Completion</span>
+            <button class="ctrl-btn danger" onclick="triggerParticleVaporize('vaporTargetCard')">🔥 Bốc Hơi Thử</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 9: PANIC ESCAPE & HARDENING ==================== -->
+    <section class="slide" data-slide="9">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot" style="background:var(--crimson-burn);"></span><span class="cipher-text" data-final="[ EMERGENCY COUNTERMEASURES ]">[ EMERGENCY COUNTERMEASURES ]</span></div>
+          <div class="telemetry-chip">HOTKEY: [ ESC ]</div>
+        </div>
+        <h2 class="slide-title">Phòng Thủ Khẩn Cấp (Panic Escape &amp; Hardening Headers)</h2>
+        <p class="slide-subtitle">Cơ chế thoát hiểm tức thì trong 1 chạm kết hợp lá chắn bảo mật nghiêm ngặt ở tầng giao thức HTTP</p>
+      </div>
+
+      <div class="grid-2-col">
+        <div class="bento-card" style="--inner-glow: rgba(244, 63, 94, 0.38);">
+          <span class="card-badge" style="color:var(--crimson-burn);">EMERGENCY ZEROIZE // PHÍM TẮT ESC</span>
+          <h3 class="card-title">Nút Thoát Khẩn Cấp (Panic Escape)</h3>
+          <ul class="clean-list">
+            <li>
+              <span class="bullet-dot" style="background:var(--crimson-burn);"></span>
+              <div><strong>Xóa Sạch RAM &amp; Khóa Mật Mã Tức Thì</strong>Chỉ 1 chạm phím <code>ESC</code> để hủy toàn bộ dữ liệu phiên, giỏ hàng và tin nhắn trong RAM.</div>
+            </li>
+            <li>
+              <span class="bullet-dot" style="background:var(--crimson-burn);"></span>
+              <div><strong>Làm Sạch Clipboard &amp; Ngắt Kết Nối P2P</strong>Ghi đè bộ nhớ tạm hệ điều hành và đóng lập tức toàn bộ kênh WebRTC DataChannel.</div>
+            </li>
+            <li>
+              <span class="bullet-dot" style="background:var(--crimson-burn);"></span>
+              <div><strong>Chuyển Hướng Về Trang Từ Điển Ngụy Trang</strong>Xóa lịch sử thanh địa chỉ và lật tức khắc về giao diện Từ Điển Học Thuật vô hại.</div>
+            </li>
+          </ul>
+          <div class="code-pill">
+            <span style="color:#FDA4AF;">Nhấn phím [ESC] hoặc bấm nút để thử:</span>
+            <button class="ctrl-btn danger" onclick="toggleDecoyMorph()">🚨 TEST PANIC ESC</button>
+          </div>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.35);">
+          <span class="card-badge" style="color:var(--cyan-stealth);">HTTP SECURITY HARDENING // LÁ CHẮN HEADER</span>
+          <h3 class="card-title">Gia Cố Tầng Giao Thức HTTP</h3>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
+            <div class="code-pill" style="margin:0;">
+              <span>Content-Security-Policy (CSP)</span>
+              <span style="color:var(--text-silver);">Chống XSS &amp; Rò rỉ</span>
+            </div>
+            <div class="code-pill" style="margin:0;">
+              <span style="color:var(--cyan-stealth);">X-Frame-Options: DENY</span>
+              <span style="color:var(--text-silver);">Chống Clickjacking</span>
+            </div>
+            <div class="code-pill" style="margin:0;">
+              <span style="color:var(--amber-gold);">Referrer-Policy: no-referrer</span>
+              <span style="color:var(--text-silver);">Ẩn nguồn truy cập</span>
+            </div>
+            <div class="code-pill" style="margin:0;">
+              <span style="color:#FDA4AF;">Cache-Control: no-store</span>
+              <span style="color:var(--text-silver);">Cấm lưu bộ nhớ đĩa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 10: SUMMARY & LIVE DEMO ==================== -->
+    <section class="slide" data-slide="10">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ SYSTEM VERIFIED • 19/19 TESTS PASSED ]">[ SYSTEM VERIFIED • 19/19 TESTS PASSED ]</span></div>
+          <div class="telemetry-chip">BUILD STATUS: 100% PASS</div>
+        </div>
+        <h2 class="slide-title">Tổng Kết &amp; Trình Diễn Hệ Thống (Live Demo)</h2>
+        <p class="slide-subtitle">3 giá trị cốt lõi định hình kiến trúc sàn giao dịch ẩn danh trên bộ nhớ khả biến</p>
+      </div>
+
+      <div class="grid-3-col" style="margin-bottom:18px;">
+        <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.32);">
+          <span class="card-badge" style="color:var(--cyan-stealth);">01 // ABSOLUTE ANONYMITY</span>
+          <h3 class="card-title">Ẩn Danh Tuyệt Đối</h3>
+          <p class="card-desc">Giao dịch qua định danh ngắn hạn <code>[ID-Mua #XXXX] ↔ [ID-Bán #YYYY]</code> kết hợp Zero-Log IP đưa địa chỉ mạng về <code>0.0.0.0</code>.</p>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.35);">
+          <span class="card-badge" style="color:var(--emerald-bright);">02 // MILITARY-GRADE CRYPTO</span>
+          <h3 class="card-title">Mã Hóa Chuẩn Quân Sự</h3>
+          <p class="card-desc">Kết hợp chặt chẽ <code>AES-256-GCM</code> + <code>ECDH P-256</code> + <code>PBKDF2 (310,000 vòng)</code> cùng đệm ngẫu nhiên 1024-byte.</p>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(244, 63, 94, 0.35);">
+          <span class="card-badge" style="color:var(--crimson-burn);">03 // ZERO DISK FOOTPRINT</span>
+          <h3 class="card-title">Không Lưu Vết</h3>
+          <p class="card-desc">Vận hành 100% trên RAM khả biến; mặt hàng và tin nhắn tự hủy tức thì ngay sau khi hoàn tất giao dịch.</p>
+        </div>
+      </div>
+
+      <div class="bento-card" style="text-align:center; padding:22px; --inner-glow: rgba(16, 185, 129, 0.45);">
+        <p style="font-size:21px; font-weight:800; color:var(--text-white); letter-spacing:-0.01em;">
+          “Ghost Bazaar — Nơi giao dịch diễn ra trong sự vô hình của mật mã học.”
+        </p>
+        <div style="margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--emerald-bright);">
+          [ TRÂN TRỌNG CẢM ƠN • SẴN SÀNG TRÌNH DIỄN HỆ THỐNG THỰC TẾ ]
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER NAVIGATION -->
+  <footer class="deck-footer">
+    <div class="footer-brand">
+      <span style="color:var(--emerald-bright); font-weight:700;">● GHOST BAZAAR</span>
+      <span>Slide <strong id="slideCounter" style="color:var(--text-white);">01 / 10</strong></span>
+    </div>
+
+    <div class="slide-dots" id="slideDots"></div>
+
+    <div class="footer-controls">
+      <button class="ctrl-btn" onclick="toggleDecoyMorph()" title="Hiệu ứng Ảo Ảnh Ngụy Trang Kép">🎭 Ngụy Trang (F2)</button>
+      <button class="ctrl-btn danger" onclick="triggerCurrentSlideVaporize()" title="Hiệu ứng Bốc Hơi Khỏi RAM">🔥 Bốc Hơi RAM</button>
+      <button class="ctrl-btn" onclick="prevSlide()">← Trước</button>
+      <button class="ctrl-btn" onclick="nextSlide()">Tiếp →</button>
+    </div>
+  </footer>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const dotsContainer = document.getElementById('slideDots');
+    const counterEl = document.getElementById('slideCounter');
+    let currentIdx = 0;
+
+    // Build pagination dots
+    slides.forEach((_, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'dot-btn' + (idx === 0 ? ' active' : '');
+      btn.onclick = () => goToSlide(idx);
+      dotsContainer.appendChild(btn);
+    });
+
+    // ILLUSION #2: CIPHERTEXT-TO-PLAINTEXT MATRIX DECRYPTION
+    const HEX_GLYPHS = '0123456789ABCDEF#%&*+=-?@';
+    function runCipherDecrypt(el) {
+      const finalStr = el.getAttribute('data-final') || el.innerText;
+      const duration = 480;
+      const start = performance.now();
+
+      function tick(now) {
+        const progress = Math.min(1, (now - start) / duration);
+        const revealLen = Math.floor(progress * finalStr.length);
+        let out = finalStr.slice(0, revealLen);
+        for (let i = revealLen; i < finalStr.length; i++) {
+          if (finalStr[i] === ' ') out += ' ';
+          else out += HEX_GLYPHS[Math.floor(Math.random() * HEX_GLYPHS.length)];
+        }
+        el.innerText = out;
+        if (progress < 1) requestAnimationFrame(tick);
+        else el.innerText = finalStr;
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function goToSlide(idx) {
+      if (idx < 0 || idx >= slides.length) return;
+      slides[currentIdx].classList.remove('active');
+      currentIdx = idx;
+      const activeSlide = slides[currentIdx];
+      activeSlide.classList.add('active');
+
+      // Update dots & counter
+      Array.from(dotsContainer.children).forEach((d, i) => {
+        d.classList.toggle('active', i === currentIdx);
+      });
+      counterEl.innerText = `${String(currentIdx + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+
+      // Trigger Ciphertext-to-Plaintext on active slide tags/titles
+      activeSlide.querySelectorAll('.cipher-text').forEach(el => runCipherDecrypt(el));
+    }
+
+    function nextSlide() { goToSlide((currentIdx + 1) % slides.length); }
+    function prevSlide() { goToSlide((currentIdx - 1 + slides.length) % slides.length); }
+
+    // ILLUSION #1: STEALTH CAMOUFLAGE MORPH (DICTIONARY <-> GHOST BAZAAR)
+    function toggleDecoyMorph() {
+      const veneer = document.getElementById('decoyVeneer');
+      veneer.classList.toggle('active');
+      if (!veneer.classList.contains('active')) {
+        slides[currentIdx].querySelectorAll('.cipher-text').forEach(el => runCipherDecrypt(el));
+      }
+    }
+
+    // ILLUSION #3: FLOATING Z-AXIS 3D PARALLAX TILT ON BENTO CARDS
+    document.addEventListener('mousemove', (e) => {
+      const activeCards = slides[currentIdx].querySelectorAll('.bento-card');
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const dx = (e.clientX - cx) / cx;
+      const dy = (e.clientY - cy) / cy;
+
+      activeCards.forEach((card) => {
+        card.style.transform = `translateY(0) rotateX(${(-dy * 2.8).toFixed(2)}deg) rotateY(${(dx * 2.8).toFixed(2)}deg)`;
+      });
+    });
+
+    // ILLUSION #4: VAPORIZE / BURN-AFTER-READING PARTICLE DISSOLVE
+    const canvas = document.getElementById('vaporCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function spawnVaporParticles(rect, color = '#F43F5E') {
+      for (let i = 0; i < 110; i++) {
+        particles.push({
+          x: rect.left + Math.random() * rect.width,
+          y: rect.top + Math.random() * rect.height,
+          vx: (Math.random() - 0.5) * 3.2,
+          vy: -Math.random() * 4.2 - 1.0,
+          size: Math.random() * 3.5 + 1.2,
+          alpha: 1,
+          color: Math.random() > 0.35 ? color : '#34D399'
+        });
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.018;
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    function triggerParticleVaporize(cardId) {
+      const el = document.getElementById(cardId);
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      spawnVaporParticles(rect, '#F43F5E');
+      el.style.transition = 'opacity 0.45s ease, transform 0.45s ease, filter 0.45s ease';
+      el.style.opacity = '0.08';
+      el.style.filter = 'blur(12px)';
+      el.style.transform = 'scale(0.92) translateY(-18px)';
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.filter = 'blur(0px)';
+        el.style.transform = 'scale(1) translateY(0)';
+      }, 1600);
+    }
+
+    function triggerCurrentSlideVaporize() {
+      const cards = slides[currentIdx].querySelectorAll('.bento-card');
+      cards.forEach((c, i) => {
+        const rect = c.getBoundingClientRect();
+        spawnVaporParticles(rect, i % 2 === 0 ? '#10B981' : '#F43F5E');
+        c.style.opacity = '0.1';
+        c.style.filter = 'blur(10px)';
+        setTimeout(() => {
+          c.style.opacity = '1';
+          c.style.filter = 'blur(0px)';
+        }, 1200);
+      });
+    }
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Escape' || e.key === 'F2') {
+        e.preventDefault();
+        triggerCurrentSlideVaporize();
+        setTimeout(toggleDecoyMorph, 220);
+      }
+    });
+
+    // Initial decrypt animation on Slide 1
+    slides[0].querySelectorAll('.cipher-text').forEach(el => runCipherDecrypt(el));
+  </script>
+</body>
+</html>
