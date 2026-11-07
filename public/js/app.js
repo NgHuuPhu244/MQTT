@@ -137,7 +137,7 @@ let p2pPollTimer = null;
 let p2pLastPollTime = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Auto-forward if user opened room invite via root page (e.g. thuviendangonngu.com/#room=GHOST-XXXX)
+
   if (window.location.hash && window.location.hash.toLowerCase().includes('room=')) {
     window.location.href = './vault.html' + window.location.hash;
     return;
