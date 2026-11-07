@@ -716,6 +716,38 @@ function purgeAllVolatileData() {
 
 function initPanicAndPurgeHooks() {
   const panicBtn = document.getElementById('panic-btn');
+  const brandTop = document.getElementById('vault-brand-top') || document.querySelector('.vault-brand');
+  const vaultHeader = document.querySelector('.vault-header');
+
+  const scrollToTopSmooth = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (document.documentElement) {
+      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (document.body) {
+      document.body.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  if (brandTop) {
+    brandTop.addEventListener('click', (e) => {
+      e.stopPropagation();
+      scrollToTopSmooth();
+    });
+    brandTop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        scrollToTopSmooth();
+      }
+    });
+  }
+
+  if (vaultHeader) {
+    vaultHeader.addEventListener('click', (e) => {
+      if (e.target.closest('.vault-actions') || e.target.closest('button')) return;
+      scrollToTopSmooth();
+    });
+  }
 
   const executeEmergencyEscape = () => {
     purgeAllVolatileData();

@@ -1755,6 +1755,17 @@ body.vault-page {
   align-items: center;
   gap: 0.85rem;
   min-width: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.18s ease, transform 0.15s ease;
+}
+
+.vault-brand:hover {
+  opacity: 0.9;
+}
+
+.vault-brand:active {
+  transform: translateY(1px);
 }
 
 .vault-brand-icon-wrap {
