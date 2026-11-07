@@ -1245,7 +1245,7 @@ export function createServer() {
                 role: 'system',
                 author: 'HỆ THỐNG KẾT NỐI MÙ (BLIND RELAY)',
                 time: body.time || 'Vừa xong',
-                text: `🔗 Đã tự động sinh mã phiên [${dealId}] và kết nối trực tiếp Người Mua ↔ Người Bán cho mặt hàng "${body.productName || 'Vật phẩm'}". Địa chỉ IP (0.0.0.0) và định danh gốc của cả 2 bên đã được ẩn hoàn toàn. Khi hoàn tất mua hàng và thanh toán, toàn bộ đoạn chat này sẽ tự động biến mất khỏi RAM!`
+                text: `🔗 Đã kết nối phiên [${dealId}]: ID-Mua #${buyerToken} ↔ ID-Bán #${sellerToken}`
               }
             ]
           };

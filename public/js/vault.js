@@ -361,9 +361,24 @@ function escapeHtml(str) {
 /**
  * Modern non-blocking Toast notification system
  */
+const recentToastMessages = new Map();
+
 export function showToast(message, type = 'info') {
+  if (!message) return;
   const container = document.getElementById('toast-container');
   if (!container) return;
+
+  const now = Date.now();
+  // De-duplicate identical toasts within 3.5 seconds to block notification storms
+  if (recentToastMessages.has(message) && (now - recentToastMessages.get(message) < 3500)) {
+    return;
+  }
+  recentToastMessages.set(message, now);
+
+  // Maximum 3 visible toasts on screen to prevent flooding
+  while (container.children.length >= 3) {
+    container.removeChild(container.firstChild);
+  }
 
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
@@ -1749,6 +1764,8 @@ function checkUrlForP2PRoom() {
 
 let chatThreads = [];
 let activeThreadId = 'thread-merchant-general';
+const seenDealNotifications = new Set();
+const alreadyBurnedDeals = new Set();
 
 function getActiveThread() {
   let thread = chatThreads.find(t => t.id === activeThreadId);
@@ -2085,7 +2102,12 @@ async function startAutoBlindDeal(productName, productId = '') {
 
 function applyIncomingBlindDealState(deal, isInitiator = false) {
   if (!deal || !deal.dealId) return;
-  if (deal.dealId === lastBurnedDealId || deal.status === 'completed_burned') {
+
+  // If already burned, ignore immediately to stop notification storms
+  if (alreadyBurnedDeals.has(deal.dealId) || lastBurnedDealId === deal.dealId) {
+    return;
+  }
+  if (deal.status === 'completed_burned') {
     executeLocalDealAutoBurn(deal.dealId, true);
     return;
   }
@@ -2093,7 +2115,6 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
   let matchingThread = chatThreads.find(t => t.dealId === deal.dealId);
 
   if (!matchingThread) {
-    // A new buyer has connected for this item! Spawn a dedicated thread for this buyer
     let existingRole = null;
     try {
       existingRole = sessionStorage.getItem(`ghost_my_deal_role_${deal.dealId}`);
@@ -2121,14 +2142,23 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
     };
 
     chatThreads.unshift(matchingThread);
-    playNotificationChime();
-    showToast(`🔔 Khách [${deal.buyerBlindId}] vừa mở kênh hỏi mua "${deal.productName}" (Mã: ${deal.dealId})!`, 'info');
+
+    // Only notify ONCE per unique dealId
+    if (!seenDealNotifications.has(deal.dealId)) {
+      seenDealNotifications.add(deal.dealId);
+      if (!isInitiator) {
+        playNotificationChime();
+        showToast(`🔔 Khách [${deal.buyerBlindId}] vừa mở kênh hỏi mua "${deal.productName}" (Mã: ${deal.dealId})!`, 'info');
+      }
+    }
   }
 
   const myRole = getMyDealRole(deal);
+  const prevMsgCount = Array.isArray(matchingThread.messages) ? matchingThread.messages.length : 0;
+  const incomingMsgs = Array.isArray(deal.messages) ? deal.messages : [];
 
-  if (Array.isArray(deal.messages)) {
-    matchingThread.messages = deal.messages.map(m => {
+  if (incomingMsgs.length > 0) {
+    matchingThread.messages = incomingMsgs.map(m => {
       if (m.role === 'system') {
         return {
           author: m.senderBlindId || 'KÊNH GIAO DỊCH ẨN DANH',
@@ -2153,13 +2183,21 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
       };
     });
 
-    const last = deal.messages[deal.messages.length - 1];
+    const last = incomingMsgs[incomingMsgs.length - 1];
     if (last) {
       matchingThread.lastMessage = last.text;
       matchingThread.lastTime = last.time || getCurrentTimeStr();
-      if (!isInitiator && matchingThread.id !== activeThreadId) {
-        matchingThread.unreadCount = (matchingThread.unreadCount || 0) + 1;
+    }
+
+    // ONLY notify if genuinely new messages arrived from the other party (strictly avoids polling loop storms!)
+    if (incomingMsgs.length > prevMsgCount) {
+      const newMessages = incomingMsgs.slice(prevMsgCount);
+      const otherMessages = newMessages.filter(m => m.role !== myRole && m.role !== 'system');
+
+      if (otherMessages.length > 0 && !isInitiator && matchingThread.id !== activeThreadId) {
+        matchingThread.unreadCount = (matchingThread.unreadCount || 0) + otherMessages.length;
         playNotificationChime();
+        showToast(`💬 Tin nhắn mới từ [${matchingThread.peerAlias}] cho "${matchingThread.productName}"!`, 'info');
       }
     }
   }
@@ -2672,7 +2710,7 @@ function initEncryptedChat() {
   updateFloatingMessengerBadge();
 
   // Poll for background deals every 2.5s
-  setInterval(pollBlindDealRelay, 2500);
+  setInterval(pollBlindDealRelay, 4000);
 }
 
 function renderChatMessages() {
