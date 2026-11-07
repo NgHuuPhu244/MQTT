@@ -392,15 +392,190 @@ export function showToast(message, type = 'info') {
   }, 3500);
 }
 
+/* ==========================================================================
+   0. PERSISTENT SESSION & CATALOG STORAGE ENGINE (SURVIVES F5 RELOAD)
+   ========================================================================== */
+
+const STORAGE_KEYS = {
+  ALIAS: 'ghost_anon_alias',
+  MARKET_PRODUCTS: 'ghost_market_products_v1',
+  REVOKED_IDS: 'ghost_revoked_product_ids_v1',
+  MY_LISTINGS: 'ghost_my_vendor_listings',
+  ACTIVE_ORDER: 'ghost_active_order_v1',
+  CHAT_MESSAGES: 'ghost_chat_messages_v1',
+  ACTIVE_TAB: 'ghost_active_tab_v1',
+  SESSION_SECONDS: 'ghost_session_seconds_v1'
+};
+
+let revokedProductIds = new Set();
+let isPurgingNow = false;
+
+function loadRevokedIdsFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REVOKED_IDS) || sessionStorage.getItem(STORAGE_KEYS.REVOKED_IDS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        revokedProductIds = new Set(parsed);
+      }
+    }
+  } catch {}
+}
+
+function addRevokedProductId(productId) {
+  if (!productId) return;
+  revokedProductIds.add(productId);
+  try {
+    const json = JSON.stringify(Array.from(revokedProductIds));
+    localStorage.setItem(STORAGE_KEYS.REVOKED_IDS, json);
+    sessionStorage.setItem(STORAGE_KEYS.REVOKED_IDS, json);
+  } catch {}
+}
+
+function saveMyVendorListingsToStorage() {
+  if (isPurgingNow) return;
+  try {
+    const json = JSON.stringify(myVendorListings);
+    localStorage.setItem(STORAGE_KEYS.MY_LISTINGS, json);
+    sessionStorage.setItem(STORAGE_KEYS.MY_LISTINGS, json);
+  } catch {}
+}
+
+function syncMyVendorListingsWithMarket() {
+  if (!Array.isArray(myVendorListings) || myVendorListings.length === 0) return;
+  let changed = false;
+  myVendorListings = myVendorListings
+    .filter(item => item && !revokedProductIds.has(item.id))
+    .map(item => {
+      const marketMatch = MARKET_PRODUCTS.find(p => p.id === item.id);
+      if (marketMatch) {
+        changed = true;
+        return {
+          ...marketMatch,
+          vendorKillToken: item.vendorKillToken || marketMatch.vendorKillToken
+        };
+      }
+      return item;
+    });
+  if (changed) {
+    saveMyVendorListingsToStorage();
+  }
+}
+
+function saveMarketProductsToStorage() {
+  if (isPurgingNow) return;
+  try {
+    const cleanList = MARKET_PRODUCTS.filter(p => p && !revokedProductIds.has(p.id));
+    MARKET_PRODUCTS = cleanList;
+    const json = JSON.stringify(cleanList);
+    localStorage.setItem(STORAGE_KEYS.MARKET_PRODUCTS, json);
+    sessionStorage.setItem(STORAGE_KEYS.MARKET_PRODUCTS, json);
+    syncMyVendorListingsWithMarket();
+  } catch {}
+}
+
+/**
+ * Smart two-way merge between two product lists (localStorage & Server RAM / defaults).
+ * Preserves all user-created products and the highest bidCount / currentBidXMR on every item.
+ */
+function mergeProductCatalogs(primaryList, secondaryList) {
+  loadRevokedIdsFromStorage();
+  const mergedMap = new Map();
+  const orderedIds = [];
+
+  const upsert = (item) => {
+    if (!item || !item.id || revokedProductIds.has(item.id)) return;
+    if (!mergedMap.has(item.id)) {
+      mergedMap.set(item.id, { ...item });
+      orderedIds.push(item.id);
+    } else {
+      const existing = mergedMap.get(item.id);
+      const existingBids = Number(existing.bidCount || (existing.bids ? existing.bids.length : 0));
+      const incomingBids = Number(item.bidCount || (item.bids ? item.bids.length : 0));
+      const existingPrice = Number(existing.currentBidXMR || existing.rawPriceXMR || 0);
+      const incomingPrice = Number(item.currentBidXMR || item.rawPriceXMR || 0);
+
+      if (incomingBids > existingBids || (incomingBids === existingBids && incomingPrice > existingPrice)) {
+        mergedMap.set(item.id, {
+          ...existing,
+          ...item,
+          vendorKillToken: existing.vendorKillToken || item.vendorKillToken
+        });
+      } else if (!existing.vendorKillToken && item.vendorKillToken) {
+        existing.vendorKillToken = item.vendorKillToken;
+      }
+    }
+  };
+
+  if (Array.isArray(primaryList)) primaryList.forEach(upsert);
+  if (Array.isArray(secondaryList)) secondaryList.forEach(upsert);
+
+  const result = orderedIds.map(id => mergedMap.get(id));
+  result.sort((a, b) => {
+    if (a.isUserCreated && !b.isUserCreated) return -1;
+    if (!a.isUserCreated && b.isUserCreated) return 1;
+    if (a.isUserCreated && b.isUserCreated) {
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    }
+    return 0;
+  });
+  return result;
+}
+
+function loadMarketProductsFromStorage() {
+  loadRevokedIdsFromStorage();
+  try {
+    const rawMarket = localStorage.getItem(STORAGE_KEYS.MARKET_PRODUCTS) || sessionStorage.getItem(STORAGE_KEYS.MARKET_PRODUCTS);
+    if (rawMarket) {
+      const storedList = JSON.parse(rawMarket);
+      if (Array.isArray(storedList) && storedList.length > 0) {
+        MARKET_PRODUCTS = mergeProductCatalogs(storedList, MARKET_PRODUCTS);
+      }
+    }
+    const rawVendor = localStorage.getItem(STORAGE_KEYS.MY_LISTINGS) || sessionStorage.getItem(STORAGE_KEYS.MY_LISTINGS);
+    if (rawVendor) {
+      const vendorList = JSON.parse(rawVendor);
+      if (Array.isArray(vendorList) && vendorList.length > 0) {
+        MARKET_PRODUCTS = mergeProductCatalogs(vendorList, MARKET_PRODUCTS);
+      }
+    }
+    MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p && !revokedProductIds.has(p.id));
+  } catch {}
+}
+
+function saveChatMessagesToStorage() {
+  if (isPurgingNow) return;
+  try {
+    const json = JSON.stringify(inMemoryChatMessages);
+    localStorage.setItem(STORAGE_KEYS.CHAT_MESSAGES, json);
+    sessionStorage.setItem(STORAGE_KEYS.CHAT_MESSAGES, json);
+  } catch {}
+}
+
+function saveActiveOrderToStorage() {
+  if (isPurgingNow) return;
+  try {
+    if (activeOrder) {
+      const json = JSON.stringify(activeOrder);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_ORDER, json);
+      sessionStorage.setItem(STORAGE_KEYS.ACTIVE_ORDER, json);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
+      sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER);
+    }
+  } catch {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  loadMarketProductsFromStorage();
   generateEphemeralIdentity();
   initPanicAndPurgeHooks();
   initTelemetryAndMask();
   initTabs();
+  initVendorDesk();
   initMarketCatalog();
   initEncryptedChat();
   initOrderSystem();
-  initVendorDesk();
   initAuctionBidding();
   updateRamMonitor();
   checkUrlForP2PRoom();
@@ -413,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function generateEphemeralIdentity(forceNew = false) {
   let storedAlias = null;
   try {
-    storedAlias = sessionStorage.getItem('ghost_anon_alias');
+    storedAlias = localStorage.getItem(STORAGE_KEYS.ALIAS) || sessionStorage.getItem(STORAGE_KEYS.ALIAS);
   } catch {}
 
   if (storedAlias && !forceNew) {
@@ -423,10 +598,12 @@ function generateEphemeralIdentity(forceNew = false) {
       .map(b => b.toString(16).padStart(2, '0').toUpperCase())
       .join('');
     anonymousAlias = `Ghost-${randHex}`;
-    try {
-      sessionStorage.setItem('ghost_anon_alias', anonymousAlias);
-    } catch {}
   }
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.ALIAS, anonymousAlias);
+    sessionStorage.setItem(STORAGE_KEYS.ALIAS, anonymousAlias);
+  } catch {}
 
   const aliasEl = document.getElementById('anon-alias');
   if (aliasEl) {
@@ -440,10 +617,12 @@ function generateEphemeralIdentity(forceNew = false) {
  * flushes sessionStorage / localStorage, and leaves no residual footprints.
  */
 function purgeAllVolatileData() {
+  isPurgingNow = true;
   // Clear chat memory
   inMemoryChatMessages.length = 0;
   activeOrder = null;
   myVendorListings.length = 0;
+  revokedProductIds.clear();
 
   if (orderCountdownTimer) {
     clearInterval(orderCountdownTimer);
@@ -509,14 +688,29 @@ function initPanicAndPurgeHooks() {
    ========================================================================== */
 
 function initTelemetryAndMask() {
-  // Session Clock
+  // Restore session clock from storage if available
+  try {
+    const savedSecs = parseInt(sessionStorage.getItem(STORAGE_KEYS.SESSION_SECONDS) || '0', 10);
+    if (!isNaN(savedSecs) && savedSecs > 0) {
+      sessionSeconds = savedSecs;
+    }
+  } catch {}
+
   const clockEl = document.getElementById('session-timer');
   if (clockEl) {
-    setInterval(() => {
-      sessionSeconds++;
+    const renderClock = () => {
       const mins = String(Math.floor(sessionSeconds / 60)).padStart(2, '0');
       const secs = String(sessionSeconds % 60).padStart(2, '0');
       clockEl.textContent = `${mins}:${secs}`;
+    };
+    renderClock();
+
+    setInterval(() => {
+      sessionSeconds++;
+      renderClock();
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.SESSION_SECONDS, String(sessionSeconds));
+      } catch {}
     }, 1000);
   }
 
@@ -551,6 +745,14 @@ function initTabs() {
       switchTab(targetId);
     });
   });
+
+  // Restore last active tab on F5 reload
+  try {
+    const savedTab = sessionStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
+    if (savedTab && document.getElementById(savedTab)) {
+      switchTab(savedTab);
+    }
+  } catch {}
 }
 
 function switchTab(tabId) {
@@ -564,6 +766,12 @@ function switchTab(tabId) {
   tabPanes.forEach(p => {
     p.classList.toggle('active', p.id === tabId);
   });
+
+  if (!isPurgingNow && tabId) {
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, tabId);
+    } catch {}
+  }
 
   // Clear unread badge if opening chat
   if (tabId === 'tab-chat') {
@@ -591,28 +799,54 @@ const bazaarSyncChannel = (typeof window !== 'undefined' && 'BroadcastChannel' i
   : null;
 
 /**
- * Fetch synchronized product catalog from volatile server RAM
+ * Fetch synchronized product catalog from volatile server RAM and merge with local state
  */
 async function fetchBazaarProducts(silent = true) {
+  loadMarketProductsFromStorage();
   try {
     const res = await fetch('/api/lexicon/bazaar-items', {
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    if (json && Array.isArray(json.data) && json.data.length > 0) {
-      MARKET_PRODUCTS = json.data;
+    if (json && Array.isArray(json.data)) {
+      const serverItems = json.data;
+      const serverIds = new Set(serverItems.map(p => p.id));
+
+      // Re-push any locally created user items that the server doesn't have yet (e.g. after server restart)
+      const localOnlyUserItems = MARKET_PRODUCTS.filter(
+        p => p && p.isUserCreated && !serverIds.has(p.id) && !revokedProductIds.has(p.id)
+      );
+      localOnlyUserItems.forEach(item => {
+        fetch('/api/lexicon/bazaar-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item)
+        }).catch(() => {});
+      });
+
+      MARKET_PRODUCTS = mergeProductCatalogs(MARKET_PRODUCTS, serverItems);
+      saveMarketProductsToStorage();
       updateCategoryPillCounts();
       populateOrderProductSelect(MARKET_PRODUCTS);
       filterAndRenderProducts();
+      renderMyListings();
       updateRamMonitor();
       if (!silent) {
-        showToast('Đã làm mới danh mục sản phẩm từ RAM máy chủ!', 'success');
+        showToast('Đã đồng bộ và cập nhật danh sách mặt hàng mới nhất từ RAM!', 'success');
       }
     }
   } catch (err) {
+    // Offline or Static Host (e.g. GitHub Pages): preserve and render local persisted catalog
+    saveMarketProductsToStorage();
+    updateCategoryPillCounts();
+    populateOrderProductSelect(MARKET_PRODUCTS);
+    filterAndRenderProducts();
+    renderMyListings();
+    updateRamMonitor();
     if (!silent) {
-      showToast('Không thể kết nối máy chủ RAM, đang dùng bộ đệm nội bộ.', 'warning');
+      showToast('Đã đồng bộ và làm mới danh sách mặt hàng hiện tại!', 'success');
     }
   }
 }
@@ -625,10 +859,28 @@ function initMarketCatalog() {
   const quickOpenVendorBtn = document.getElementById('quick-open-vendor-btn');
   const refreshMarketBtn = document.getElementById('refresh-market-btn');
 
+  saveMarketProductsToStorage();
   renderProducts(MARKET_PRODUCTS);
   updateCategoryPillCounts();
   populateOrderProductSelect(MARKET_PRODUCTS);
   updateOrderPreviewCard();
+
+  // Cross-tab storage event listener (guarantees sync across tabs on same browser)
+  window.addEventListener('storage', (e) => {
+    if (
+      e.key === STORAGE_KEYS.MARKET_PRODUCTS ||
+      e.key === STORAGE_KEYS.REVOKED_IDS ||
+      e.key === STORAGE_KEYS.MY_LISTINGS
+    ) {
+      loadMarketProductsFromStorage();
+      syncMyVendorListingsWithMarket();
+      updateCategoryPillCounts();
+      populateOrderProductSelect(MARKET_PRODUCTS);
+      filterAndRenderProducts();
+      renderMyListings();
+      updateRamMonitor();
+    }
+  });
 
   // Cross-tab real-time sync listener (Desktops, Windows & Tabs)
   if (bazaarSyncChannel) {
@@ -644,9 +896,11 @@ function initMarketCatalog() {
         } else {
           MARKET_PRODUCTS[idx] = prod;
         }
+        saveMarketProductsToStorage();
         updateCategoryPillCounts();
         populateOrderProductSelect(MARKET_PRODUCTS);
         filterAndRenderProducts();
+        renderMyListings();
         updateRamMonitor();
         showToast(`📢 Gian hàng vừa có mặt hàng mới: "${prod.name}"!`, 'info');
       } else if (msg.type === 'BID_PLACED') {
@@ -656,6 +910,8 @@ function initMarketCatalog() {
           prod.rawPriceXMR = msg.amount;
           prod.highestBidder = msg.bidder;
           prod.bidCount = (prod.bidCount || 0) + 1;
+          prod.priceXMR = `${formatPriceNum(msg.amount)} ${msg.currency || prod.currency || 'XMR'}`;
+          prod.approxUSD = estimateUSDString(msg.amount, msg.currency || prod.currency || 'XMR');
           if (!prod.bids) prod.bids = [];
           prod.bids.unshift({
             bidder: msg.bidder,
@@ -664,15 +920,22 @@ function initMarketCatalog() {
             note: 'Dẫn đầu',
             time: 'Vừa xong'
           });
+          saveMarketProductsToStorage();
           filterAndRenderProducts();
+          renderMyListings();
           updateRamMonitor();
           showToast(`🔨 "${prod.name}" vừa có lượt trả giá: ${msg.amount} ${msg.currency || 'XMR'} từ ${msg.bidder}!`, 'info');
         }
       } else if (msg.type === 'REVOKE_PRODUCT') {
+        addRevokedProductId(msg.productId);
         MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== msg.productId);
+        myVendorListings = myVendorListings.filter(p => p.id !== msg.productId);
+        saveMarketProductsToStorage();
+        saveMyVendorListingsToStorage();
         updateCategoryPillCounts();
         populateOrderProductSelect(MARKET_PRODUCTS);
         filterAndRenderProducts();
+        renderMyListings();
         updateRamMonitor();
       }
     };
@@ -862,6 +1125,9 @@ function renderProducts(products) {
       </button>
       <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" title="Chat thương lượng trực tiếp">
         <span>💬</span>
+      </button>
+      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" title="Sao chép link mặt hàng này gửi cho khách">
+        <span>🔗</span>
       </button>
     `;
 
@@ -1260,24 +1526,21 @@ function setupP2PConnection(conn) {
       } else {
         MARKET_PRODUCTS[idx] = prod;
       }
+      saveMarketProductsToStorage();
       updateCategoryPillCounts();
       populateOrderProductSelect(MARKET_PRODUCTS);
       filterAndRenderProducts();
+      renderMyListings();
       updateRamMonitor();
       playNotificationChime();
       showToast(`🔔 Đối tác P2P vừa niêm yết: "${prod.name}"!`, 'info');
     } else if (packet.type === 'market_sync_batch' && Array.isArray(packet.products)) {
-      packet.products.forEach(prod => {
-        const idx = MARKET_PRODUCTS.findIndex(p => p.id === prod.id);
-        if (idx === -1) {
-          MARKET_PRODUCTS.unshift(prod);
-        } else {
-          MARKET_PRODUCTS[idx] = prod;
-        }
-      });
+      MARKET_PRODUCTS = mergeProductCatalogs(MARKET_PRODUCTS, packet.products);
+      saveMarketProductsToStorage();
       updateCategoryPillCounts();
       populateOrderProductSelect(MARKET_PRODUCTS);
       filterAndRenderProducts();
+      renderMyListings();
       updateRamMonitor();
     } else if (packet.type === 'market_bid_placed') {
       const prod = MARKET_PRODUCTS.find(p => p.id === packet.productId);
@@ -1286,6 +1549,8 @@ function setupP2PConnection(conn) {
         prod.rawPriceXMR = packet.amount;
         prod.highestBidder = packet.bidder;
         prod.bidCount = (prod.bidCount || 0) + 1;
+        prod.priceXMR = `${formatPriceNum(packet.amount)} ${packet.currency || prod.currency || 'XMR'}`;
+        prod.approxUSD = estimateUSDString(packet.amount, packet.currency || prod.currency || 'XMR');
         if (!prod.bids) prod.bids = [];
         prod.bids.unshift({
           bidder: packet.bidder,
@@ -1293,11 +1558,24 @@ function setupP2PConnection(conn) {
           currency: packet.currency || 'XMR',
           time: 'Vừa xong'
         });
+        saveMarketProductsToStorage();
         filterAndRenderProducts();
+        renderMyListings();
         updateRamMonitor();
         playNotificationChime();
         showToast(`🔨 Đối tác P2P vừa trả giá: ${packet.amount} ${packet.currency || 'XMR'} cho "${prod.name}"!`, 'info');
       }
+    } else if (packet.type === 'market_item_revoked') {
+      addRevokedProductId(packet.productId);
+      MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== packet.productId);
+      myVendorListings = myVendorListings.filter(p => p.id !== packet.productId);
+      saveMarketProductsToStorage();
+      saveMyVendorListingsToStorage();
+      updateCategoryPillCounts();
+      populateOrderProductSelect(MARKET_PRODUCTS);
+      filterAndRenderProducts();
+      renderMyListings();
+      updateRamMonitor();
     } else if (packet.type === 'disconnect') {
       showToast('Đối tác đã ngắt kết nối P2P!', 'warning');
       inMemoryChatMessages.push({
@@ -1450,15 +1728,29 @@ function initEncryptedChat() {
     });
   }
 
-  // Initial welcome message from Merchant Node
-  inMemoryChatMessages = [
-    {
-      author: 'Merchant-Node-01',
-      role: 'merchant',
-      time: getCurrentTimeStr(),
-      text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC. Để chat trực tiếp 2 máy với khách hàng không cần máy chủ, hãy bấm "Tạo Phòng Chat Mật (Host P2P)" ở trên.'
+  // Restore chat history from storage if available, otherwise show initial welcome message
+  let restoredChat = false;
+  try {
+    const rawChat = localStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES) || sessionStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES);
+    if (rawChat) {
+      const parsedChat = JSON.parse(rawChat);
+      if (Array.isArray(parsedChat) && parsedChat.length > 0) {
+        inMemoryChatMessages = parsedChat;
+        restoredChat = true;
+      }
     }
-  ];
+  } catch {}
+
+  if (!restoredChat) {
+    inMemoryChatMessages = [
+      {
+        author: 'Merchant-Node-01',
+        role: 'merchant',
+        time: getCurrentTimeStr(),
+        text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC. Để chat trực tiếp 2 máy với khách hàng không cần máy chủ, hãy bấm "Tạo Phòng Chat Mật (Host P2P)" ở trên.'
+      }
+    ];
+  }
   renderChatMessages();
 
   // Send message handler
@@ -1593,6 +1885,7 @@ function initEncryptedChat() {
 }
 
 function renderChatMessages() {
+  saveChatMessagesToStorage();
   const container = document.getElementById('chat-message-list');
   if (!container) return;
 
@@ -1721,11 +2014,26 @@ function initOrderSystem() {
         expiresAt: Date.now() + (ttl * 1000)
       };
 
+      saveActiveOrderToStorage();
       displayOrderResult(activeOrder);
       updateRamMonitor();
       showToast('Khởi tạo đơn hàng ký quỹ ẩn danh thành công!', 'success');
     });
   }
+
+  // Restore active order from storage on F5 reload if still valid
+  try {
+    const rawOrder = localStorage.getItem(STORAGE_KEYS.ACTIVE_ORDER) || sessionStorage.getItem(STORAGE_KEYS.ACTIVE_ORDER);
+    if (rawOrder) {
+      const parsedOrder = JSON.parse(rawOrder);
+      if (parsedOrder && parsedOrder.expiresAt && parsedOrder.expiresAt > Date.now()) {
+        activeOrder = parsedOrder;
+        displayOrderResult(activeOrder);
+      } else {
+        saveActiveOrderToStorage();
+      }
+    }
+  } catch {}
 
   if (clearOrderBtn) {
     clearOrderBtn.addEventListener('click', () => {
@@ -1737,6 +2045,7 @@ function initOrderSystem() {
   if (cancelOrderBtn) {
     cancelOrderBtn.addEventListener('click', () => {
       activeOrder = null;
+      saveActiveOrderToStorage();
       if (orderCountdownTimer) clearInterval(orderCountdownTimer);
       const resultBox = document.getElementById('order-result-box');
       if (resultBox) resultBox.style.display = 'none';
@@ -2029,6 +2338,7 @@ function initAuctionBidding() {
         });
       }
 
+      saveMarketProductsToStorage();
       populateOrderProductSelect(MARKET_PRODUCTS);
 
       // Broadcast bid across local tabs/desks & P2P connected peers
@@ -2157,13 +2467,16 @@ const CATEGORY_DEFAULT_BADGES = {
 };
 
 function initVendorDesk() {
-  // Restore persisted vendor listings from sessionStorage if present
+  // Restore persisted vendor listings from localStorage / sessionStorage if present
   try {
-    const saved = sessionStorage.getItem('ghost_my_vendor_listings');
+    const saved = localStorage.getItem(STORAGE_KEYS.MY_LISTINGS) || sessionStorage.getItem(STORAGE_KEYS.MY_LISTINGS);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        myVendorListings = parsed;
+        myVendorListings = parsed.filter(item => item && !revokedProductIds.has(item.id));
+        MARKET_PRODUCTS = mergeProductCatalogs(myVendorListings, MARKET_PRODUCTS);
+        syncMyVendorListingsWithMarket();
+        saveMyVendorListingsToStorage();
       }
     }
   } catch {}
@@ -2448,9 +2761,8 @@ async function handlePublishListing() {
   }
 
   myVendorListings.unshift(newProduct);
-  try {
-    sessionStorage.setItem('ghost_my_vendor_listings', JSON.stringify(myVendorListings));
-  } catch {}
+  saveMyVendorListingsToStorage();
+  saveMarketProductsToStorage();
 
   // Update product select in order tab
   populateOrderProductSelect(MARKET_PRODUCTS);
@@ -2538,6 +2850,8 @@ async function revokeUserListing(productId) {
   const killToken = itemInVendor?.vendorKillToken || itemInMarket?.vendorKillToken || '';
   const prodName = itemInVendor?.name || itemInMarket?.name || 'Vật phẩm';
 
+  addRevokedProductId(productId);
+
   try {
     await fetch(`/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/revoke`, {
       method: 'POST',
@@ -2550,6 +2864,8 @@ async function revokeUserListing(productId) {
 
   MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== productId);
   myVendorListings = myVendorListings.filter(p => p.id !== productId);
+  saveMyVendorListingsToStorage();
+  saveMarketProductsToStorage();
 
   if (bazaarSyncChannel) {
     try {
@@ -2568,10 +2884,6 @@ async function revokeUserListing(productId) {
       });
     } catch {}
   }
-
-  try {
-    sessionStorage.setItem('ghost_my_vendor_listings', JSON.stringify(myVendorListings));
-  } catch {}
 
   populateOrderProductSelect(MARKET_PRODUCTS);
   filterAndRenderProducts();
