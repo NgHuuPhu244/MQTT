@@ -625,8 +625,40 @@
       </div>
     </section>
 
-    <!-- ==================== SLIDE 3: CRYPTOGRAPHIC ENGINE ==================== -->
+    <!-- ==================== SLIDE 3: 3-TIER PROTOCOL ARCHITECTURE ==================== -->
     <section class="slide" data-slide="3">
+      <div class="slide-header">
+        <div class="header-top-row">
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ 3-TIER PROTOCOL ARCHITECTURE ]">[ 3-TIER PROTOCOL ARCHITECTURE ]</span></div>
+          <div class="telemetry-chip">3 PROTOCOLS // SYNC</div>
+        </div>
+        <h2 class="slide-title">Phối Hợp 3 Nhóm Giao Thức Chính Trong Hệ Thống</h2>
+        <p class="slide-subtitle">Tích hợp đồng bộ giúp hệ thống vừa đạt tốc độ thời gian thực, vừa bảo đảm ẩn danh tuyệt đối</p>
+      </div>
+
+      <div class="grid-3-col">
+        <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.32);">
+          <span class="card-badge" style="color:var(--cyan-stealth);">01 // COMMUNICATION PROTOCOLS</span>
+          <h3 class="card-title">Truyền Thông Thời Gian Thực</h3>
+          <p class="card-desc"><strong>• WebRTC P2P DataChannel (DTLS/SCTP):</strong> Truyền ngang hàng giữa 2 trình duyệt không qua máy chủ, chống nghe lén ISP.<br/><strong>• WebSocket Secure (wss:// PeerJS):</strong> Kênh báo hiệu ngắn hạn trao đổi SDP Offer/Answer &amp; ICE rồi tự giải phóng.<br/><strong>• BroadcastChannel + Polling 1.2s:</strong> Đồng bộ đa cửa sổ &amp; truy vấn mù trên RAM giữ cách ly danh tính.</p>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.35);">
+          <span class="card-badge" style="color:var(--emerald-bright);">02 // CRYPTOGRAPHIC PROTOCOLS</span>
+          <h3 class="card-title">Mật Mã Học Đầu Cuối (W3C)</h3>
+          <p class="card-desc"><strong>• AES-256-GCM:</strong> Mã hóa dữ liệu máy khách với IV 96-bit ngẫu nhiên &amp; Auth Tag 128-bit chống giả mạo.<br/><strong>• ECDH (NIST P-256) + HKDF-SHA256:</strong> Tự sinh khóa phiên 1 lần, không gửi khóa qua mạng (PFS).<br/><strong>• PBKDF2 (100.000 vòng) &amp; Padding 256B:</strong> Bảo vệ 2 lớp Salt 128-bit chống vét cạn &amp; đệm khối 256B chống phân tích lưu lượng.</p>
+        </div>
+
+        <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.32);">
+          <span class="card-badge" style="color:var(--amber-gold);">03 // SERVER SECURITY PROTOCOLS</span>
+          <h3 class="card-title">An Ninh Máy Chủ &amp; Ẩn Danh</h3>
+          <p class="card-desc"><strong>• Chính sách Zero-Log IP:</strong> Middleware loại bỏ hoàn toàn việc ghi log IP máy khách (<code>0.0.0.0</code>).<br/><strong>• HTTP Security Headers:</strong> Enforce nghiêm ngặt <code>CSP</code>, <code>Cache-Control: no-store</code> (ngăn Router/Proxy lưu đệm), <code>X-Frame-Options: DENY</code>.<br/><strong>• Giả mạo Server Banner:</strong> <code>LexiconServer/2.4</code> ngụy trang thành Từ điển học thuật.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 4: CRYPTOGRAPHIC ENGINE ==================== -->
+    <section class="slide" data-slide="4">
       <div class="slide-header">
         <div class="header-top-row">
           <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ END-TO-END CRYPTOGRAPHY ]">[ END-TO-END CRYPTOGRAPHY ]</span></div>
@@ -702,37 +734,37 @@
       </div>
     </section>
 
-    <!-- ==================== SLIDE 5: HYBRID COMMUNICATION PROTOCOLS ==================== -->
-    <section class="slide" data-slide="5">
+    <!-- ==================== SLIDE 6: REAL-TIME COMMUNICATION PROTOCOLS ==================== -->
+    <section class="slide" data-slide="6">
       <div class="slide-header">
         <div class="header-top-row">
-          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ SECURE COMMUNICATION CHANNELS ]">[ SECURE COMMUNICATION CHANNELS ]</span></div>
-          <div class="telemetry-chip">HYBRID MESH // 3 CHANNELS</div>
+          <div class="eyebrow-pill"><span class="eyebrow-dot"></span><span class="cipher-text" data-final="[ REAL-TIME COMMUNICATION PROTOCOLS ]">[ REAL-TIME COMMUNICATION PROTOCOLS ]</span></div>
+          <div class="telemetry-chip">P2P // WSS // 1.2S POLL</div>
         </div>
-        <h2 class="slide-title">Phương Thức Giao Tiếp Đa Kênh (Hybrid Protocols)</h2>
-        <p class="slide-subtitle">Đảm bảo kết nối thông suốt, ẩn danh và tách biệt phiên tuyệt đối giữa Người Mua và Người Bán</p>
+        <h2 class="slide-title">Giao Thức Truyền Thông Mạng Thời Gian Thực</h2>
+        <p class="slide-subtitle">Phối hợp WebRTC P2P (DTLS/SCTP), WebSocket Signaling (wss://) và BroadcastChannel + HTTP RAM Short-Polling 1.2s</p>
       </div>
 
       <div class="grid-3-col">
         <div class="bento-card" style="--inner-glow: rgba(56, 189, 248, 0.32);">
-          <span class="card-badge" style="color:var(--cyan-stealth);">01 // PEER-TO-PEER DIRECT</span>
-          <h3 class="card-title">WebRTC P2P DataChannel</h3>
-          <p class="card-desc">Truyền tin nhắn và đồng bộ trực tiếp ngang hàng giữa 2 trình duyệt (PeerJS) qua tầng giao vận DTLS/SCTP mã hóa.</p>
-          <div class="code-pill"><span>DTLS 1.3 / SCTP Stream</span><span>Zero-Server</span></div>
+          <span class="card-badge" style="color:var(--cyan-stealth);">01 // WEBRTC P2P DATACHANNEL</span>
+          <h3 class="card-title">WebRTC P2P (DTLS / SCTP)</h3>
+          <p class="card-desc">Truyền gói tin chat và dữ liệu giao dịch ngang hàng (Peer-to-Peer) giữa 2 trình duyệt không qua máy chủ; mã hóa DTLS &amp; SCTP chống nghe lén trên đường truyền ISP.</p>
+          <div class="code-pill"><span>DTLS / SCTP Encrypted</span><span>Zero-Server</span></div>
         </div>
 
         <div class="bento-card" style="--inner-glow: rgba(16, 185, 129, 0.32);">
-          <span class="card-badge" style="color:var(--emerald-bright);">02 // RAM BLIND RELAY</span>
-          <h3 class="card-title">Blind Relay REST API</h3>
-          <p class="card-desc">Kênh chuyển tiếp mù trên RAM máy chủ, giúp giao tiếp xuyên tường lửa mà không cần lộ IP hay Peer ID của hai bên.</p>
-          <div class="code-pill"><span>/api/lexicon/bazaar-deals</span><span>Blind Queue</span></div>
+          <span class="card-badge" style="color:var(--emerald-bright);">02 // WEBSOCKET SECURE SIGNALING</span>
+          <h3 class="card-title">WebSocket Secure (wss://)</h3>
+          <p class="card-desc">Kênh Báo hiệu (Signaling Channel qua PeerJS) ngắn hạn, chỉ dùng bắt tay trao đổi SDP Offer/Answer và ICE Candidate; tự động giải phóng ngay khi kết nối P2P thành công.</p>
+          <div class="code-pill"><span>SDP Offer/Answer + ICE</span><span>Auto-Release</span></div>
         </div>
 
         <div class="bento-card" style="--inner-glow: rgba(251, 191, 36, 0.32);">
-          <span class="card-badge" style="color:var(--amber-gold);">03 // MULTI-WINDOW ISOLATION</span>
-          <h3 class="card-title">BroadcastChannel &amp; Isolation</h3>
-          <p class="card-desc">Đồng bộ tức thời đa cửa sổ trên máy cục bộ nhưng vẫn tách biệt hoàn toàn vai trò Mua và Bán qua SessionStorage riêng.</p>
-          <div class="code-pill"><span>BroadcastChannel('bazaar_bus')</span><span>Isolated</span></div>
+          <span class="card-badge" style="color:var(--amber-gold);">03 // LOCAL BUS &amp; RAM SHORT-POLLING</span>
+          <h3 class="card-title">BroadcastChannel + Polling 1.2s</h3>
+          <p class="card-desc">Đồng bộ tức thời đa cửa sổ bằng BroadcastChannel, kết hợp truy vấn mù qua REST API chu kỳ 1.2s trên RAM máy chủ để giữ trạng thái cách ly danh tính giữa hai bên.</p>
+          <div class="code-pill"><span>BroadcastChannel + 1.2s Poll</span><span>Isolated</span></div>
         </div>
       </div>
     </section>
@@ -904,12 +936,12 @@
               <span style="color:var(--text-silver);">Chống Clickjacking</span>
             </div>
             <div class="code-pill" style="margin:0;">
-              <span style="color:var(--amber-gold);">Referrer-Policy: no-referrer</span>
-              <span style="color:var(--text-silver);">Ẩn nguồn truy cập</span>
+              <span style="color:var(--amber-gold);">Server: LexiconServer/2.4</span>
+              <span style="color:var(--text-silver);">Ngụy trang Từ điển</span>
             </div>
             <div class="code-pill" style="margin:0;">
               <span style="color:#FDA4AF;">Cache-Control: no-store</span>
-              <span style="color:var(--text-silver);">Cấm lưu bộ nhớ đĩa</span>
+              <span style="color:var(--text-silver);">Ngăn Router/Proxy lưu đệm</span>
             </div>
           </div>
         </div>
