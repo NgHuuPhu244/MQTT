@@ -696,10 +696,19 @@ function applySecurityHeaders(res) {
  */
 function serveStaticFile(reqPath, res) {
   let cleanPath = reqPath.split('?')[0];
-  if (cleanPath === '/' || cleanPath === '') {
+  if (
+    cleanPath === '/' ||
+    cleanPath === '' ||
+    cleanPath === '/vault' ||
+    cleanPath === '/vault.html' ||
+    cleanPath === '/workspace' ||
+    cleanPath === '/drop' ||
+    cleanPath === '/secure' ||
+    cleanPath === '/market' ||
+    cleanPath === '/shop' ||
+    cleanPath === '/bazaar'
+  ) {
     cleanPath = '/index.html';
-  } else if (cleanPath === '/vault' || cleanPath === '/drop' || cleanPath === '/secure' || cleanPath === '/market' || cleanPath === '/shop' || cleanPath === '/bazaar') {
-    cleanPath = '/vault.html';
   }
 
   // Prevent directory traversal attacks

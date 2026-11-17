@@ -4774,18 +4774,18 @@ body.vault-page.flat-workspace .vault-title {
 }
 
 body.vault-page.flat-workspace .panic-btn {
-  background: rgba(244, 63, 94, 0.12);
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  color: #fda4af;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
   box-shadow: none;
   border-radius: 8px;
   height: 36px;
 }
 
 body.vault-page.flat-workspace .panic-btn:hover {
-  background: #be123c;
-  color: #ffffff;
-  border-color: #e11d48;
+  background: rgba(56, 189, 248, 0.14);
+  color: #f8fafc;
+  border-color: rgba(56, 189, 248, 0.42);
   box-shadow: none;
 }
 

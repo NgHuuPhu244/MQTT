@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css?v=5.0">
+  <link rel="stylesheet" href="./css/style.css?v=5.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
 </head>
 <body class="vault-page flat-workspace">
@@ -33,8 +33,8 @@
         </div>
 
         <div class="vault-actions">
-          <button id="panic-btn" class="panic-btn" title="Đóng phiên làm việc, xóa sạch bộ nhớ tạm và quay về trang Từ điển (Phím ESC)">
-            <span>🚪</span> Đóng Phiên & Xóa Bộ Đệm <kbd>ESC</kbd>
+          <button id="panic-btn" class="panic-btn" title="Xóa dữ liệu tạm trên trình duyệt và khởi tạo phiên làm việc mới">
+            <span>🔄</span> Làm Mới Phiên (Xóa Bộ Đệm)
           </button>
         </div>
       </div>
@@ -637,7 +637,7 @@
       <p>Nexus Workspace • Cổng Giao Tiếp & Chia Sẻ Tài Nguyên Nội Bộ • Không Lưu Nhật Ký (RAM-Only)</p>
       <div class="keyboard-hints-bar">
         <span class="hint-pill"><kbd>/</kbd> Tìm kiếm nhanh</span>
-        <span class="hint-pill"><kbd>Esc</kbd> Đóng phiên & Xóa bộ đệm</span>
+        <span class="hint-pill"><kbd>Esc</kbd> Đóng cửa sổ hộp thoại</span>
       </div>
     </footer>
   </div>
@@ -726,6 +726,6 @@
   <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
   <script src="./js/peerjs.min.js"></script>
-  <script type="module" src="./js/vault.js?v=5.0"></script>
+  <script type="module" src="./js/vault.js?v=5.1"></script>
 </body>
 </html>

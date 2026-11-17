@@ -772,26 +772,31 @@ function initPanicAndPurgeHooks() {
     });
   }
 
-  const executeEmergencyEscape = () => {
+  const executeSessionReset = () => {
     purgeAllVolatileData();
-    // Redirect immediately to the benign decoy dictionary
-    window.location.replace('./index.html');
+    // Cleanly reload the company workspace with a fresh RAM session
+    window.location.replace(window.location.pathname || './index.html');
   };
 
   if (panicBtn) {
-    panicBtn.addEventListener('click', executeEmergencyEscape);
+    panicBtn.addEventListener('click', executeSessionReset);
   }
 
-  // Global ESC key listener for instantaneous escape & wipe
+  // Close open modals cleanly on Escape key without wiping user session
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      executeEmergencyEscape();
+      const bidModal = document.getElementById('bid-modal-overlay');
+      const qrModal = document.getElementById('qr-modal-overlay');
+      if (bidModal && bidModal.style.display !== 'none') {
+        bidModal.style.display = 'none';
+      }
+      if (qrModal && qrModal.style.display !== 'none') {
+        qrModal.style.display = 'none';
+      }
     }
   });
 
-  // Note: We deliberately do NOT bind purgeAllVolatileData() to beforeunload / pagehide
-  // so that normal page refresh (F5) preserves session identity and active vendor listings.
-  // Full wipe and escape is strictly triggered via the Panic Button or ESC key.
+  // Note: Full session wipe & reset is explicitly triggered by the Reset Session button.
 }
 
 /* ==========================================================================
@@ -1442,10 +1447,7 @@ function generateRoomCode() {
 }
 
 function getRoomShareableLink(code) {
-  let baseUrl = window.location.href.split('#')[0];
-  if (!baseUrl.includes('vault.html')) {
-    baseUrl = baseUrl.replace(/\/$/, '') + '/vault.html';
-  }
+  const baseUrl = window.location.href.split('#')[0];
   return `${baseUrl}#room=${encodeURIComponent(code)}`;
 }
 
