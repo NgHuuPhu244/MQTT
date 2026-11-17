@@ -8,90 +8,102 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css?v=5.2">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
+  <link rel="stylesheet" href="./css/style.css?v=6.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%222%22><rect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%224%22/><path d=%22M8 16V8l8 8V8%22/></svg>">
 </head>
-<body class="vault-page flat-workspace">
+<body class="vault-page flat-workspace obsidian-studio">
   <a href="#vault-main-content" class="skip-link">Chuyển đến nội dung chính</a>
 
   <!-- ================================================================= -->
   <!-- ENTERPRISE WORKSPACE CONSOLE (ZERO-KNOWLEDGE EPHEMERAL VAULT)     -->
   <!-- ================================================================= -->
   <div class="vault-shell">
-    <!-- Header with Quick Exit & Workspace Identity -->
+    <!-- Unified Single-Bar Workspace Header -->
     <header class="vault-header">
       <div class="vault-header-inner">
         <div class="vault-brand" id="vault-brand-top">
           <button type="button" id="brand-scroll-top-btn" class="vault-brand-icon-wrap" aria-label="Cuộn lên đầu trang" title="Cuộn lên đầu trang">
-            <span class="vault-icon" aria-hidden="true">🏢</span>
-            <span class="vault-pulse-ring" aria-hidden="true"></span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+              <path d="M8.5 15.5V8.5l7 7v-7"></path>
+            </svg>
           </button>
-          <div>
+          <div class="brand-identity-col">
             <div class="vault-title-row">
-              <h1 class="vault-title">NEXUS WORKSPACE • Cổng Giao Tiếp Nội Bộ</h1>
+              <h1 class="vault-title">Nexus Workspace</h1>
+              <span class="workspace-env-sep" aria-hidden="true">/</span>
+              <span class="workspace-env-label">Cổng Giao Tiếp Nội Bộ</span>
             </div>
           </div>
         </div>
 
         <div class="vault-actions">
-          <button id="panic-btn" class="panic-btn" title="Xóa dữ liệu tạm trên trình duyệt và khởi tạo phiên làm việc mới">
-            <span>🔄</span> Làm Mới Phiên (Xóa Bộ Đệm)
+          <!-- Restrained Inline Session Status (Replaces cluttered telemetry strip) -->
+          <div class="header-status-cluster" role="status" aria-label="Trạng thái kết nối nội bộ">
+            <span class="status-live-dot" aria-hidden="true"></span>
+            <span class="status-meta-label">RAM AES-256</span>
+            <span class="status-sep" aria-hidden="true">·</span>
+            <span id="session-timer" class="status-timer-val" title="Thời lượng phiên làm việc">00:00</span>
+          </div>
+
+          <div class="member-id-cluster">
+            <span class="member-id-prefix">Mã NV:</span>
+            <span id="anon-alias" class="member-id-code">NV-Loading...</span>
+            <button type="button" id="regen-alias-btn" class="regen-alias-btn" aria-label="Đổi mã định danh phiên mới" title="Đổi mã định danh phiên mới">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                <path d="M16 16h5v5"></path>
+              </svg>
+            </button>
+          </div>
+
+          <button type="button" id="panic-btn" class="panic-btn" title="Xóa dữ liệu tạm trên trình duyệt và khởi tạo phiên làm việc mới">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+            </svg>
+            <span>Làm mới phiên</span>
           </button>
         </div>
       </div>
     </header>
 
-    <!-- Live Telemetry & Session Strip -->
-    <section class="telemetry-strip" aria-label="Thông tin kết nối và phiên làm việc">
-      <div class="telemetry-inner">
-        <div class="telemetry-item">
-          <span class="dot green"></span>
-          <strong>Trạng thái mạng:</strong>
-          <span class="telemetry-highlight green">Nội bộ An toàn (Zero-Log)</span>
-        </div>
-        <div class="telemetry-item">
-          <span class="dot cyan"></span>
-          <strong>Thành viên:</strong>
-          <span id="anon-alias" class="telemetry-highlight cyan">NV-Loading...</span>
-          <button type="button" id="regen-alias-btn" class="regen-alias-btn" title="Đổi sang mã định danh phiên mới">
-            <span>🔄</span> Đổi mã
-          </button>
-        </div>
-        <div class="telemetry-item">
-          <span class="dot green"></span>
-          <strong>Lưu trữ:</strong>
-          <span class="telemetry-highlight green">100% RAM Khả biến</span>
-        </div>
-        <div class="telemetry-item">
-          <span class="dot green"></span>
-          <strong>Mã hóa:</strong>
-          <span>AES-256-GCM E2EE</span>
-        </div>
-        <div class="telemetry-item session-clock">
-          <span class="dot purple"></span>
-          <strong>Thời lượng phiên:</strong>
-          <span id="session-timer">00:00</span>
-        </div>
-      </div>
-    </section>
-
     <!-- Main Flat Workspace Console -->
     <main id="vault-main-content" class="vault-main" tabindex="-1">
-      <!-- Navigation Tabs (Flat Underline Tab Bar like Linear / Slack) -->
+      <!-- Clean Navigation Tabs -->
       <nav aria-label="Điều hướng phân hệ làm việc nội bộ">
         <div class="covert-nav-tabs" role="tablist" aria-label="Phân hệ làm việc">
           <button type="button" class="nav-tab active" id="nav-tab-market" role="tab" aria-selected="true" aria-controls="tab-market" data-tab="tab-market">
-            <span class="tab-icon" aria-hidden="true">📌</span> Bảng Tin & Tài Nguyên
+            <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+            </svg>
+            <span>Bảng Tin & Tài Nguyên</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" data-tab="tab-chat">
-            <span class="tab-icon" aria-hidden="true">💬</span> Thảo Luận Nội Bộ
+            <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Thảo Luận Nội Bộ</span>
             <span id="chat-badge" class="chat-unread-badge" style="display:none;" aria-label="Tin nhắn chưa đọc">1</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-order" role="tab" aria-selected="false" aria-controls="tab-order" data-tab="tab-order">
-            <span class="tab-icon" aria-hidden="true">🔐</span> Bàn Giao & Cấp Phát Mật
+            <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>Bàn Giao & Cấp Phát Mật</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-vendor" role="tab" aria-selected="false" aria-controls="tab-vendor" data-tab="tab-vendor">
-            <span class="tab-icon" aria-hidden="true">➕</span> Đăng Thông Báo / Tài Liệu
+            <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 8v8M8 12h8"></path>
+            </svg>
+            <span>Đăng Thông Báo / Tài Liệu</span>
           </button>
         </div>
       </nav>
@@ -100,56 +112,93 @@
       <!-- TAB 1: BẢNG TIN & TÀI NGUYÊN NỘI BỘ                           -->
       <!-- ============================================================= -->
       <div id="tab-market" class="tab-pane active" role="tabpanel" aria-labelledby="nav-tab-market">
-        <!-- Dismissible Workspace Guideline Strip -->
-        <div class="instruction-box" id="market-principle-banner">
-          <div class="instruction-content">
-            <span class="info-icon">⚡</span>
-            <div>
-              <strong>Không Gian Phối Hợp & Chia Sẻ Nội Bộ:</strong> Nơi các phòng ban đăng thông báo dự án, cấp phát tài nguyên, chia sẻ cấu hình kỹ thuật và tiếp nhận công việc trên <strong>bộ nhớ RAM tạm thời (Zero-Log)</strong> — tự động xóa sạch dấu vết khi kết thúc phiên.
-            </div>
+        <div class="tab-page-head">
+          <div>
+            <h2 class="tab-page-title">Bảng tin & Tài nguyên nội bộ</h2>
+            <p class="tab-page-subtitle">Điều phối tài nguyên, cấu hình kỹ thuật và đầu việc liên phòng ban qua bộ đệm RAM tạm thời.</p>
           </div>
-          <button type="button" class="dismiss-banner-btn" data-dismiss="market-principle-banner" aria-label="Đóng thông báo hướng dẫn bảng tin" title="Đóng thông báo này"><span aria-hidden="true">✕</span></button>
+          <div class="tab-page-actions">
+            <div class="view-mode-switch" role="group" aria-label="Chế độ hiển thị danh sách">
+              <button type="button" id="view-grid-btn" class="view-switch-btn active" aria-pressed="true" aria-label="Hiển thị dạng thẻ 2 cột" title="Dạng thẻ rộng (2 cột)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                </svg>
+              </button>
+              <button type="button" id="view-list-btn" class="view-switch-btn" aria-pressed="false" aria-label="Hiển thị dạng danh sách gọn" title="Dạng danh sách gọn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <button type="button" id="refresh-market-btn" class="secondary-btn quick-list-cta" aria-label="Làm mới bảng tin" title="Cập nhật danh sách mới nhất từ RAM máy chủ">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                <path d="M16 16h5v5"></path>
+              </svg>
+              <span>Làm mới</span>
+            </button>
+
+            <button type="button" id="quick-open-vendor-btn" class="primary-btn quick-list-cta" title="Đăng thông báo, tài nguyên hoặc đầu việc mới cho công ty">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Tạo thông báo</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Flat Search & Department Filter Bar -->
+        <!-- Clean Unified Search & Filter Strip -->
         <div class="market-filter-bar">
           <div class="market-search-row">
             <div class="market-search-wrap">
-              <span class="search-icon-symbol">🔍</span>
-              <input type="text" id="market-search-input" aria-label="Tìm kiếm tài liệu, cấu hình server, khóa xác thực hoặc nhiệm vụ phòng ban" placeholder="Tìm tài liệu, cấu hình server, khóa xác thực, nhiệm vụ phòng ban... (Phím / để tìm)" autocomplete="off">
+              <span class="search-icon-symbol" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </span>
+              <input type="text" id="market-search-input" aria-label="Tìm kiếm tài liệu, cấu hình server, khóa xác thực hoặc nhiệm vụ phòng ban" placeholder="Tìm theo tên hạng mục, phòng ban, loại tài liệu... (Phím /)" autocomplete="off">
               <span class="market-search-kbd" title="Nhấn phím / để tìm kiếm nhanh">/</span>
-              <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm"><span aria-hidden="true">✕</span></button>
+              <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
             <div class="market-sort-wrap">
-              <label for="market-sort-select">Sắp xếp:</label>
+              <label for="market-sort-select" class="sr-only">Sắp xếp theo</label>
               <select id="market-sort-select" class="custom-select mini-select">
                 <option value="default">Mới nhất / Nổi bật</option>
-                <option value="price-asc">Khối lượng / Hạn mức: Thấp → Cao</option>
-                <option value="price-desc">Khối lượng / Hạn mức: Cao → Thấp</option>
-                <option value="bids-desc">Nhiều phản hồi / đề xuất nhất</option>
+                <option value="price-asc">Khối lượng: Thấp → Cao</option>
+                <option value="price-desc">Khối lượng: Cao → Thấp</option>
+                <option value="bids-desc">Nhiều đề xuất nhất</option>
                 <option value="name">Tiêu đề A-Z</option>
               </select>
-              <button type="button" id="refresh-market-btn" class="secondary-btn quick-list-cta" title="Cập nhật danh sách mới nhất từ RAM máy chủ">
-                <span>🔄</span> Làm Mới
-              </button>
-              <button type="button" id="quick-open-vendor-btn" class="primary-btn quick-list-cta" title="Đăng thông báo, tài nguyên hoặc đầu việc mới cho công ty">
-                <span>➕</span> Tạo Thông Báo Mới
-              </button>
             </div>
           </div>
 
           <div class="market-category-pills" id="market-category-pills" role="group" aria-label="Lọc theo phòng ban và danh mục">
-            <button type="button" class="market-pill active" aria-pressed="true" data-category="all">Tất cả hạng mục <span class="pill-count" id="count-all">9</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="auction">📋 Đang Phối Hợp <span class="pill-count" id="count-auction">9</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="physical">💻 Thiết Bị & Văn Phòng <span class="pill-count" id="count-physical">1</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="digital">☁️ Cloud & Tài Nguyên Số <span class="pill-count" id="count-digital">1</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="hardware">🖥️ DevOps & Phần Cứng <span class="pill-count" id="count-hardware">2</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="network">🌐 Mạng & Hạ Tầng <span class="pill-count" id="count-network">2</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="crypto">📑 Tài Liệu & API Mật <span class="pill-count" id="count-crypto">3</span></button>
+            <button type="button" class="market-pill active" aria-pressed="true" data-category="all">Tất cả <span class="pill-count" id="count-all">9</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="auction">Đang phối hợp <span class="pill-count" id="count-auction">9</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="physical">Thiết bị & VP <span class="pill-count" id="count-physical">1</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="digital">Cloud & Số <span class="pill-count" id="count-digital">1</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="hardware">DevOps & Phần cứng <span class="pill-count" id="count-hardware">2</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="network">Mạng & Hạ tầng <span class="pill-count" id="count-network">2</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="crypto">Tài liệu & API <span class="pill-count" id="count-crypto">3</span></button>
           </div>
         </div>
 
-        <!-- Resources & Announcements Grid -->
+        <!-- Resources & Announcements Grid / List -->
         <div id="market-product-grid" class="market-product-grid">
           <!-- Rendered dynamically by vault.js -->
         </div>
@@ -159,21 +208,20 @@
       <!-- TAB 2: THẢO LUẬN NỘI BỘ (UNIFIED FLAT SLACK-STYLE WORKSPACE)  -->
       <!-- ============================================================= -->
       <div id="tab-chat" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-chat">
-        <!-- Unified Single-Surface Split Shell (Divided by hairline 1px borders, no nested boxes) -->
         <div class="messenger-shell">
 
           <!-- Left Column: Direct Messages & Task Channels -->
           <aside class="messenger-sidebar" id="messenger-sidebar">
             <div class="messenger-sidebar-header">
               <div class="sidebar-brand-group">
-                <span class="messenger-brand-icon">💬</span>
                 <div>
                   <h2 class="messenger-sidebar-title">Kênh Thảo Luận</h2>
                   <span class="messenger-threads-count" id="messenger-threads-count">1 cuộc trò chuyện</span>
                 </div>
               </div>
               <button type="button" id="btn-new-thread" class="messenger-new-pill" title="Tạo kênh thảo luận công việc mới">
-                <span>➕</span> Kênh Mới
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Kênh Mới</span>
               </button>
             </div>
 
@@ -200,17 +248,21 @@
                 </div>
                 <div>
                   <div class="peer-title-row">
-                    <h2 class="peer-name" id="chat-peer-name">Kênh Nội Bộ • Trợ Lý Điều Phối</h2>
-                    <span class="verified-vendor-badge" id="chat-peer-badge">✓ ĐÃ XÁC THỰC NỘI BỘ</span>
+                    <h2 class="peer-name" id="chat-peer-name">Trợ Lý Điều Phối</h2>
+                    <span class="verified-vendor-badge" id="chat-peer-badge">Đã xác thực nội bộ</span>
                     <span id="active-product-tag" class="product-inquiry-tag">Trao đổi chung</span>
                   </div>
                   <div class="peer-meta-row">
                     <span class="p2p-status-indicator" id="p2p-status-indicator">
                       <span class="p2p-pulse-dot" id="p2p-pulse-dot"></span>
-                      <span class="p2p-status-text" id="p2p-status-text">🔴 Chế độ Trợ Lý (Chưa nối máy P2P)</span>
+                      <span class="p2p-status-text" id="p2p-status-text">Trợ lý nội bộ (Chưa nối máy P2P)</span>
                     </span>
-                    <span class="peer-divider">•</span>
-                    <button type="button" id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" aria-label="Sao chép dấu vân tay chứng thư PGP nội bộ" title="Bấm để sao chép dấu vân tay chứng thư nội bộ">🔑 PGP Nội bộ: 4A8F...91BC <span aria-hidden="true">📋</span></button>
+                    <span class="peer-divider">·</span>
+                    <button type="button" id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" aria-label="Sao chép dấu vân tay chứng thư PGP nội bộ" title="Bấm để sao chép dấu vân tay chứng thư nội bộ">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+                      <span>PGP: 4A8F...91BC</span>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -219,7 +271,8 @@
               <div class="chat-header-actions">
                 <div class="p2p-setup-row" id="p2p-setup-row">
                   <button type="button" id="btn-p2p-host" class="p2p-pill-btn host" title="Tạo phòng họp/trao đổi P2P trực tiếp giữa 2 máy">
-                    <span>➕</span> Tạo Phòng Họp P2P
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Phòng P2P</span>
                   </button>
                   <div class="p2p-compact-join">
                     <input type="text" id="input-p2p-code" aria-label="Nhập mã phòng họp P2P" class="p2p-compact-input" placeholder="Mã phòng..." autocomplete="off">
@@ -228,48 +281,41 @@
                 </div>
 
                 <div class="p2p-active-row" id="p2p-active-row" style="display: none;">
-                  <span class="p2p-room-code-pill" id="display-room-code">GHOST-XXXX</span>
-                  <button type="button" id="btn-p2p-copy-link" class="p2p-pill-btn copy" title="Sao chép link mời đồng nghiệp">
-                    <span>📋</span> Mời Đồng Nghiệp
-                  </button>
-                  <button type="button" id="btn-p2p-disconnect" class="p2p-pill-btn disconnect" title="Rời phòng họp P2P">
-                    <span>🔌</span> Ngắt P2P
-                  </button>
+                  <span class="p2p-room-code-pill" id="display-room-code">TEAM-XXXX</span>
+                  <button type="button" id="btn-p2p-copy-link" class="p2p-pill-btn copy" title="Sao chép link mời đồng nghiệp">Mời đồng nghiệp</button>
+                  <button type="button" id="btn-p2p-disconnect" class="p2p-pill-btn disconnect" title="Rời phòng họp P2P">Ngắt P2P</button>
                 </div>
 
                 <button type="button" id="purge-chat-btn" class="p2p-pill-btn purge" title="Xóa sạch lịch sử hội thoại của kênh này trong RAM">
-                  <span>🧹</span> Xóa Lịch Sử
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  <span>Xóa lịch sử</span>
                 </button>
               </div>
             </div>
 
-            <!-- Active Task/Handover Strip (Flat divider strip) -->
+            <!-- Active Task/Handover Strip -->
             <div id="auto-deal-banner" class="auto-deal-banner" style="display: none;">
               <div class="auto-deal-meta">
                 <span class="auto-deal-code" id="auto-deal-code-badge">DEAL-XXXX</span>
                 <span class="auto-deal-title" id="auto-deal-product-label">Đang kết nối trao đổi công việc...</span>
-                <span class="auto-deal-relay-tag" id="auto-deal-blind-badge">🛡️ Kênh RAM E2EE Nội Bộ (Zero-Log)</span>
+                <span class="auto-deal-relay-tag" id="auto-deal-blind-badge">Kênh RAM E2EE Nội Bộ</span>
               </div>
               <div class="auto-deal-actions">
-                <button type="button" id="btn-deal-confirm-pay" class="p2p-pill-btn join">
-                  <span>📋</span> 1. Xác Nhận Tiếp Nhận
-                </button>
-                <button type="button" id="btn-deal-complete-burn" class="p2p-pill-btn host">
-                  <span>✅</span> 2. Hoàn Tất Bàn Giao (Tự Hủy Chat)
-                </button>
+                <button type="button" id="btn-deal-confirm-pay" class="p2p-pill-btn join">1. Xác nhận tiếp nhận</button>
+                <button type="button" id="btn-deal-complete-burn" class="p2p-pill-btn host">2. Hoàn tất bàn giao (Tự hủy chat)</button>
               </div>
             </div>
 
             <!-- Quick Reply Chips -->
             <div class="chat-quick-inquiries flat-chips-row">
               <span class="quick-inquiry-label">Mẫu nhanh:</span>
-              <button type="button" class="quick-q-btn" data-q="Xác nhận tiến độ bàn giao và người phụ trách hạng mục này?">📋 Xác nhận tiến độ?</button>
-              <button type="button" class="quick-q-btn" data-q="Vui lòng gửi thông tin cấu hình hoặc mật khẩu qua mã Drop tự hủy 1 lần.">🔐 Gửi qua Drop tự hủy?</button>
-              <button type="button" class="quick-q-btn" data-q="Cần xác minh chữ ký PGP hoặc quyền truy cập GitLab/Server của bộ phận?">🔑 Xác minh quyền?</button>
-              <button type="button" class="quick-q-btn" data-q="Dữ liệu trao đổi trên kênh này có lưu log trên máy chủ không?">🛡️ Kiểm tra Zero-Log?</button>
+              <button type="button" class="quick-q-btn" data-q="Xác nhận tiến độ bàn giao và người phụ trách hạng mục này?">Xác nhận tiến độ?</button>
+              <button type="button" class="quick-q-btn" data-q="Vui lòng gửi thông tin cấu hình hoặc mật khẩu qua mã Drop tự hủy 1 lần.">Gửi qua Drop tự hủy?</button>
+              <button type="button" class="quick-q-btn" data-q="Cần xác minh chữ ký PGP hoặc quyền truy cập GitLab/Server của bộ phận?">Xác minh quyền?</button>
+              <button type="button" class="quick-q-btn" data-q="Dữ liệu trao đổi trên kênh này có lưu log trên máy chủ không?">Kiểm tra Zero-Log?</button>
             </div>
 
-            <!-- Messages Stream Canvas (Continuous Flat Stream) -->
+            <!-- Messages Stream Canvas -->
             <div id="chat-message-list" class="chat-message-list flat-message-list">
               <!-- Dynamically populated messages -->
             </div>
@@ -282,12 +328,13 @@
               <span class="typing-text">Đồng nghiệp đang soạn tin nhắn...</span>
             </div>
 
-            <!-- Flat Bottom Composer Strip (No Nested Box inside Box) -->
+            <!-- Flat Bottom Composer Strip -->
             <div class="chat-composer-wrap">
               <div class="chat-composer-pill">
                 <input type="text" id="chat-input-field" aria-label="Nhập nội dung tin nhắn trao đổi nội bộ" placeholder="Nhập tin nhắn trao đổi công việc (Mã hóa E2EE, tự hủy khỏi RAM khi rời trang)..." autocomplete="off">
                 <button type="button" id="send-chat-btn" class="chat-send-pill-btn" title="Gửi tin nhắn">
-                  <span>Gửi</span> 🔒
+                  <span>Gửi</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 </button>
               </div>
             </div>
@@ -300,21 +347,17 @@
       <!-- TAB 3: BÀN GIAO & CẤP PHÁT MẬT (ONE-TIME HANDOVER TOKEN)      -->
       <!-- ============================================================= -->
       <div id="tab-order" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-order">
-        <div class="instruction-box" id="order-instruction-banner">
-          <div class="instruction-content">
-            <span class="info-icon">🔐</span>
-            <div>
-              <strong>Phiếu Bàn Giao Tài Nguyên & Thông Tin Mật (One-Time Secret):</strong> Khởi tạo phiếu cấp phát cho hạng mục công việc hoặc thông tin nhạy cảm (mật khẩu Server, API Key, thiết bị). Mọi dữ liệu chỉ tồn tại tạm thời trên RAM và tự hủy sau thời hạn TTL.
-            </div>
+        <div class="tab-page-head">
+          <div>
+            <h2 class="tab-page-title">Bàn giao & Cấp phát thông tin mật</h2>
+            <p class="tab-page-subtitle">Khởi tạo phiếu tiếp nhận tài nguyên hoặc thông tin nhạy cảm qua Token RAM tự hủy một lần.</p>
           </div>
-          <button type="button" class="dismiss-banner-btn" data-dismiss="order-instruction-banner" aria-label="Đóng thông báo hướng dẫn bàn giao" title="Đóng thông báo này"><span aria-hidden="true">✕</span></button>
         </div>
 
         <!-- Two-Column Flat Split Handover Layout -->
         <div class="order-checkout-layout">
-          <!-- Left Column: Handover Request Form -->
           <section class="order-form-col">
-            <h2 class="checkout-col-title">1. Thông Tin Phiếu Bàn Giao Nội Bộ</h2>
+            <h3 class="checkout-col-title">Thông tin phiếu bàn giao nội bộ</h3>
 
             <div class="form-group">
               <label for="order-product-select"><strong>Chọn hạng mục / tài nguyên cần tiếp nhận:</strong></label>
@@ -329,7 +372,7 @@
                 <button type="button" id="insert-sample-pgp-btn" class="mini-text-btn">Dán mẫu PGP</button>
               </div>
               <textarea id="order-receiver-pubkey" rows="3" placeholder="Dán PGP Public Key của người nhận hoặc ghi chú bộ phận tiếp nhận... (Để trống để hệ thống tự sinh Token nội bộ)"></textarea>
-              <span class="label-desc">Dùng để mã hóa riêng tệp cấu hình/mật khẩu cho đồng nghiệp được chỉ định. Không ai khác ngoài người nhận có thể giải mật.</span>
+              <span class="label-desc">Dùng để mã hóa riêng tệp cấu hình/mật khẩu cho đồng nghiệp được chỉ định.</span>
             </div>
 
             <div class="form-group">
@@ -345,25 +388,25 @@
 
             <div class="action-row">
               <button type="button" id="create-order-btn" class="primary-btn">
-                <span>⚡</span> Tạo Phiếu Bàn Giao & Mã Xác Nhận
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Tạo phiếu bàn giao & Mã xác nhận</span>
               </button>
               <button type="button" id="clear-order-btn" class="secondary-btn">Xóa trường</button>
             </div>
           </section>
 
-          <!-- Right Column: Live Resource Summary -->
           <section class="order-preview-col">
-            <h2 class="checkout-col-title">2. Tóm Tắt Hạng Mục Bàn Giao</h2>
+            <h3 class="checkout-col-title">Tóm tắt hạng mục bàn giao</h3>
             <div id="live-order-preview-card" class="order-preview-card">
               <!-- Dynamically rendered by vault.js -->
             </div>
 
             <div class="escrow-assurance-box">
               <div class="assurance-header">
-                <span class="shield-mini-icon">🛡️</span>
-                <strong>Cam Kết Bảo Mật Dữ Liệu Nội Bộ (RAM-Only)</strong>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <strong>Bảo mật dữ liệu nội bộ (RAM-Only)</strong>
               </div>
-              <p>Thông tin bàn giao chỉ nằm trong bộ nhớ RAM và tự động hết hạn theo TTL. Sau khi đồng nghiệp xác nhận tiếp nhận hoàn tất, lịch sử trao đổi liên quan sẽ được xóa sạch tức thì.</p>
+              <p>Thông tin bàn giao chỉ nằm trong bộ nhớ RAM và tự động hết hạn theo TTL. Sau khi đồng nghiệp xác nhận hoàn tất, lịch sử trao đổi liên quan sẽ được xóa sạch tức thì.</p>
             </div>
           </section>
         </div>
@@ -371,15 +414,13 @@
         <!-- Handover Ticket Generated Result -->
         <div id="order-result-box" class="order-result-box" style="display: none;">
           <div class="order-receipt-header">
-            <div class="receipt-icon-badge">
-              <span class="success-icon">✓</span>
-            </div>
+            <div class="receipt-icon-badge" aria-hidden="true">✓</div>
             <div class="receipt-title-wrap">
               <div class="receipt-badge-row">
-                <span class="receipt-pill-status">ĐANG CHỜ BÀN GIAO • HIỆU LỰC TRONG RAM</span>
+                <span class="receipt-pill-status">ĐANG CHỜ BÀN GIAO · HIỆU LỰC TRONG RAM</span>
                 <span class="receipt-pill-ttl">TỰ HỦY SAU: <strong id="receipt-expiry-countdown">3600s</strong></span>
               </div>
-              <h2 class="order-receipt-title">PHIẾU XÁC NHẬN BÀN GIAO NỘI BỘ</h2>
+              <h3 class="order-receipt-title">Phiếu xác nhận bàn giao nội bộ</h3>
             </div>
           </div>
 
@@ -389,19 +430,19 @@
 
           <div class="order-details-grid">
             <div class="order-detail-item">
-              <span class="detail-label">Mã Phiếu Bàn Giao:</span>
+              <span class="detail-label">Mã phiếu bàn giao:</span>
               <span id="receipt-order-id" class="detail-val mono">HDV-LOADING...</span>
             </div>
             <div class="order-detail-item">
-              <span class="detail-label">Hạng Mục / Tài Nguyên:</span>
+              <span class="detail-label">Hạng mục / Tài nguyên:</span>
               <span id="receipt-product-name" class="detail-val">...</span>
             </div>
             <div class="order-detail-item">
-              <span class="detail-label">Quy Mô / Số Lượng:</span>
+              <span class="detail-label">Quy mô / Số lượng:</span>
               <span id="receipt-amount-xmr" class="detail-val xmr">Nội bộ</span>
             </div>
             <div class="order-detail-item">
-              <span class="detail-label">Phương Thức Chuyển Giao:</span>
+              <span class="detail-label">Phương thức chuyển giao:</span>
               <span class="detail-val mono">Token RAM AES-256-GCM</span>
             </div>
           </div>
@@ -410,23 +451,15 @@
             <label for="receipt-xmr-address">Mã Token Bàn Giao Nội Bộ dùng 1 lần (Gửi cho người phụ trách để đối chiếu):</label>
             <div class="link-copy-container">
               <input type="text" id="receipt-xmr-address" readonly value="TOKEN-INTERNAL-RAM">
-              <button type="button" id="copy-xmr-btn" class="copy-btn">Chép Mã Token</button>
-              <button type="button" id="show-order-qr-btn" class="qr-btn">
-                <span>📱</span> Mã QR Đối Chiếu
-              </button>
+              <button type="button" id="copy-xmr-btn" class="copy-btn">Chép mã Token</button>
+              <button type="button" id="show-order-qr-btn" class="qr-btn">Mã QR đối chiếu</button>
             </div>
           </div>
 
           <div class="order-actions-row">
-            <button type="button" id="complete-order-burn-btn" class="primary-btn">
-              <span>✅</span> Hoàn Tất Bàn Giao (Tự Hủy Cuộc Trò Chuyện)
-            </button>
-            <button type="button" id="chat-about-order-btn" class="secondary-btn">
-              <span>💬</span> Mở Kênh Thảo Luận Với Người Phụ Trách
-            </button>
-            <button type="button" id="cancel-order-btn" class="danger-btn">
-              <span>✕</span> Hủy Phiếu & Xóa Khỏi RAM
-            </button>
+            <button type="button" id="complete-order-burn-btn" class="primary-btn">Hoàn tất bàn giao (Tự hủy chat)</button>
+            <button type="button" id="chat-about-order-btn" class="secondary-btn">Mở kênh thảo luận</button>
+            <button type="button" id="cancel-order-btn" class="danger-btn">Hủy phiếu & Xóa khỏi RAM</button>
           </div>
         </div>
       </div>
@@ -435,32 +468,22 @@
       <!-- TAB 4: ĐĂNG THÔNG BÁO / TÀI LIỆU MỚI (INTERNAL PUBLISHER)      -->
       <!-- ============================================================= -->
       <div id="tab-vendor" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-vendor">
-        <div class="instruction-box" id="vendor-instruction-banner">
-          <div class="instruction-content">
-            <span class="info-icon">📢</span>
-            <div>
-              <strong>Đăng Thông Báo, Tài Nguyên Hoặc Đầu Việc Mới:</strong> Thành viên các phòng ban có thể đăng tài liệu nội bộ, thiết bị cần điều chuyển, cấu hình dự án hoặc đề xuất công việc để đồng nghiệp phản hồi và tiếp nhận ngay lập tức.
-            </div>
+        <div class="tab-page-head">
+          <div>
+            <h2 class="tab-page-title">Đăng thông báo & Tài liệu mới</h2>
+            <p class="tab-page-subtitle">Chia sẻ tài liệu, thiết bị điều chuyển hoặc đề xuất công việc mới tới toàn bộ các phòng ban.</p>
           </div>
-          <button type="button" class="dismiss-banner-btn" data-dismiss="vendor-instruction-banner" aria-label="Đóng thông báo hướng dẫn đăng bài" title="Đóng thông báo này"><span aria-hidden="true">✕</span></button>
         </div>
 
         <!-- Two-Column Flat Split Publisher Layout -->
         <div class="vendor-desk-layout">
-          <!-- Left Column: Creation Form -->
           <section class="vendor-form-col">
-            <h2 class="checkout-col-title">1. Thông Tin Hạng Mục / Thông Báo Mới</h2>
+            <h3 class="checkout-col-title">Thông tin hạng mục / thông báo mới</h3>
 
             <div class="listing-mode-toggle" role="tablist">
-              <button type="button" class="mode-toggle-btn active" role="tab" aria-selected="true" data-mode="hybrid" id="mode-hybrid-btn">
-                <span aria-hidden="true">⚡</span> Thảo Luận & Bàn Giao
-              </button>
-              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="auction" id="mode-auction-btn">
-                <span aria-hidden="true">📋</span> Mở Đề Xuất / Ước Lượng
-              </button>
-              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="fixed" id="mode-fixed-btn">
-                <span aria-hidden="true">📌</span> Cấp Phát Cố Định
-              </button>
+              <button type="button" class="mode-toggle-btn active" role="tab" aria-selected="true" data-mode="hybrid" id="mode-hybrid-btn">Thảo luận & Bàn giao</button>
+              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="auction" id="mode-auction-btn">Mở đề xuất / Ước lượng</button>
+              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="fixed" id="mode-fixed-btn">Cấp phát cố định</button>
             </div>
 
             <div class="form-group">
@@ -472,13 +495,13 @@
               <div class="form-group">
                 <label for="listing-category"><strong>Phòng ban / Lĩnh vực:</strong></label>
                 <select id="listing-category" class="custom-select">
-                  <option value="physical">💻 Thiết bị Văn phòng & Tài sản IT</option>
-                  <option value="digital">☁️ Tài nguyên Cloud, Tên miền & Dịch vụ</option>
-                  <option value="service">🤝 Hỗ trợ Kỹ thuật & Phối hợp Liên phòng ban</option>
-                  <option value="hardware">🖥️ DevOps, Phần cứng & Máy chủ</option>
-                  <option value="network">🌐 Hạ tầng Mạng, VPN & Bảo mật</option>
-                  <option value="crypto">🗝️ API Key, Token & Mật khẩu Nội bộ</option>
-                  <option value="audit">📑 Hồ sơ, Báo cáo & Tài liệu Nghiệp vụ</option>
+                  <option value="physical">Thiết bị Văn phòng & Tài sản IT</option>
+                  <option value="digital">Tài nguyên Cloud, Tên miền & Dịch vụ</option>
+                  <option value="service">Hỗ trợ Kỹ thuật & Phối hợp Liên phòng ban</option>
+                  <option value="hardware">DevOps, Phần cứng & Máy chủ</option>
+                  <option value="network">Hạ tầng Mạng, VPN & Bảo mật</option>
+                  <option value="crypto">API Key, Token & Mật khẩu Nội bộ</option>
+                  <option value="audit">Hồ sơ, Báo cáo & Tài liệu Nghiệp vụ</option>
                 </select>
               </div>
 
@@ -537,7 +560,7 @@
                 </div>
                 <div class="form-group">
                   <label for="listing-security-tag"><strong>Phân quyền / Mức độ ưu tiên:</strong></label>
-                  <input type="text" id="listing-security-tag" value="Nội bộ • Ưu tiên Trung bình" placeholder="VD: Toàn công ty / Nội bộ IT / Khẩn cấp">
+                  <input type="text" id="listing-security-tag" value="Nội bộ · Ưu tiên Trung bình" placeholder="VD: Toàn công ty / Nội bộ IT / Khẩn cấp">
                 </div>
               </div>
             </div>
@@ -602,32 +625,25 @@
             </div>
 
             <div class="action-row">
-              <button type="button" id="publish-listing-btn" class="primary-btn">
-                <span>📢</span> Đăng Lên Bảng Tin Nội Bộ
-              </button>
+              <button type="button" id="publish-listing-btn" class="primary-btn">Đăng lên bảng tin nội bộ</button>
               <button type="button" id="reset-listing-btn" class="secondary-btn">Xóa Form</button>
             </div>
           </section>
 
-          <!-- Right Column: Live Preview & My Published Items -->
           <div class="vendor-preview-col">
-            <h2 class="checkout-col-title">2. Xem Trước & Quản Lý Bài Đăng</h2>
+            <h3 class="checkout-col-title">Xem trước & Quản lý bài đăng</h3>
 
             <section class="vendor-card-shell">
-              <div class="preview-section-title">
-                <span>👁️</span> Xem Trước Hiển Thị Trên Bảng Tin
-              </div>
+              <div class="preview-section-title">Xem trước hiển thị trên bảng tin</div>
               <div id="live-vendor-preview" class="live-vendor-preview">
                 <!-- Dynamically rendered -->
               </div>
             </section>
 
             <section class="vendor-card-shell">
-              <div class="preview-section-title">
-                <span>📋</span> Hạng Mục Bạn Đã Tạo Trong Phiên Này
-              </div>
+              <div class="preview-section-title">Hạng mục bạn đã tạo trong phiên này</div>
               <div id="my-listings-list" class="my-listings-list">
-                <p class="empty-listings-note">Bạn chưa đăng thông báo hay tài nguyên nào trong phiên hiện tại.</p>
+                <p class="empty-listings-note">Bạn chưa đăng thông báo hay tài nguyên nào trong phiên này.</p>
               </div>
             </section>
           </div>
@@ -637,7 +653,7 @@
     </main>
 
     <footer class="vault-footer">
-      <p>Nexus Workspace • Cổng Giao Tiếp & Chia Sẻ Tài Nguyên Nội Bộ • Không Lưu Nhật Ký (RAM-Only)</p>
+      <p>Nexus Workspace · Cổng Giao Tiếp & Chia Sẻ Tài Nguyên Nội Bộ · Lưu trữ RAM-Only</p>
       <div class="keyboard-hints-bar">
         <span class="hint-pill"><kbd>/</kbd> Tìm kiếm nhanh</span>
         <span class="hint-pill"><kbd>Esc</kbd> Đóng cửa sổ hộp thoại</span>
@@ -656,7 +672,7 @@
         Quét mã QR bằng thiết bị di động của đồng nghiệp hoặc người phụ trách để xác nhận bàn giao tài nguyên:
       </p>
       <div id="qr-code-box" class="qr-code-box"></div>
-      <p style="font-size: 0.75rem; color: #94a3b8; font-family: var(--font-mono);">
+      <p style="font-size: 0.78rem; color: #94a3b8; font-family: var(--font-mono);">
         Token đối chiếu một lần và tự động xóa khỏi RAM khi phiên kết thúc.
       </p>
     </div>
@@ -666,7 +682,7 @@
   <div id="bid-modal-overlay" class="qr-modal-overlay" style="display: none;">
     <div class="qr-modal-card bid-modal-card" role="dialog" aria-modal="true" aria-labelledby="bid-modal-title" tabindex="-1">
       <div class="qr-modal-header">
-        <h2 id="bid-modal-title" class="qr-modal-title">✋ Gửi Đề Xuất / Ước Lượng Khối Lượng</h2>
+        <h2 id="bid-modal-title" class="qr-modal-title">Gửi đề xuất / Ước lượng khối lượng</h2>
         <button type="button" id="close-bid-modal-btn" class="close-mask-btn" aria-label="Đóng hộp thoại gửi đề xuất" title="Đóng"><span aria-hidden="true">✕</span></button>
       </div>
 
@@ -694,22 +710,17 @@
       </div>
 
       <div class="bid-alias-notice">
-        <span class="dot cyan"></span>
         <span>Thành viên gửi đề xuất: <strong id="bid-client-alias">NV-XXXX</strong> (Xác thực nội bộ)</span>
       </div>
 
       <div class="bid-actions-row">
-        <button type="button" id="submit-bid-btn" class="primary-btn">
-          <span>✋</span> Gửi Đề Xuất Ngay
-        </button>
-        <button type="button" id="buyout-from-bid-btn" class="buy-btn">
-          <span>📥</span> Nhận Bàn Giao
-        </button>
+        <button type="button" id="submit-bid-btn" class="primary-btn">Gửi đề xuất ngay</button>
+        <button type="button" id="buyout-from-bid-btn" class="buy-btn">Tiếp nhận bàn giao</button>
         <button type="button" id="cancel-bid-modal-btn" class="secondary-btn">Đóng</button>
       </div>
 
       <div class="bid-history-feed-box">
-        <div class="bid-history-title">Lịch Sử Phản Hồi & Đề Xuất Từ Thành Viên:</div>
+        <div class="bid-history-title">Lịch sử phản hồi & đề xuất từ thành viên:</div>
         <div class="bid-history-feed" id="bid-history-feed">
           <!-- Dynamically populated entries -->
         </div>
@@ -720,8 +731,8 @@
   <!-- Floating Chat Dock Button -->
   <div class="floating-messenger-dock" id="floating-messenger-dock">
     <button type="button" class="floating-messenger-btn" id="floating-messenger-btn" title="Mở nhanh kênh thảo luận nội bộ">
-      <span class="floating-messenger-icon">💬</span>
-      <span class="floating-messenger-text">Thảo Luận</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      <span class="floating-messenger-text">Thảo luận</span>
       <span class="floating-messenger-badge" id="floating-messenger-badge" style="display: none;">0</span>
     </button>
   </div>
@@ -729,6 +740,6 @@
   <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
   <script src="./js/peerjs.min.js"></script>
-  <script type="module" src="./js/vault.js?v=5.2"></script>
+  <script type="module" src="./js/vault.js?v=6.0"></script>
 </body>
 </html>

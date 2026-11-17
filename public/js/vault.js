@@ -997,9 +997,8 @@ function switchTab(tabId) {
 
 function formatPriceNum(val) {
   const num = Number(val);
-  if (isNaN(num)) return '0.00';
-  if (num >= 100) return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  return num.toFixed(2);
+  if (isNaN(num)) return '0';
+  return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
 // Cross-tab real-time broadcast channel for instantaneous multi-desk synchronization
@@ -1214,6 +1213,32 @@ function initMarketCatalog() {
     });
   }
 
+  const viewGridBtn = document.getElementById('view-grid-btn');
+  const viewListBtn = document.getElementById('view-list-btn');
+  const productGridEl = document.getElementById('market-product-grid');
+  const applyViewMode = (mode) => {
+    const isList = mode === 'list';
+    if (productGridEl) productGridEl.classList.toggle('list-mode', isList);
+    if (viewGridBtn) {
+      viewGridBtn.classList.toggle('active', !isList);
+      viewGridBtn.setAttribute('aria-pressed', isList ? 'false' : 'true');
+    }
+    if (viewListBtn) {
+      viewListBtn.classList.toggle('active', isList);
+      viewListBtn.setAttribute('aria-pressed', isList ? 'true' : 'false');
+    }
+    try {
+      sessionStorage.setItem('nexus_view_mode_v1', isList ? 'list' : 'grid');
+    } catch {}
+  };
+  try {
+    if (sessionStorage.getItem('nexus_view_mode_v1') === 'list') {
+      applyViewMode('list');
+    }
+  } catch {}
+  if (viewGridBtn) viewGridBtn.addEventListener('click', () => applyViewMode('grid'));
+  if (viewListBtn) viewListBtn.addEventListener('click', () => applyViewMode('list'));
+
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       if (clearSearchBtn) {
@@ -1330,6 +1355,16 @@ function filterAndRenderProducts() {
   updateCategoryPillCounts();
 }
 
+const SVG_ICONS = {
+  clock: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+  edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+  chat: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+  link: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>',
+  search: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
+  trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>'
+};
+
 function renderProducts(products) {
   const grid = document.getElementById('market-product-grid');
   if (!grid) return;
@@ -1337,9 +1372,9 @@ function renderProducts(products) {
   if (products.length === 0) {
     grid.innerHTML = `
       <div class="empty-recovery-box" style="grid-column: 1 / -1;">
-        <span class="empty-icon">🔍</span>
+        <div class="empty-icon">${SVG_ICONS.search}</div>
         <h3 class="empty-title">Không tìm thấy hạng mục phù hợp</h3>
-        <p class="empty-desc">Hãy thử từ khóa khác hoặc nhấn "➕ Tạo Thông Báo Mới" để chia sẻ tài liệu, tài nguyên với đồng nghiệp.</p>
+        <p class="empty-desc">Thử từ khóa khác hoặc nhấn "+ Tạo thông báo" ở góc trên để chia sẻ tài liệu mới với đồng nghiệp.</p>
       </div>
     `;
     return;
@@ -1348,32 +1383,31 @@ function renderProducts(products) {
   grid.innerHTML = products.map(item => {
     const currency = item.currency || 'Giờ';
     const badgeCategory = escapeHtml(item.category || 'auction');
-    const badgeText = escapeHtml(item.badge || 'Nội Bộ Công Ty');
+    const badgeText = escapeHtml(item.badge || 'Nội bộ công ty');
 
     const endAttr = item.auctionEndTime !== undefined ? item.auctionEndTime : (Date.now() + 3600000);
     const topRightBadge = endAttr === 0
-      ? `<span class="auction-countdown-pill" data-end="0">♾️ <span class="countdown-val">MỞ TỰ DO</span></span>`
-      : `<span class="auction-countdown-pill" data-end="${endAttr}">⏳ <span class="countdown-val">01:29:45</span></span>`;
+      ? `<span class="auction-countdown-pill open" data-end="0">${SVG_ICONS.clock} <span class="countdown-val">Mở liên tục</span></span>`
+      : `<span class="auction-countdown-pill" data-end="${endAttr}">${SVG_ICONS.clock} <span class="countdown-val">01:29:45</span></span>`;
 
     const currentVal = item.currentBidXMR ?? item.rawPriceXMR ?? 0;
     const buyNowVal = item.buyNowPrice ?? item.rawPriceXMR ?? currentVal;
-    const priceLabel = 'Ước lượng / Quy mô hiện tại:';
     const priceDisplay = `${formatPriceNum(currentVal)} ${escapeHtml(currency)}`;
-    const priceClass = 'product-price auction-price';
-    const priceMeta = `${item.bidCount || 0} đề xuất • Hạn mức: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
+    const priceMeta = `${item.bidCount || 0} đề xuất · Hạn mức ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
+    const specValues = Object.values(item.specs || {}).slice(0, 2).map(v => escapeHtml(v)).join(' · ');
 
     const actionButtons = `
       <button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Gửi đề xuất khối lượng hoặc ước lượng cho hạng mục này">
-        <span>✋</span> Đề Xuất
+        ${SVG_ICONS.edit} <span>Đề xuất</span>
       </button>
       <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Tạo phiếu tiếp nhận bàn giao tài nguyên / đầu việc này">
-        <span>📥</span> Tiếp Nhận
+        ${SVG_ICONS.check} <span>Tiếp nhận</span>
       </button>
-      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" aria-label="Mở kênh thảo luận nội bộ cho ${escapeHtml(item.name)}" title="Mở kênh thảo luận nội bộ cho hạng mục này">
-        <span aria-hidden="true">💬</span>
+      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" aria-label="Mở kênh thảo luận nội bộ cho ${escapeHtml(item.name)}" title="Thảo luận nội bộ">
+        ${SVG_ICONS.chat}
       </button>
-      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" aria-label="Sao chép liên kết chia sẻ cho ${escapeHtml(item.name)}" title="Sao chép liên kết chia sẻ cho đồng nghiệp">
-        <span aria-hidden="true">🔗</span>
+      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" aria-label="Sao chép liên kết chia sẻ cho ${escapeHtml(item.name)}" title="Sao chép liên kết">
+        ${SVG_ICONS.link}
       </button>
     `;
 
@@ -1381,32 +1415,27 @@ function renderProducts(products) {
       <article class="product-card" id="card-${escapeHtml(item.id)}">
         <div class="product-card-top">
           <div class="product-badge-group">
-            <span class="product-badge ${badgeCategory}">${badgeText}</span>
-            <span class="security-level-tag">${escapeHtml(item.securityLevel)}</span>
+            <span class="dept-chip ${badgeCategory}">
+              <span class="dept-dot" aria-hidden="true"></span>
+              ${badgeText}
+            </span>
+            <span class="security-scope-text">${escapeHtml(item.securityLevel)}</span>
           </div>
           ${topRightBadge}
         </div>
 
-        <div class="product-title-row">
-          <div class="product-icon-box">${escapeHtml(item.icon)}</div>
-          <h2 class="product-title">${escapeHtml(item.name)}</h2>
-        </div>
-
-        <p class="product-desc">${escapeHtml(item.desc)}</p>
-        
-        <div class="product-specs">
-          ${Object.entries(item.specs).map(([k, v]) => `
-            <div class="spec-row">
-              <span class="spec-key"><span class="spec-bullet">▸</span>${escapeHtml(k)}:</span>
-              <span class="spec-val">${escapeHtml(v)}</span>
-            </div>
-          `).join('')}
+        <div class="product-main-body">
+          <div class="product-title-row">
+            <div class="product-icon-box" aria-hidden="true">${escapeHtml(item.icon)}</div>
+            <h3 class="product-title">${escapeHtml(item.name)}</h3>
+          </div>
+          <p class="product-desc">${escapeHtml(item.desc)}</p>
+          ${specValues ? `<p class="product-specs-inline">${specValues}</p>` : ''}
         </div>
 
         <div class="product-card-footer">
           <div class="product-price-block">
-            <span class="product-price-label">${priceLabel}</span>
-            <span class="${priceClass}">${priceDisplay}</span>
+            <span class="product-price auction-price">${priceDisplay}</span>
             <span class="product-bid-meta">${priceMeta}</span>
           </div>
           <div class="product-actions">
@@ -1475,26 +1504,17 @@ function updateOrderPreviewCard() {
 
   previewBox.innerHTML = `
     <div class="preview-card-header">
-      <div class="preview-icon-box">${escapeHtml(product.icon)}</div>
+      <div class="preview-icon-box" aria-hidden="true">${escapeHtml(product.icon)}</div>
       <div>
-        <h3 class="preview-title">${escapeHtml(product.name)}</h3>
-        <span class="preview-badge">${escapeHtml(product.badge)} • ${escapeHtml(product.securityLevel)}</span>
+        <h4 class="preview-title">${escapeHtml(product.name)}</h4>
+        <span class="preview-badge">${escapeHtml(product.badge)} · ${escapeHtml(product.securityLevel)}</span>
       </div>
     </div>
     <div class="preview-price-row">
       <span class="detail-label">Quy mô / Số lượng tiếp nhận:</span>
       <span class="preview-price-val">${escapeHtml(product.priceXMR)}</span>
     </div>
-    <div class="product-specs" style="margin-bottom: 0;">
-      <div class="spec-row">
-        <span class="spec-key">Phương thức bàn giao:</span>
-        <span class="spec-val">Drop ID Tự Hủy RAM (Burn-After-Reading)</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Mã hóa gói hàng:</span>
-        <span class="spec-val">AES-256-GCM + PGP Custom Key</span>
-      </div>
-    </div>
+    <p class="product-specs-inline">Drop ID Tự Hủy RAM · Mã hóa AES-256-GCM + PGP Key</p>
   `;
 }
 
@@ -1556,14 +1576,14 @@ function updateP2PStatusUI(state, extraInfo = null) {
 
   if (state === 'disconnected') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot disconnected';
-    if (statusText) statusText.textContent = '🔴 Chế độ Trợ Lý (Chưa nối máy P2P)';
+    if (statusText) statusText.textContent = 'Trợ lý nội bộ (Chưa nối máy P2P)';
     if (setupRow) setupRow.style.display = 'flex';
     if (activeRow) activeRow.style.display = 'none';
 
     if (avatarText) avatarText.textContent = 'N';
     if (peerName) peerName.textContent = 'Trợ Lý Điều Phối Nội Bộ';
     if (peerBadge) {
-      peerBadge.textContent = '✓ ĐÃ XÁC THỰC NỘI BỘ';
+      peerBadge.textContent = 'Đã xác thực nội bộ';
       peerBadge.className = 'verified-vendor-badge';
     }
     if (peerStat) peerStat.textContent = '★ 5.0 (98 giao dịch)';
@@ -1573,19 +1593,19 @@ function updateP2PStatusUI(state, extraInfo = null) {
     }
   } else if (state === 'hosting') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot waiting';
-    if (statusText) statusText.textContent = `🟡 Đang mở phòng họp [${extraInfo}] • Chờ đồng nghiệp vào link...`;
+    if (statusText) statusText.textContent = `Đang mở phòng [${extraInfo}] · Chờ đồng nghiệp tham gia...`;
     if (setupRow) setupRow.style.display = 'none';
     if (activeRow) activeRow.style.display = 'flex';
     if (roomCodeDisplay) roomCodeDisplay.textContent = extraInfo;
   } else if (state === 'connecting') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot waiting';
-    if (statusText) statusText.textContent = `🟡 Đang bắt tay WebRTC tới phòng [${extraInfo}]...`;
+    if (statusText) statusText.textContent = `Đang kết nối WebRTC tới phòng [${extraInfo}]...`;
     if (setupRow) setupRow.style.display = 'none';
     if (activeRow) activeRow.style.display = 'flex';
     if (roomCodeDisplay) roomCodeDisplay.textContent = extraInfo;
   } else if (state === 'connected') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
-    if (statusText) statusText.textContent = '🟢 ĐÃ NỐI MÁY P2P NỘI BỘ (Máy ↔ Máy • Không Qua Máy Chủ)';
+    if (statusText) statusText.textContent = 'Đã kết nối P2P trực tiếp (Máy ↔ Máy)';
     if (setupRow) setupRow.style.display = 'none';
     if (activeRow) activeRow.style.display = 'flex';
 
@@ -1593,7 +1613,7 @@ function updateP2PStatusUI(state, extraInfo = null) {
     if (avatarText) avatarText.textContent = partnerName.charAt(0).toUpperCase();
     if (peerName) peerName.textContent = partnerName;
     if (peerBadge) {
-      peerBadge.textContent = '🟢 WEBRTC DIRECT (ZERO-SERVER)';
+      peerBadge.textContent = 'WebRTC Direct (Zero-Server)';
       peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
     }
     if (peerStat) peerStat.textContent = 'Kênh Dữ Liệu E2EE Máy ↔ Máy';
@@ -2043,7 +2063,7 @@ function renderMessengerThreads() {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="padding: 1.5rem 1rem; text-align: center; color: #64748b; font-size: 0.78rem;">Không tìm thấy cuộc trò chuyện nào</div>`;
+    container.innerHTML = `<div style="padding: 1.5rem 1rem; text-align: center; color: #94a3b8; font-size: 0.8rem;">Không tìm thấy cuộc trò chuyện nào</div>`;
     return;
   }
 
@@ -2054,7 +2074,7 @@ function renderMessengerThreads() {
     const dealBadge = t.dealId ? `<span style="color: #34d399; font-size: 0.65rem; font-family: var(--font-mono); margin-left: 4px;">[${t.dealId}]</span>` : '';
     const subBadgeText = t.dealId
       ? `${formatColleagueAlias(t.buyerBlindId)} ↔ ${formatColleagueAlias(t.sellerBlindId)}`
-      : `📌 ${t.productName || 'Kênh chung'}`;
+      : (t.productName || 'Kênh chung');
 
     return `
       <div class="messenger-thread-item ${isActive ? 'active' : ''}" role="button" tabindex="0" aria-current="${isActive ? 'true' : 'false'}" data-thread-id="${escapeHtml(t.id)}">
@@ -2131,15 +2151,15 @@ function updateActiveThreadHeader() {
       peerBadge.textContent = `Bạn: ${myId}`;
       peerBadge.className = 'verified-vendor-badge p2p-connected-badge';
     }
-    if (statusText) statusText.textContent = `🟢 ${pairLabel} • [${thread.dealId}]`;
+    if (statusText) statusText.textContent = `${pairLabel} · [${thread.dealId}]`;
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
   } else {
     if (prodTag) prodTag.textContent = thread.productName || 'Trao đổi chung';
     if (peerBadge) {
-      peerBadge.textContent = '✓ ĐÃ XÁC THỰC NỘI BỘ';
+      peerBadge.textContent = 'Đã xác thực nội bộ';
       peerBadge.className = 'verified-vendor-badge';
     }
-    if (statusText) statusText.textContent = '🔴 Chế độ Trợ Lý (Chưa nối máy P2P)';
+    if (statusText) statusText.textContent = 'Trợ lý nội bộ (Chưa nối máy P2P)';
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot disconnected';
   }
 
@@ -2916,7 +2936,7 @@ function renderChatMessages() {
   const msgs = thread ? thread.messages : inMemoryChatMessages;
 
   if (!msgs || msgs.length === 0) {
-    container.innerHTML = `<div style="margin: auto; text-align: center; color: #64748b; font-size: 0.82rem; padding: 2rem;">
+    container.innerHTML = `<div style="margin: auto; text-align: center; color: #94a3b8; font-size: 0.84rem; padding: 2rem;">
       <span style="font-size: 1.8rem; display: block; margin-bottom: 0.5rem;">🔒</span>
       Chưa có tin nhắn trong cuộc trò chuyện này.<br>Gõ tin nhắn bên dưới để bắt đầu đàm thoại bảo mật!
     </div>`;
@@ -3253,14 +3273,14 @@ function updateAuctionCountdowns() {
     const countdownVal = pill.querySelector('.countdown-val');
 
     if (end === 0) {
-      if (countdownVal) countdownVal.textContent = 'MỞ TỰ DO';
+      if (countdownVal) countdownVal.textContent = 'Mở liên tục';
       return;
     }
 
     const diff = Math.max(0, Math.floor((end - now) / 1000));
 
     if (diff <= 0) {
-      if (countdownVal) countdownVal.textContent = 'MỞ GIA HẠN';
+      if (countdownVal) countdownVal.textContent = 'Đang mở';
       return;
     }
 
@@ -3461,36 +3481,36 @@ function openBidModal(productId) {
   const aliasEl = document.getElementById('bid-client-alias');
   const feedEl = document.getElementById('bid-history-feed');
 
-  const currency = product.currency || 'XMR';
+  const currency = product.currency || 'Giờ';
   if (aliasEl) aliasEl.textContent = anonymousAlias;
   if (currencyTag) currencyTag.textContent = currency;
 
-  const currentBid = Number(product.currentBidXMR ?? product.startingBidXMR ?? product.rawPriceXMR ?? 0.1);
+  const currentBid = Number(product.currentBidXMR ?? product.startingBidXMR ?? product.rawPriceXMR ?? 1);
   const buyNowVal = Number(product.buyNowPrice ?? product.rawPriceXMR ?? currentBid);
   const minStep = Number(product.minBidIncrement || 0);
-  const suggestedBid = minStep > 0 ? (currentBid + minStep) : Number((currentBid * 1.05).toFixed(2));
+  const suggestedBid = minStep > 0 ? (currentBid + minStep) : Math.ceil(currentBid * 1.1);
 
   if (infoBox) {
     infoBox.innerHTML = `
       <div class="bid-info-title-row">
-        <span style="font-size: 1.4rem;">${escapeHtml(product.icon)}</span>
+        <span style="font-size: 1.35rem;" aria-hidden="true">${escapeHtml(product.icon)}</span>
         <span class="bid-info-title">${escapeHtml(product.name)}</span>
       </div>
       <div class="bid-info-price-grid">
         <div class="bid-price-cell">
           <span class="detail-label">Mức đề xuất hiện tại:</span>
-          <span style="font-family: var(--font-mono); font-weight: 700; color: #fbbf24;">${formatPriceNum(currentBid)} ${escapeHtml(currency)}</span>
+          <span style="font-weight: 700; color: #38bdf8; font-variant-numeric: tabular-nums;">${formatPriceNum(currentBid)} ${escapeHtml(currency)}</span>
         </div>
         <div class="bid-price-cell">
           <span class="detail-label">Hạn mức / Người đề xuất:</span>
-          <span style="font-family: var(--font-mono); font-weight: 600; color: #38bdf8;">${formatPriceNum(buyNowVal)} ${escapeHtml(currency)} • ${escapeHtml(product.highestBidder || 'Mở tự do')}</span>
+          <span style="font-weight: 600; color: #cbd5e1; font-variant-numeric: tabular-nums;">${formatPriceNum(buyNowVal)} ${escapeHtml(currency)} · ${escapeHtml(product.highestBidder || 'Mở tự do')}</span>
         </div>
       </div>
     `;
   }
 
   if (bidInput) {
-    bidInput.value = suggestedBid.toFixed(2);
+    bidInput.value = Number.isInteger(suggestedBid) ? String(suggestedBid) : suggestedBid.toFixed(1);
     bidInput.min = '0';
     const usdEl = document.getElementById('bid-usd-approx');
     if (usdEl) usdEl.textContent = estimateUSDString(suggestedBid, currency);
@@ -3498,7 +3518,7 @@ function openBidModal(productId) {
 
   if (hintEl) {
     hintEl.textContent = minStep > 0
-      ? `Mức điều chỉnh tối thiểu: +${minStep} ${currency} (Gợi ý: ${suggestedBid.toFixed(2)} ${currency})`
+      ? `Mức điều chỉnh tối thiểu: +${minStep} ${currency} (Gợi ý: ${formatPriceNum(suggestedBid)} ${currency})`
       : `Tự do đề xuất — Nhập ước lượng của bạn theo đơn vị ${currency}`;
   }
 
@@ -3691,39 +3711,32 @@ function updateVendorLivePreview() {
     <article class="product-card" style="box-shadow: none; margin: 0;">
       <div class="product-card-top">
         <div class="product-badge-group">
-          <span class="product-badge ${escapeHtml(category)}">${escapeHtml(badgeTitle)}</span>
-          <span class="security-level-tag">${escapeHtml(secTag)}</span>
+          <span class="dept-chip ${escapeHtml(category)}">
+            <span class="dept-dot" aria-hidden="true"></span>
+            ${escapeHtml(badgeTitle)}
+          </span>
+          <span class="security-scope-text">${escapeHtml(secTag)}</span>
         </div>
-        <span class="auction-countdown-pill" data-end="0">♾️ <span class="countdown-val">PHỐI HỢP NỘI BỘ</span></span>
+        <span class="auction-countdown-pill open" data-end="0">${SVG_ICONS.clock} <span class="countdown-val">Phối hợp nội bộ</span></span>
       </div>
 
-      <div class="product-title-row">
-        <div class="product-icon-box">${escapeHtml(icon)}</div>
-        <h3 class="product-title">${escapeHtml(name)}</h3>
-      </div>
-
-      <p class="product-desc">${escapeHtml(desc)}</p>
-
-      <div class="product-specs">
-        <div class="spec-row">
-          <span class="spec-key"><span class="spec-bullet">▸</span>Phụ trách:</span>
-          <span class="spec-val">${escapeHtml(spec1)}</span>
+      <div class="product-main-body">
+        <div class="product-title-row">
+          <div class="product-icon-box" aria-hidden="true">${escapeHtml(icon)}</div>
+          <h4 class="product-title">${escapeHtml(name)}</h4>
         </div>
-        <div class="spec-row">
-          <span class="spec-key"><span class="spec-bullet">▸</span>Bàn giao:</span>
-          <span class="spec-val">${escapeHtml(spec2)}</span>
-        </div>
+        <p class="product-desc">${escapeHtml(desc)}</p>
+        <p class="product-specs-inline">${escapeHtml(spec1)} · ${escapeHtml(spec2)}</p>
       </div>
 
       <div class="product-card-footer">
         <div class="product-price-block">
-          <span class="product-price-label">Ước lượng / Quy mô hiện tại:</span>
           <span class="product-price auction-price">${formatPriceNum(displayPrice)} ${escapeHtml(currency)}</span>
-          <span class="product-bid-meta">Hạn mức: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}</span>
+          <span class="product-bid-meta">Hạn mức ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}</span>
         </div>
         <div class="product-actions">
-          <button type="button" class="bid-btn" style="pointer-events: none;"><span>✋</span> Đề Xuất</button>
-          <button type="button" class="buy-btn" style="pointer-events: none;"><span>📥</span> Tiếp Nhận</button>
+          <button type="button" class="bid-btn" tabindex="-1" style="pointer-events: none;">${SVG_ICONS.edit} <span>Đề xuất</span></button>
+          <button type="button" class="buy-btn" tabindex="-1" style="pointer-events: none;">${SVG_ICONS.check} <span>Tiếp nhận</span></button>
         </div>
       </div>
     </article>
@@ -3905,7 +3918,7 @@ function renderMyListings() {
         </div>
 
         <button type="button" class="revoke-listing-btn" data-id="${escapeHtml(item.id)}">
-          <span>🔥</span> Hủy & Xóa Khỏi RAM Tức Thì
+          ${SVG_ICONS.trash} <span>Thu hồi & Xóa khỏi RAM</span>
         </button>
       </div>
     `;
