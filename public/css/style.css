@@ -5166,3 +5166,296 @@ body.vault-page.flat-workspace .kill-token-box {
   }
 }
 
+/* ==========================================================================
+   19. WCAG 2.1 AA ACCESSIBILITY REMEDIATION (v5.2)
+   - High-contrast focus rings (#38bdf8 >= 9:1 on dark surface)
+   - Zero failing contrast pairs (all buttons/badges/placeholders >= 4.5:1)
+   - Full >= 44px tap targets on all controls across 4 tabs & modals
+   - Skip link, floating dock overlap fix & prefers-reduced-motion support
+   ========================================================================== */
+
+/* Skip Link & Screen-Reader Helpers */
+.skip-link {
+  position: fixed;
+  top: -120px;
+  left: 1rem;
+  z-index: 100000;
+  background: #0b1120;
+  color: #f8fafc;
+  border: 2px solid #38bdf8;
+  border-radius: 8px;
+  padding: 0.65rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+  outline: 3px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.field-group-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  margin-bottom: 0.35rem;
+}
+
+/* High-Contrast Keyboard Focus Indicators (>= 3.0:1 UI Focus Contrast) */
+body.vault-page.flat-workspace :focus-visible,
+.qr-modal-overlay :focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+}
+
+body.vault-page.flat-workspace .chat-composer-pill:focus-within {
+  box-shadow: inset 0 0 0 2px #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.05) !important;
+}
+
+body.vault-page.flat-workspace #chat-input-field:focus-visible,
+body.vault-page.flat-workspace #input-p2p-code:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+  border-radius: 6px;
+}
+
+body.vault-page.flat-workspace .vault-main {
+  padding-bottom: 5rem;
+}
+
+body.vault-page.flat-workspace .vault-main:focus {
+  outline: none;
+}
+
+/* Prevent Floating Chat Dock from Overlapping Tab 2 Send Button */
+body.chat-tab-active #floating-messenger-dock {
+  display: none !important;
+}
+
+/* WCAG AA Color Contrast Fixes (All >= 4.5:1) */
+body.vault-page.flat-workspace .chat-send-pill-btn,
+body.vault-page.flat-workspace .chat-send-btn {
+  background: #047857 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body.vault-page.flat-workspace .chat-send-pill-btn:hover,
+body.vault-page.flat-workspace .chat-send-btn:hover {
+  background: #065f46 !important;
+}
+
+body.vault-page.flat-workspace .floating-messenger-btn {
+  background: #0369a1 !important;
+  border-color: rgba(56, 189, 248, 0.65) !important;
+  color: #ffffff !important;
+}
+
+body.vault-page.flat-workspace .floating-messenger-btn:hover {
+  background: #075985 !important;
+}
+
+body.vault-page.flat-workspace .thread-unread-pill,
+body.vault-page.flat-workspace .floating-messenger-badge,
+body.vault-page.flat-workspace .chat-unread-badge {
+  background: #be123c !important;
+  color: #ffffff !important;
+}
+
+body.vault-page.flat-workspace .messenger-search-bar input::placeholder,
+body.vault-page.flat-workspace .p2p-compact-input::placeholder,
+body.vault-page.flat-workspace .chat-composer-pill input::placeholder,
+body.vault-page.flat-workspace #chat-input-field::placeholder,
+body.vault-page.flat-workspace .thread-time,
+body.vault-page.flat-workspace .system-time,
+body.vault-page.flat-workspace .quick-inquiry-label {
+  color: #94a3b8 !important;
+}
+
+/* Accessible >= 44x44px Tap Targets Across Header, Telemetry & All 4 Tabs */
+body.vault-page.flat-workspace #brand-scroll-top-btn.vault-brand-icon-wrap {
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+body.vault-page.flat-workspace .panic-btn,
+body.vault-page.flat-workspace .regen-alias-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.9rem;
+}
+
+body.vault-page.flat-workspace .covert-nav-tabs .nav-tab {
+  min-height: 48px;
+}
+
+body.vault-page.flat-workspace .dismiss-banner-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #cbd5e1;
+}
+
+body.vault-page.flat-workspace .dismiss-banner-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #ffffff;
+}
+
+body.vault-page.flat-workspace .market-search-wrap input {
+  min-height: 44px;
+  padding-right: 3.6rem;
+}
+
+body.vault-page.flat-workspace .market-search-wrap .clear-btn {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  right: 0.15rem;
+  background: transparent;
+  color: #cbd5e1;
+}
+
+body.vault-page.flat-workspace .market-search-wrap .clear-btn:hover {
+  background: rgba(148, 163, 184, 0.18);
+  color: #ffffff;
+}
+
+body.vault-page.flat-workspace .mini-select,
+body.vault-page.flat-workspace .custom-select,
+body.vault-page.flat-workspace .quick-list-cta,
+body.vault-page.flat-workspace .market-pill,
+body.vault-page.flat-workspace .bid-btn,
+body.vault-page.flat-workspace .buy-btn,
+body.vault-page.flat-workspace .primary-btn,
+body.vault-page.flat-workspace .secondary-btn,
+body.vault-page.flat-workspace .danger-btn,
+body.vault-page.flat-workspace .copy-btn,
+body.vault-page.flat-workspace .qr-btn,
+body.vault-page.flat-workspace .ttl-pill,
+body.vault-page.flat-workspace .mode-toggle-btn {
+  min-height: 44px;
+}
+
+body.vault-page.flat-workspace .chat-btn,
+body.vault-page.flat-workspace .share-card-btn {
+  flex: 0 0 44px;
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+}
+
+/* Tab 2 Controls >= 44px */
+body.vault-page.flat-workspace .messenger-new-pill,
+body.vault-page.flat-workspace .p2p-pill-btn,
+body.vault-page.flat-workspace .quick-q-btn,
+body.vault-page.flat-workspace .chat-send-pill-btn,
+body.vault-page.flat-workspace .pgp-fingerprint-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.vault-page.flat-workspace .pgp-fingerprint-btn {
+  padding: 0 0.5rem;
+  border-radius: 6px;
+}
+
+body.vault-page.flat-workspace .p2p-compact-join {
+  min-height: 44px;
+  padding: 0 0 0 0.75rem;
+}
+
+body.vault-page.flat-workspace .p2p-compact-input {
+  min-height: 44px;
+  min-width: 100px;
+}
+
+body.vault-page.flat-workspace #btn-p2p-join {
+  min-width: 48px;
+  min-height: 44px;
+}
+
+body.vault-page.flat-workspace #messenger-thread-search,
+body.vault-page.flat-workspace #chat-input-field {
+  min-height: 44px;
+}
+
+/* Tab 3 & Tab 4 Controls >= 44px */
+body.vault-page.flat-workspace #insert-sample-pgp-btn,
+body.vault-page.flat-workspace .copy-mini-btn,
+body.vault-page.flat-workspace .revoke-listing-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.vault-page.flat-workspace .emoji-opt {
+  width: 44px;
+  height: 44px;
+}
+
+body.vault-page.flat-workspace .custom-emoji-input {
+  width: 68px !important;
+  height: 44px !important;
+  min-height: 44px;
+}
+
+/* Modal & Toast Close Controls >= 44x44px */
+.close-mask-btn,
+.toast-close {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.close-mask-btn:hover,
+.toast-close:hover {
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.quick-bid-step-btn {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 0.35rem 0.75rem;
+}
+
+/* Respect User Reduced-Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

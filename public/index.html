@@ -8,10 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css?v=5.1">
+  <link rel="stylesheet" href="./css/style.css?v=5.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
 </head>
 <body class="vault-page flat-workspace">
+  <a href="#vault-main-content" class="skip-link">Chuyển đến nội dung chính</a>
 
   <!-- ================================================================= -->
   <!-- ENTERPRISE WORKSPACE CONSOLE (ZERO-KNOWLEDGE EPHEMERAL VAULT)     -->
@@ -20,11 +21,11 @@
     <!-- Header with Quick Exit & Workspace Identity -->
     <header class="vault-header">
       <div class="vault-header-inner">
-        <div class="vault-brand" id="vault-brand-top" role="button" tabindex="0" title="Nhấn để cuộn lên đầu trang">
-          <div class="vault-brand-icon-wrap">
-            <span class="vault-icon">🏢</span>
-            <span class="vault-pulse-ring"></span>
-          </div>
+        <div class="vault-brand" id="vault-brand-top">
+          <button type="button" id="brand-scroll-top-btn" class="vault-brand-icon-wrap" aria-label="Cuộn lên đầu trang" title="Cuộn lên đầu trang">
+            <span class="vault-icon" aria-hidden="true">🏢</span>
+            <span class="vault-pulse-ring" aria-hidden="true"></span>
+          </button>
           <div>
             <div class="vault-title-row">
               <h1 class="vault-title">NEXUS WORKSPACE • Cổng Giao Tiếp Nội Bộ</h1>
@@ -41,7 +42,7 @@
     </header>
 
     <!-- Live Telemetry & Session Strip -->
-    <div class="telemetry-strip">
+    <section class="telemetry-strip" aria-label="Thông tin kết nối và phiên làm việc">
       <div class="telemetry-inner">
         <div class="telemetry-item">
           <span class="dot green"></span>
@@ -72,31 +73,33 @@
           <span id="session-timer">00:00</span>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Main Flat Workspace Console -->
-    <main class="vault-main">
+    <main id="vault-main-content" class="vault-main" tabindex="-1">
       <!-- Navigation Tabs (Flat Underline Tab Bar like Linear / Slack) -->
-      <nav class="covert-nav-tabs" aria-label="Điều hướng phân hệ làm việc nội bộ">
-        <button class="nav-tab active" data-tab="tab-market">
-          <span class="tab-icon">📌</span> Bảng Tin & Tài Nguyên
-        </button>
-        <button class="nav-tab" data-tab="tab-chat">
-          <span class="tab-icon">💬</span> Thảo Luận Nội Bộ
-          <span id="chat-badge" class="chat-unread-badge" style="display:none;">1</span>
-        </button>
-        <button class="nav-tab" data-tab="tab-order">
-          <span class="tab-icon">🔐</span> Bàn Giao & Cấp Phát Mật
-        </button>
-        <button class="nav-tab" data-tab="tab-vendor">
-          <span class="tab-icon">➕</span> Đăng Thông Báo / Tài Liệu
-        </button>
+      <nav aria-label="Điều hướng phân hệ làm việc nội bộ">
+        <div class="covert-nav-tabs" role="tablist" aria-label="Phân hệ làm việc">
+          <button type="button" class="nav-tab active" id="nav-tab-market" role="tab" aria-selected="true" aria-controls="tab-market" data-tab="tab-market">
+            <span class="tab-icon" aria-hidden="true">📌</span> Bảng Tin & Tài Nguyên
+          </button>
+          <button type="button" class="nav-tab" id="nav-tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" data-tab="tab-chat">
+            <span class="tab-icon" aria-hidden="true">💬</span> Thảo Luận Nội Bộ
+            <span id="chat-badge" class="chat-unread-badge" style="display:none;" aria-label="Tin nhắn chưa đọc">1</span>
+          </button>
+          <button type="button" class="nav-tab" id="nav-tab-order" role="tab" aria-selected="false" aria-controls="tab-order" data-tab="tab-order">
+            <span class="tab-icon" aria-hidden="true">🔐</span> Bàn Giao & Cấp Phát Mật
+          </button>
+          <button type="button" class="nav-tab" id="nav-tab-vendor" role="tab" aria-selected="false" aria-controls="tab-vendor" data-tab="tab-vendor">
+            <span class="tab-icon" aria-hidden="true">➕</span> Đăng Thông Báo / Tài Liệu
+          </button>
+        </div>
       </nav>
 
       <!-- ============================================================= -->
       <!-- TAB 1: BẢNG TIN & TÀI NGUYÊN NỘI BỘ                           -->
       <!-- ============================================================= -->
-      <div id="tab-market" class="tab-pane active">
+      <div id="tab-market" class="tab-pane active" role="tabpanel" aria-labelledby="nav-tab-market">
         <!-- Dismissible Workspace Guideline Strip -->
         <div class="instruction-box" id="market-principle-banner">
           <div class="instruction-content">
@@ -105,7 +108,7 @@
               <strong>Không Gian Phối Hợp & Chia Sẻ Nội Bộ:</strong> Nơi các phòng ban đăng thông báo dự án, cấp phát tài nguyên, chia sẻ cấu hình kỹ thuật và tiếp nhận công việc trên <strong>bộ nhớ RAM tạm thời (Zero-Log)</strong> — tự động xóa sạch dấu vết khi kết thúc phiên.
             </div>
           </div>
-          <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('market-principle-banner').style.display='none';">✕</button>
+          <button type="button" class="dismiss-banner-btn" data-dismiss="market-principle-banner" aria-label="Đóng thông báo hướng dẫn bảng tin" title="Đóng thông báo này"><span aria-hidden="true">✕</span></button>
         </div>
 
         <!-- Flat Search & Department Filter Bar -->
@@ -113,9 +116,9 @@
           <div class="market-search-row">
             <div class="market-search-wrap">
               <span class="search-icon-symbol">🔍</span>
-              <input type="text" id="market-search-input" placeholder="Tìm tài liệu, cấu hình server, khóa xác thực, nhiệm vụ phòng ban... (Phím / để tìm)" autocomplete="off">
+              <input type="text" id="market-search-input" aria-label="Tìm kiếm tài liệu, cấu hình server, khóa xác thực hoặc nhiệm vụ phòng ban" placeholder="Tìm tài liệu, cấu hình server, khóa xác thực, nhiệm vụ phòng ban... (Phím / để tìm)" autocomplete="off">
               <span class="market-search-kbd" title="Nhấn phím / để tìm kiếm nhanh">/</span>
-              <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
+              <button type="button" id="clear-market-search-btn" class="clear-btn" style="display:none;" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm"><span aria-hidden="true">✕</span></button>
             </div>
             <div class="market-sort-wrap">
               <label for="market-sort-select">Sắp xếp:</label>
@@ -135,14 +138,14 @@
             </div>
           </div>
 
-          <div class="market-category-pills" id="market-category-pills">
-            <button class="market-pill active" data-category="all">Tất cả hạng mục <span class="pill-count" id="count-all">9</span></button>
-            <button class="market-pill" data-category="auction">📋 Đang Phối Hợp <span class="pill-count" id="count-auction">9</span></button>
-            <button class="market-pill" data-category="physical">💻 Thiết Bị & Văn Phòng <span class="pill-count" id="count-physical">1</span></button>
-            <button class="market-pill" data-category="digital">☁️ Cloud & Tài Nguyên Số <span class="pill-count" id="count-digital">1</span></button>
-            <button class="market-pill" data-category="hardware">🖥️ DevOps & Phần Cứng <span class="pill-count" id="count-hardware">2</span></button>
-            <button class="market-pill" data-category="network">🌐 Mạng & Hạ Tầng <span class="pill-count" id="count-network">2</span></button>
-            <button class="market-pill" data-category="crypto">📑 Tài Liệu & API Mật <span class="pill-count" id="count-crypto">3</span></button>
+          <div class="market-category-pills" id="market-category-pills" role="group" aria-label="Lọc theo phòng ban và danh mục">
+            <button type="button" class="market-pill active" aria-pressed="true" data-category="all">Tất cả hạng mục <span class="pill-count" id="count-all">9</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="auction">📋 Đang Phối Hợp <span class="pill-count" id="count-auction">9</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="physical">💻 Thiết Bị & Văn Phòng <span class="pill-count" id="count-physical">1</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="digital">☁️ Cloud & Tài Nguyên Số <span class="pill-count" id="count-digital">1</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="hardware">🖥️ DevOps & Phần Cứng <span class="pill-count" id="count-hardware">2</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="network">🌐 Mạng & Hạ Tầng <span class="pill-count" id="count-network">2</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="crypto">📑 Tài Liệu & API Mật <span class="pill-count" id="count-crypto">3</span></button>
           </div>
         </div>
 
@@ -155,7 +158,7 @@
       <!-- ============================================================= -->
       <!-- TAB 2: THẢO LUẬN NỘI BỘ (UNIFIED FLAT SLACK-STYLE WORKSPACE)  -->
       <!-- ============================================================= -->
-      <div id="tab-chat" class="tab-pane">
+      <div id="tab-chat" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-chat">
         <!-- Unified Single-Surface Split Shell (Divided by hairline 1px borders, no nested boxes) -->
         <div class="messenger-shell">
 
@@ -165,7 +168,7 @@
               <div class="sidebar-brand-group">
                 <span class="messenger-brand-icon">💬</span>
                 <div>
-                  <h3 class="messenger-sidebar-title">Kênh Thảo Luận</h3>
+                  <h2 class="messenger-sidebar-title">Kênh Thảo Luận</h2>
                   <span class="messenger-threads-count" id="messenger-threads-count">1 cuộc trò chuyện</span>
                 </div>
               </div>
@@ -176,7 +179,7 @@
 
             <!-- Search in conversations -->
             <div class="messenger-search-bar">
-              <input type="text" id="messenger-thread-search" placeholder="Tìm đồng nghiệp, mã phiên, đầu việc..." autocomplete="off">
+              <input type="text" id="messenger-thread-search" aria-label="Tìm kiếm đồng nghiệp, mã phiên hoặc đầu việc" placeholder="Tìm đồng nghiệp, mã phiên, đầu việc..." autocomplete="off">
             </div>
 
             <!-- Dynamic Thread List -->
@@ -186,7 +189,7 @@
           </aside>
 
           <!-- Right Main Pane: Active Discussion Canvas -->
-          <main class="messenger-main-pane flat-chat-container">
+          <section class="messenger-main-pane flat-chat-container" aria-label="Cửa sổ thảo luận hiện tại">
 
             <!-- Top Toolbar: Peer Identity + Inline P2P Room Controls -->
             <div class="chat-header-bar flat-header">
@@ -207,7 +210,7 @@
                       <span class="p2p-status-text" id="p2p-status-text">🔴 Chế độ Trợ Lý (Chưa nối máy P2P)</span>
                     </span>
                     <span class="peer-divider">•</span>
-                    <span id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" title="Bấm để sao chép dấu vân tay chứng thư nội bộ">🔑 PGP Nội bộ: 4A8F...91BC 📋</span>
+                    <button type="button" id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" aria-label="Sao chép dấu vân tay chứng thư PGP nội bộ" title="Bấm để sao chép dấu vân tay chứng thư nội bộ">🔑 PGP Nội bộ: 4A8F...91BC <span aria-hidden="true">📋</span></button>
                   </div>
                 </div>
               </div>
@@ -219,7 +222,7 @@
                     <span>➕</span> Tạo Phòng Họp P2P
                   </button>
                   <div class="p2p-compact-join">
-                    <input type="text" id="input-p2p-code" class="p2p-compact-input" placeholder="Mã phòng..." autocomplete="off">
+                    <input type="text" id="input-p2p-code" aria-label="Nhập mã phòng họp P2P" class="p2p-compact-input" placeholder="Mã phòng..." autocomplete="off">
                     <button type="button" id="btn-p2p-join" class="p2p-pill-btn join">Vào</button>
                   </div>
                 </div>
@@ -282,21 +285,21 @@
             <!-- Flat Bottom Composer Strip (No Nested Box inside Box) -->
             <div class="chat-composer-wrap">
               <div class="chat-composer-pill">
-                <input type="text" id="chat-input-field" placeholder="Nhập tin nhắn trao đổi công việc (Mã hóa E2EE, tự hủy khỏi RAM khi rời trang)..." autocomplete="off">
+                <input type="text" id="chat-input-field" aria-label="Nhập nội dung tin nhắn trao đổi nội bộ" placeholder="Nhập tin nhắn trao đổi công việc (Mã hóa E2EE, tự hủy khỏi RAM khi rời trang)..." autocomplete="off">
                 <button type="button" id="send-chat-btn" class="chat-send-pill-btn" title="Gửi tin nhắn">
                   <span>Gửi</span> 🔒
                 </button>
               </div>
             </div>
 
-          </main>
+          </section>
         </div>
       </div>
 
       <!-- ============================================================= -->
       <!-- TAB 3: BÀN GIAO & CẤP PHÁT MẬT (ONE-TIME HANDOVER TOKEN)      -->
       <!-- ============================================================= -->
-      <div id="tab-order" class="tab-pane">
+      <div id="tab-order" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-order">
         <div class="instruction-box" id="order-instruction-banner">
           <div class="instruction-content">
             <span class="info-icon">🔐</span>
@@ -304,7 +307,7 @@
               <strong>Phiếu Bàn Giao Tài Nguyên & Thông Tin Mật (One-Time Secret):</strong> Khởi tạo phiếu cấp phát cho hạng mục công việc hoặc thông tin nhạy cảm (mật khẩu Server, API Key, thiết bị). Mọi dữ liệu chỉ tồn tại tạm thời trên RAM và tự hủy sau thời hạn TTL.
             </div>
           </div>
-          <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('order-instruction-banner').style.display='none';">✕</button>
+          <button type="button" class="dismiss-banner-btn" data-dismiss="order-instruction-banner" aria-label="Đóng thông báo hướng dẫn bàn giao" title="Đóng thông báo này"><span aria-hidden="true">✕</span></button>
         </div>
 
         <!-- Two-Column Flat Split Handover Layout -->
@@ -330,8 +333,8 @@
             </div>
 
             <div class="form-group">
-              <label for="order-ttl-select"><strong>Thời hạn hiệu lực của phiếu bàn giao (TTL trong RAM):</strong></label>
-              <div class="ttl-pills-row" id="order-ttl-pills">
+              <span id="order-ttl-label" class="field-group-label"><strong>Thời hạn hiệu lực của phiếu bàn giao (TTL trong RAM):</strong></span>
+              <div class="ttl-pills-row" id="order-ttl-pills" role="group" aria-labelledby="order-ttl-label">
                 <button type="button" class="ttl-pill" data-ttl="1800">30 phút</button>
                 <button type="button" class="ttl-pill active" data-ttl="3600">1 giờ (Khuyên dùng)</button>
                 <button type="button" class="ttl-pill" data-ttl="14400">4 giờ</button>
@@ -404,7 +407,7 @@
           </div>
 
           <div class="xmr-payment-box">
-            <label>Mã Token Bàn Giao Nội Bộ dùng 1 lần (Gửi cho người phụ trách để đối chiếu):</label>
+            <label for="receipt-xmr-address">Mã Token Bàn Giao Nội Bộ dùng 1 lần (Gửi cho người phụ trách để đối chiếu):</label>
             <div class="link-copy-container">
               <input type="text" id="receipt-xmr-address" readonly value="TOKEN-INTERNAL-RAM">
               <button type="button" id="copy-xmr-btn" class="copy-btn">Chép Mã Token</button>
@@ -431,7 +434,7 @@
       <!-- ============================================================= -->
       <!-- TAB 4: ĐĂNG THÔNG BÁO / TÀI LIỆU MỚI (INTERNAL PUBLISHER)      -->
       <!-- ============================================================= -->
-      <div id="tab-vendor" class="tab-pane">
+      <div id="tab-vendor" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-vendor">
         <div class="instruction-box" id="vendor-instruction-banner">
           <div class="instruction-content">
             <span class="info-icon">📢</span>
@@ -439,7 +442,7 @@
               <strong>Đăng Thông Báo, Tài Nguyên Hoặc Đầu Việc Mới:</strong> Thành viên các phòng ban có thể đăng tài liệu nội bộ, thiết bị cần điều chuyển, cấu hình dự án hoặc đề xuất công việc để đồng nghiệp phản hồi và tiếp nhận ngay lập tức.
             </div>
           </div>
-          <button type="button" class="dismiss-banner-btn" title="Đóng thông báo này" onclick="document.getElementById('vendor-instruction-banner').style.display='none';">✕</button>
+          <button type="button" class="dismiss-banner-btn" data-dismiss="vendor-instruction-banner" aria-label="Đóng thông báo hướng dẫn đăng bài" title="Đóng thông báo này"><span aria-hidden="true">✕</span></button>
         </div>
 
         <!-- Two-Column Flat Split Publisher Layout -->
@@ -449,14 +452,14 @@
             <h2 class="checkout-col-title">1. Thông Tin Hạng Mục / Thông Báo Mới</h2>
 
             <div class="listing-mode-toggle" role="tablist">
-              <button type="button" class="mode-toggle-btn active" data-mode="hybrid" id="mode-hybrid-btn">
-                <span>⚡</span> Thảo Luận & Bàn Giao
+              <button type="button" class="mode-toggle-btn active" role="tab" aria-selected="true" data-mode="hybrid" id="mode-hybrid-btn">
+                <span aria-hidden="true">⚡</span> Thảo Luận & Bàn Giao
               </button>
-              <button type="button" class="mode-toggle-btn" data-mode="auction" id="mode-auction-btn">
-                <span>📋</span> Mở Đề Xuất / Ước Lượng
+              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="auction" id="mode-auction-btn">
+                <span aria-hidden="true">📋</span> Mở Đề Xuất / Ước Lượng
               </button>
-              <button type="button" class="mode-toggle-btn" data-mode="fixed" id="mode-fixed-btn">
-                <span>📌</span> Cấp Phát Cố Định
+              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="fixed" id="mode-fixed-btn">
+                <span aria-hidden="true">📌</span> Cấp Phát Cố Định
               </button>
             </div>
 
@@ -486,23 +489,23 @@
             </div>
 
             <div class="form-group">
-              <label><strong>Chọn biểu tượng đại diện:</strong></label>
+              <span id="emoji-picker-label" class="field-group-label"><strong>Chọn biểu tượng đại diện:</strong></span>
               <div class="emoji-picker-row">
-                <div class="emoji-quick-picker" id="emoji-quick-picker">
-                  <button type="button" class="emoji-opt active" data-icon="📌">📌</button>
-                  <button type="button" class="emoji-opt" data-icon="💻">💻</button>
-                  <button type="button" class="emoji-opt" data-icon="🖥️">🖥️</button>
-                  <button type="button" class="emoji-opt" data-icon="☁️">☁️</button>
-                  <button type="button" class="emoji-opt" data-icon="📑">📑</button>
-                  <button type="button" class="emoji-opt" data-icon="🔑">🔑</button>
-                  <button type="button" class="emoji-opt" data-icon="🌐">🌐</button>
-                  <button type="button" class="emoji-opt" data-icon="🛡️">🛡️</button>
-                  <button type="button" class="emoji-opt" data-icon="🐳">🐳</button>
-                  <button type="button" class="emoji-opt" data-icon="📊">📊</button>
-                  <button type="button" class="emoji-opt" data-icon="⚙️">⚙️</button>
-                  <button type="button" class="emoji-opt" data-icon="📦">📦</button>
+                <div class="emoji-quick-picker" id="emoji-quick-picker" role="group" aria-labelledby="emoji-picker-label">
+                  <button type="button" class="emoji-opt active" aria-pressed="true" aria-label="Chọn biểu tượng ghim thông báo" data-icon="📌"><span aria-hidden="true">📌</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng laptop" data-icon="💻"><span aria-hidden="true">💻</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng máy chủ" data-icon="🖥️"><span aria-hidden="true">🖥️</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng đám mây" data-icon="☁️"><span aria-hidden="true">☁️</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng tài liệu" data-icon="📑"><span aria-hidden="true">📑</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng khóa xác thực" data-icon="🔑"><span aria-hidden="true">🔑</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng mạng lưới" data-icon="🌐"><span aria-hidden="true">🌐</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng khiên bảo mật" data-icon="🛡️"><span aria-hidden="true">🛡️</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng container Docker" data-icon="🐳"><span aria-hidden="true">🐳</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng biểu đồ" data-icon="📊"><span aria-hidden="true">📊</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng cấu hình" data-icon="⚙️"><span aria-hidden="true">⚙️</span></button>
+                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng gói tài nguyên" data-icon="📦"><span aria-hidden="true">📦</span></button>
                 </div>
-                <input type="text" id="listing-icon-val" class="custom-emoji-input" value="📌" maxlength="4" title="Tự nhập Emoji bất kỳ">
+                <input type="text" id="listing-icon-val" class="custom-emoji-input" aria-label="Tự nhập biểu tượng Emoji đại diện" value="📌" maxlength="4" title="Tự nhập Emoji bất kỳ">
               </div>
             </div>
 
@@ -588,8 +591,8 @@
             </div>
 
             <div class="form-group">
-              <label><strong>Thời gian lưu trên RAM máy chủ (TTL):</strong></label>
-              <div class="ttl-pills-row" id="vendor-ttl-pills">
+              <span id="vendor-ttl-label" class="field-group-label"><strong>Thời gian lưu trên RAM máy chủ (TTL):</strong></span>
+              <div class="ttl-pills-row" id="vendor-ttl-pills" role="group" aria-labelledby="vendor-ttl-label">
                 <button type="button" class="ttl-pill" data-ttl="3600">1 giờ</button>
                 <button type="button" class="ttl-pill" data-ttl="14400">4 giờ</button>
                 <button type="button" class="ttl-pill" data-ttl="86400">24 giờ</button>
@@ -644,10 +647,10 @@
 
   <!-- QR Code Verification Modal Overlay -->
   <div id="qr-modal-overlay" class="qr-modal-overlay" style="display: none;">
-    <div class="qr-modal-card">
+    <div class="qr-modal-card" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" tabindex="-1">
       <div class="qr-modal-header">
-        <h2 class="qr-modal-title">Mã QR Đối Chiếu Bàn Giao Nội Bộ</h2>
-        <button type="button" id="close-qr-btn" class="close-mask-btn" title="Đóng">✕</button>
+        <h2 id="qr-modal-title" class="qr-modal-title">Mã QR Đối Chiếu Bàn Giao Nội Bộ</h2>
+        <button type="button" id="close-qr-btn" class="close-mask-btn" aria-label="Đóng hộp thoại mã QR" title="Đóng"><span aria-hidden="true">✕</span></button>
       </div>
       <p class="qr-modal-desc">
         Quét mã QR bằng thiết bị di động của đồng nghiệp hoặc người phụ trách để xác nhận bàn giao tài nguyên:
@@ -661,10 +664,10 @@
 
   <!-- Collaborative Estimate / Response Modal Overlay -->
   <div id="bid-modal-overlay" class="qr-modal-overlay" style="display: none;">
-    <div class="qr-modal-card bid-modal-card">
+    <div class="qr-modal-card bid-modal-card" role="dialog" aria-modal="true" aria-labelledby="bid-modal-title" tabindex="-1">
       <div class="qr-modal-header">
-        <h2 class="qr-modal-title">✋ Gửi Đề Xuất / Ước Lượng Khối Lượng</h2>
-        <button type="button" id="close-bid-modal-btn" class="close-mask-btn" title="Đóng">✕</button>
+        <h2 id="bid-modal-title" class="qr-modal-title">✋ Gửi Đề Xuất / Ước Lượng Khối Lượng</h2>
+        <button type="button" id="close-bid-modal-btn" class="close-mask-btn" aria-label="Đóng hộp thoại gửi đề xuất" title="Đóng"><span aria-hidden="true">✕</span></button>
       </div>
 
       <div class="bid-modal-item-info" id="bid-modal-item-info">
@@ -726,6 +729,6 @@
   <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
   <script src="./js/peerjs.min.js"></script>
-  <script type="module" src="./js/vault.js?v=5.1"></script>
+  <script type="module" src="./js/vault.js?v=5.2"></script>
 </body>
 </html>

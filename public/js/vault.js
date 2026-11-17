@@ -396,7 +396,7 @@ export function showToast(message, type = 'info') {
   toast.innerHTML = `
     <span class="toast-icon">${icon}</span>
     <span class="toast-message">${escapeHtml(message)}</span>
-    <button type="button" class="toast-close" title="Đóng">✕</button>
+    <button type="button" class="toast-close" aria-label="Đóng thông báo" title="Đóng"><span aria-hidden="true">✕</span></button>
   `;
 
   toast.querySelector('.toast-close').addEventListener('click', () => {
@@ -737,9 +737,52 @@ function purgeAllVolatileData() {
   updateRamMonitor();
 }
 
+let lastModalTriggerEl = null;
+
+function getModalFocusableElements(overlayEl) {
+  if (!overlayEl) return [];
+  return Array.from(
+    overlayEl.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+  ).filter(el => el.offsetParent !== null);
+}
+
+function openAccessibleModal(overlayEl, focusSelector = null) {
+  if (!overlayEl) return;
+  lastModalTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const shell = document.querySelector('.vault-shell');
+  if (shell) {
+    shell.inert = true;
+    shell.setAttribute('aria-hidden', 'true');
+  }
+  overlayEl.style.display = 'flex';
+  const focusTarget = focusSelector ? overlayEl.querySelector(focusSelector) : null;
+  const dialog = overlayEl.querySelector('[role="dialog"]');
+  setTimeout(() => {
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      focusTarget.focus();
+    } else if (dialog && typeof dialog.focus === 'function') {
+      dialog.focus();
+    }
+  }, 20);
+}
+
+function closeAccessibleModal(overlayEl) {
+  if (!overlayEl) return;
+  overlayEl.style.display = 'none';
+  const shell = document.querySelector('.vault-shell');
+  if (shell) {
+    shell.inert = false;
+    shell.removeAttribute('aria-hidden');
+  }
+  if (lastModalTriggerEl && typeof lastModalTriggerEl.focus === 'function') {
+    lastModalTriggerEl.focus();
+    lastModalTriggerEl = null;
+  }
+}
+
 function initPanicAndPurgeHooks() {
   const panicBtn = document.getElementById('panic-btn');
-  const brandTop = document.getElementById('vault-brand-top') || document.querySelector('.vault-brand');
+  const brandBtn = document.getElementById('brand-scroll-top-btn');
   const vaultHeader = document.querySelector('.vault-header');
 
   const scrollToTopSmooth = () => {
@@ -752,16 +795,10 @@ function initPanicAndPurgeHooks() {
     }
   };
 
-  if (brandTop) {
-    brandTop.addEventListener('click', (e) => {
+  if (brandBtn) {
+    brandBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       scrollToTopSmooth();
-    });
-    brandTop.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        scrollToTopSmooth();
-      }
     });
   }
 
@@ -771,6 +808,15 @@ function initPanicAndPurgeHooks() {
       scrollToTopSmooth();
     });
   }
+
+  // Accessible banner dismiss binding (replaces inline onclick)
+  document.querySelectorAll('.dismiss-banner-btn[data-dismiss]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-dismiss');
+      const banner = targetId ? document.getElementById(targetId) : null;
+      if (banner) banner.style.display = 'none';
+    });
+  });
 
   const executeSessionReset = () => {
     purgeAllVolatileData();
@@ -782,21 +828,37 @@ function initPanicAndPurgeHooks() {
     panicBtn.addEventListener('click', executeSessionReset);
   }
 
-  // Close open modals cleanly on Escape key without wiping user session
+  // Modal Escape handling & Tab Focus Trap
   window.addEventListener('keydown', (e) => {
+    const bidModal = document.getElementById('bid-modal-overlay');
+    const qrModal = document.getElementById('qr-modal-overlay');
+    const openModal = (bidModal && bidModal.style.display !== 'none')
+      ? bidModal
+      : ((qrModal && qrModal.style.display !== 'none') ? qrModal : null);
+
+    if (!openModal) return;
+
     if (e.key === 'Escape') {
-      const bidModal = document.getElementById('bid-modal-overlay');
-      const qrModal = document.getElementById('qr-modal-overlay');
-      if (bidModal && bidModal.style.display !== 'none') {
-        bidModal.style.display = 'none';
-      }
-      if (qrModal && qrModal.style.display !== 'none') {
-        qrModal.style.display = 'none';
+      e.preventDefault();
+      if (openModal === bidModal) activeBiddingProductId = null;
+      closeAccessibleModal(openModal);
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusables = getModalFocusableElements(openModal);
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !openModal.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !openModal.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
       }
     }
   });
-
-  // Note: Full session wipe & reset is explicitly triggered by the Reset Session button.
 }
 
 /* ==========================================================================
@@ -844,7 +906,12 @@ function initTelemetryAndMask() {
   const qrOverlay = document.getElementById('qr-modal-overlay');
   if (closeQrBtn && qrOverlay) {
     closeQrBtn.addEventListener('click', () => {
-      qrOverlay.style.display = 'none';
+      closeAccessibleModal(qrOverlay);
+    });
+  }
+  if (qrOverlay) {
+    qrOverlay.addEventListener('click', (e) => {
+      if (e.target === qrOverlay) closeAccessibleModal(qrOverlay);
     });
   }
 }
@@ -854,11 +921,24 @@ function initTelemetryAndMask() {
    ========================================================================== */
 
 function initTabs() {
-  const navTabs = document.querySelectorAll('.covert-nav-tabs .nav-tab');
-  navTabs.forEach(tab => {
+  const navTabs = Array.from(document.querySelectorAll('.covert-nav-tabs .nav-tab'));
+  navTabs.forEach((tab, idx) => {
     tab.addEventListener('click', () => {
       const targetId = tab.getAttribute('data-tab');
       switchTab(targetId);
+    });
+    tab.addEventListener('keydown', (e) => {
+      let nextIdx = -1;
+      if (e.key === 'ArrowRight') nextIdx = (idx + 1) % navTabs.length;
+      else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + navTabs.length) % navTabs.length;
+      else if (e.key === 'Home') nextIdx = 0;
+      else if (e.key === 'End') nextIdx = navTabs.length - 1;
+      if (nextIdx !== -1) {
+        e.preventDefault();
+        const nextTab = navTabs[nextIdx];
+        nextTab.focus();
+        switchTab(nextTab.getAttribute('data-tab'));
+      }
     });
   });
 
@@ -876,12 +956,18 @@ function switchTab(tabId) {
   const tabPanes = document.querySelectorAll('.tab-pane');
 
   navTabs.forEach(t => {
-    t.classList.toggle('active', t.getAttribute('data-tab') === tabId);
+    const isSelected = t.getAttribute('data-tab') === tabId;
+    t.classList.toggle('active', isSelected);
+    t.setAttribute('aria-selected', isSelected ? 'true' : 'false');
   });
 
   tabPanes.forEach(p => {
     p.classList.toggle('active', p.id === tabId);
   });
+
+  if (document.body) {
+    document.body.classList.toggle('chat-tab-active', tabId === 'tab-chat');
+  }
 
   if (!isPurgingNow && tabId) {
     try {
@@ -1156,8 +1242,12 @@ function initMarketCatalog() {
     categoryPills.addEventListener('click', (e) => {
       const pill = e.target.closest('.market-pill');
       if (pill) {
-        document.querySelectorAll('.market-pill').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.market-pill').forEach(p => {
+          p.classList.remove('active');
+          p.setAttribute('aria-pressed', 'false');
+        });
         pill.classList.add('active');
+        pill.setAttribute('aria-pressed', 'true');
         filterAndRenderProducts();
       }
     });
@@ -1279,11 +1369,11 @@ function renderProducts(products) {
       <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Tạo phiếu tiếp nhận bàn giao tài nguyên / đầu việc này">
         <span>📥</span> Tiếp Nhận
       </button>
-      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" title="Mở kênh thảo luận nội bộ cho hạng mục này">
-        <span>💬</span>
+      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" aria-label="Mở kênh thảo luận nội bộ cho ${escapeHtml(item.name)}" title="Mở kênh thảo luận nội bộ cho hạng mục này">
+        <span aria-hidden="true">💬</span>
       </button>
-      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" title="Sao chép liên kết chia sẻ cho đồng nghiệp">
-        <span>🔗</span>
+      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" aria-label="Sao chép liên kết chia sẻ cho ${escapeHtml(item.name)}" title="Sao chép liên kết chia sẻ cho đồng nghiệp">
+        <span aria-hidden="true">🔗</span>
       </button>
     `;
 
@@ -1967,7 +2057,7 @@ function renderMessengerThreads() {
       : `📌 ${t.productName || 'Kênh chung'}`;
 
     return `
-      <div class="messenger-thread-item ${isActive ? 'active' : ''}" data-thread-id="${escapeHtml(t.id)}">
+      <div class="messenger-thread-item ${isActive ? 'active' : ''}" role="button" tabindex="0" aria-current="${isActive ? 'true' : 'false'}" data-thread-id="${escapeHtml(t.id)}">
         <div class="thread-avatar-wrap">
           <span>${escapeHtml(initial)}</span>
           <span class="thread-online-dot"></span>
@@ -1988,10 +2078,15 @@ function renderMessengerThreads() {
   }).join('');
 
   container.querySelectorAll('.messenger-thread-item').forEach(item => {
-    item.addEventListener('click', () => {
+    const activateThread = () => {
       const threadId = item.getAttribute('data-thread-id');
-      if (threadId) {
-        selectMessengerThread(threadId);
+      if (threadId) selectMessengerThread(threadId);
+    };
+    item.addEventListener('click', activateThread);
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activateThread();
       }
     });
   });
@@ -2917,9 +3012,14 @@ function initOrderSystem() {
 
   // TTL Pills Selection
   ttlPills.forEach(pill => {
+    pill.setAttribute('aria-pressed', pill.classList.contains('active') ? 'true' : 'false');
     pill.addEventListener('click', () => {
-      ttlPills.forEach(p => p.classList.remove('active'));
+      ttlPills.forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-pressed', 'false');
+      });
       pill.classList.add('active');
+      pill.setAttribute('aria-pressed', 'true');
       if (ttlValueInput) {
         ttlValueInput.value = pill.getAttribute('data-ttl');
       }
@@ -3052,7 +3152,7 @@ function initOrderSystem() {
         qr.addData(`nexus-handover:${activeOrder.orderId}?token=${activeOrder.xmrAddress}`);
         qr.make();
         qrBox.innerHTML = qr.createSvgTag(6, 0);
-        qrOverlay.style.display = 'flex';
+        openAccessibleModal(qrOverlay, '#close-qr-btn');
       }
     });
   }
@@ -3192,8 +3292,8 @@ function initAuctionBidding() {
   const quickStepBtns = document.querySelectorAll('.quick-bid-step-btn');
 
   const closeModal = () => {
-    if (modalOverlay) modalOverlay.style.display = 'none';
     activeBiddingProductId = null;
+    closeAccessibleModal(modalOverlay);
   };
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
@@ -3418,7 +3518,7 @@ function openBidModal(productId) {
   }
 
   if (modalOverlay) {
-    modalOverlay.style.display = 'flex';
+    openAccessibleModal(modalOverlay, '#bid-amount-input');
   }
 }
 
@@ -3484,17 +3584,23 @@ function initVendorDesk() {
 
   const setListingMode = (mode) => {
     currentListingMode = mode;
-    [modeHybridBtn, modeAuctionBtn, modeFixedBtn].forEach(b => b?.classList.remove('active'));
+    [modeHybridBtn, modeAuctionBtn, modeFixedBtn].forEach(b => {
+      b?.classList.remove('active');
+      b?.setAttribute('aria-selected', 'false');
+    });
     if (mode === 'hybrid') {
       modeHybridBtn?.classList.add('active');
+      modeHybridBtn?.setAttribute('aria-selected', 'true');
       if (fixedSection) fixedSection.style.display = 'block';
       if (auctionSection) auctionSection.style.display = 'block';
     } else if (mode === 'auction') {
       modeAuctionBtn?.classList.add('active');
+      modeAuctionBtn?.setAttribute('aria-selected', 'true');
       if (fixedSection) fixedSection.style.display = 'none';
       if (auctionSection) auctionSection.style.display = 'block';
     } else {
       modeFixedBtn?.classList.add('active');
+      modeFixedBtn?.setAttribute('aria-selected', 'true');
       if (fixedSection) fixedSection.style.display = 'block';
       if (auctionSection) auctionSection.style.display = 'none';
     }
@@ -3509,9 +3615,13 @@ function initVendorDesk() {
   if (emojiPicker && iconInput) {
     emojiPicker.querySelectorAll('.emoji-opt').forEach(btn => {
       btn.addEventListener('click', () => {
-        emojiPicker.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('active'));
+        emojiPicker.querySelectorAll('.emoji-opt').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('active');
-        iconInput.value = btn.getAttribute('data-icon') || '💎';
+        btn.setAttribute('aria-pressed', 'true');
+        iconInput.value = btn.getAttribute('data-icon') || '📌';
         updateVendorLivePreview();
       });
     });
@@ -3520,10 +3630,15 @@ function initVendorDesk() {
   // TTL Pills
   if (ttlPills && ttlValInput) {
     ttlPills.querySelectorAll('.ttl-pill').forEach(pill => {
+      pill.setAttribute('aria-pressed', pill.classList.contains('active') ? 'true' : 'false');
       pill.addEventListener('click', () => {
-        ttlPills.querySelectorAll('.ttl-pill').forEach(p => p.classList.remove('active'));
+        ttlPills.querySelectorAll('.ttl-pill').forEach(p => {
+          p.classList.remove('active');
+          p.setAttribute('aria-pressed', 'false');
+        });
         pill.classList.add('active');
-        ttlValInput.value = pill.getAttribute('data-ttl') || '14400';
+        pill.setAttribute('aria-pressed', 'true');
+        ttlValInput.value = pill.getAttribute('data-ttl') || '604800';
       });
     });
   }
