@@ -20,7 +20,7 @@ let activePeerConnection = null;
 let currentRoomCode = null;
 let isP2PConnected = false;
 let isRoomHost = false;
-let p2pPeerAlias = 'Khách / Đối Tác';
+let p2pPeerAlias = 'Đồng nghiệp P2P';
 let typingDebounceTimer = null;
 
 // Multi-region public STUN servers for zero-configuration P2P NAT traversal
@@ -62,288 +62,288 @@ function playNotificationChime() {
   }
 }
 
-// Anonymous Catalog Inventory (In-Memory Only — Unrestricted Open Market & Auction)
+// Enterprise Workspace Items Registry (In-Memory Only)
 let MARKET_PRODUCTS = [
   {
     id: 'auction-chip-07',
-    name: 'Lô 10 Chip Mật Mã HSM Air-Gapped EAL6+ Đấu Giá Kín',
+    name: 'Triển Khai Cụm Gateway API & HSM Nội Bộ Q4',
     category: 'hardware',
-    badge: 'Đấu Giá & Mua Ngay',
-    icon: '🔨',
-    securityLevel: 'Cấp 5 • Silent Bid',
-    currency: 'XMR',
+    badge: 'Phòng DevOps',
+    icon: '🖥️',
+    securityLevel: 'Nội bộ • Mức Cao',
+    currency: 'Giờ',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.50,
-    currentBidXMR: 0.85,
-    buyNowPrice: 1.40,
+    startingBidXMR: 16,
+    currentBidXMR: 24,
+    buyNowPrice: 32,
     minBidIncrement: 0,
     bidCount: 4,
-    highestBidder: 'Ghost-9A4F',
+    highestBidder: 'NV-DevOps-04',
     bids: [
-      { bidder: 'Ghost-9A4F', amount: 0.85, currency: 'XMR', time: '2 phút trước' },
-      { bidder: 'Ghost-1B2C', amount: 0.80, currency: 'XMR', time: '8 phút trước' },
-      { bidder: 'Ghost-5E3D', amount: 0.70, currency: 'XMR', time: '15 phút trước' },
-      { bidder: 'Ghost-7A11', amount: 0.50, currency: 'XMR', time: '28 phút trước' }
+      { bidder: 'NV-DevOps-04', amount: 24, currency: 'Giờ', time: '2 phút trước' },
+      { bidder: 'NV-Lead-02', amount: 20, currency: 'Giờ', time: '8 phút trước' },
+      { bidder: 'NV-BE-08', amount: 18, currency: 'Giờ', time: '15 phút trước' },
+      { bidder: 'NV-Sec-01', amount: 16, currency: 'Giờ', time: '28 phút trước' }
     ],
     auctionEndTime: Date.now() + (5400 * 1000),
-    priceXMR: '0.85 XMR',
-    rawPriceXMR: 0.85,
-    approxUSD: '~$140 USD',
-    stock: '1 lô duy nhất',
-    desc: 'Lô linh kiện phần cứng chip xử lý mật mã học độc lập EAL6+, chưa từng kết nối mạng, mở đấu giá tự do hoặc mua đứt ngay.',
+    priceXMR: '24 Giờ',
+    rawPriceXMR: 24,
+    approxUSD: 'Sprint 14 • DevOps',
+    stock: 'Đang mở phối hợp',
+    desc: 'Kế hoạch nâng cấp cụm máy chủ Gateway và module xác thực nội bộ. Thành viên các nhóm có thể ước lượng thời gian hỗ trợ hoặc nhận bàn giao cấu hình.',
     specs: {
-      'Hình thức': 'Đấu giá tự do & Mua đứt 2 chiều',
-      'Bước giá': 'Tự do không giới hạn',
-      'Bàn giao': 'Mã Drop tự hủy hoặc Ship ẩn danh'
+      'Phòng ban': 'DevOps & Hạ tầng Hệ thống',
+      'Trạng thái': 'Đang tiếp nhận đề xuất nhân sự',
+      'Bàn giao': 'Tài liệu kỹ thuật & Token một lần'
     }
   },
   {
     id: 'lux-watch-08',
-    name: 'Đồng Hồ Cơ Patek Philippe Sưu Tầm & Vàng Khối 24K',
+    name: 'Cấp Phát Laptop Workstation & Thẻ Từ Văn Phòng Mới',
     category: 'physical',
-    badge: 'Hàng Vật Lý',
-    icon: '⌚',
-    securityLevel: 'Escrow • Vật phẩm thực',
-    currency: 'XMR',
+    badge: 'Hành Chính & IT',
+    icon: '💻',
+    securityLevel: 'Tài sản Công ty',
+    currency: 'Thiết bị',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 12.00,
-    currentBidXMR: 14.50,
-    buyNowPrice: 18.00,
+    startingBidXMR: 5,
+    currentBidXMR: 8,
+    buyNowPrice: 12,
     minBidIncrement: 0,
     bidCount: 6,
-    highestBidder: 'Ghost-77FE',
+    highestBidder: 'NV-IT-02',
     bids: [
-      { bidder: 'Ghost-77FE', amount: 14.50, currency: 'XMR', time: '5 phút trước' },
-      { bidder: 'Ghost-3A91', amount: 13.20, currency: 'XMR', time: '19 phút trước' }
+      { bidder: 'NV-IT-02', amount: 8, currency: 'Thiết bị', time: '5 phút trước' },
+      { bidder: 'NV-HR-05', amount: 6, currency: 'Thiết bị', time: '19 phút trước' }
     ],
     auctionEndTime: Date.now() + (10800 * 1000),
-    priceXMR: '14.50 XMR',
-    rawPriceXMR: 14.50,
-    approxUSD: '~$2,390 USD',
-    stock: '1 chiếc nguyên hộp',
-    desc: 'Vật phẩm sưu tầm thực tế ngoài đời thực, đầy đủ chứng nhận gốc, giao dịch qua hợp đồng ký quỹ ẩn danh và giao nhận Dead-Drop bảo mật.',
+    priceXMR: '8 Thiết bị',
+    rawPriceXMR: 8,
+    approxUSD: 'Tầng 5 • Kho IT',
+    stock: 'Sẵn sàng cấp phát',
+    desc: 'Danh sách thiết bị phần cứng phục vụ nhân sự mới tháng 11. Các trưởng nhóm đăng ký số lượng và nhận mã bàn giao qua kênh nội bộ.',
     specs: {
-      'Danh mục': 'Hàng thực tế • Xa xỉ phẩm',
-      'Chế độ': 'Trả giá tự do / Mua ngay',
-      'Bàn giao': 'Hòm thư Dead-Drop / Bưu chính kín'
+      'Phòng ban': 'Hành chính Nhân sự & IT Helpdesk',
+      'Hình thức': 'Đăng ký số lượng / Nhận bàn giao ngay',
+      'Bàn giao': 'Phòng IT Tầng 5 • Ký nhận điện tử'
     }
   },
   {
     id: 'dig-domain-09',
-    name: 'Tên Miền VIP 2 Ký Tự & Kho Tài Sản Số Độc Quyền',
+    name: 'Tài Khoản Cloud Staging & Bộ Biến Môi Trường (.env)',
     category: 'digital',
-    badge: 'Tài Sản Số',
-    icon: '💎',
-    securityLevel: 'Instant • Transfer',
-    currency: 'XMR',
+    badge: 'Tài Nguyên Số',
+    icon: '☁️',
+    securityLevel: 'AES-256 • Nội bộ',
+    currency: 'Ngày',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 2.00,
-    currentBidXMR: 2.40,
-    buyNowPrice: 3.50,
+    startingBidXMR: 7,
+    currentBidXMR: 14,
+    buyNowPrice: 30,
     minBidIncrement: 0,
     bidCount: 3,
-    highestBidder: 'Ghost-3C1A',
+    highestBidder: 'NV-Lead-01',
     bids: [
-      { bidder: 'Ghost-3C1A', amount: 2.40, currency: 'XMR', time: '11 phút trước' }
+      { bidder: 'NV-Lead-01', amount: 14, currency: 'Ngày', time: '11 phút trước' }
     ],
     auctionEndTime: Date.now() + (7200 * 1000),
-    priceXMR: '2.40 XMR',
-    rawPriceXMR: 2.40,
-    approxUSD: '~$395 USD',
-    stock: 'Chuyển giao ngay',
-    desc: 'Tài sản kỹ thuật số, tên miền ngắn quý hiếm kèm mã EPP Auth-Code chuyển nhượng quyền sở hữu tức thì qua kênh mã hóa một lần.',
+    priceXMR: '14 Ngày',
+    rawPriceXMR: 14,
+    approxUSD: 'AWS / GCP Staging',
+    stock: 'Cấp quyền tạm thời',
+    desc: 'Thông tin truy cập môi trường kiểm thử Staging và bộ biến môi trường (.env) được mã hóa một lần, tự hủy ngay sau khi thành viên tải về.',
     specs: {
-      'Loại tài sản': 'Tên miền & Bản quyền số',
-      'Đấu giá': 'Mở thầu tự do 24/7',
-      'Bàn giao': 'Mã EPP / Khoá chuyển nhượng RAM'
+      'Phòng ban': 'Backend & QA Testing',
+      'Hiệu lực': 'Gia hạn theo chu kỳ Sprint',
+      'Bàn giao': 'Secret Token tự hủy trong RAM'
     }
   },
   {
     id: 'hw-hsm-01',
-    name: 'Khóa Bảo Mật Air-Gapped HSM Token v4',
+    name: 'Khóa Xác Thực YubiKey & Token Ký Code Production',
     category: 'hardware',
-    badge: 'Phần Cứng',
+    badge: 'Phần Cứng IT',
     icon: '🔑',
-    securityLevel: 'Cấp 5 • FIPS 140-3',
-    currency: 'XMR',
+    securityLevel: 'Chuẩn FIDO2',
+    currency: 'Chiếc',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.35,
-    currentBidXMR: 0.45,
-    buyNowPrice: 0.45,
+    startingBidXMR: 2,
+    currentBidXMR: 5,
+    buyNowPrice: 5,
     minBidIncrement: 0,
     bidCount: 2,
-    highestBidder: 'Ghost-4D88',
+    highestBidder: 'NV-Sec-09',
     bids: [
-      { bidder: 'Ghost-4D88', amount: 0.45, currency: 'XMR', time: '14 phút trước' }
+      { bidder: 'NV-Sec-09', amount: 5, currency: 'Chiếc', time: '14 phút trước' }
     ],
     auctionEndTime: Date.now() + (14400 * 1000),
-    priceXMR: '0.45 XMR',
-    rawPriceXMR: 0.45,
-    approxUSD: '~$75 USD',
-    stock: '5 chiếc',
-    desc: 'Khóa vật lý USB chứa chip bảo mật chuyên dụng EAL6+, cách ly hoàn toàn (Air-gapped) khỏi mạng Internet. Tự hủy firmware khi phát hiện can thiệp vật lý.',
+    priceXMR: '5 Chiếc',
+    rawPriceXMR: 5,
+    approxUSD: 'Phòng Kỹ Thuật',
+    stock: 'Còn 5 khóa',
+    desc: 'Khóa bảo mật vật lý dùng để xác thực 2FA khi deploy lên hệ thống Production và ký số mã nguồn nội bộ công ty.',
     specs: {
-      'Tiêu chuẩn': 'FIPS 140-3 Level 4 / CC EAL6+',
-      'Bảo vệ': 'Chống trích xuất vi mạch (Anti-DPA)',
-      'Bàn giao': 'Bưu chính ẩn danh / Drop bí mật'
+      'Tiêu chuẩn': 'FIDO2 / WebAuthn / PGP Hardware',
+      'Phạm vi': 'Tech Lead & Quản trị viên hệ thống',
+      'Bàn giao': 'Nhận trực tiếp hoặc mã PIN qua RAM'
     }
   },
   {
     id: 'net-mesh-02',
-    name: 'Cấu Hình Ephemeral Multi-Hop Mesh (RAM-Only)',
+    name: 'Cấu Hình VPN WireGuard Truy Cập Server Nội Bộ',
     category: 'network',
-    badge: 'Mạng Lưới',
-    icon: '🛰️',
-    securityLevel: 'Cấp 5 • 5-Hop Obfs4',
-    currency: 'XMR',
+    badge: 'Hạ Tầng Mạng',
+    icon: '🌐',
+    securityLevel: 'Zero-Trust VPN',
+    currency: 'Profile',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.10,
-    currentBidXMR: 0.15,
-    buyNowPrice: 0.15,
+    startingBidXMR: 1,
+    currentBidXMR: 3,
+    buyNowPrice: 10,
     minBidIncrement: 0,
     bidCount: 1,
-    highestBidder: 'Ghost-8E02',
+    highestBidder: 'NV-Net-03',
     bids: [],
     auctionEndTime: Date.now() + (18000 * 1000),
-    priceXMR: '0.15 XMR',
-    rawPriceXMR: 0.15,
-    approxUSD: '~$25 USD',
-    stock: 'Sẵn hàng',
-    desc: 'Gói cấu hình định tuyến 5 lớp ngụy trang qua giao thức Obfs4 + WireGuard kết nối qua các cụm máy chủ RAM-only không lưu nhật ký truy cập (Zero-Log).',
+    priceXMR: '3 Profile',
+    rawPriceXMR: 3,
+    approxUSD: 'Gateway HN & HCM',
+    stock: 'Sẵn sàng cấp phát',
+    desc: 'File cấu hình WireGuard dành cho nhân viên làm việc từ xa (Remote) để truy cập vào mạng nội bộ và cơ sở dữ liệu công ty an toàn.',
     specs: {
-      'Giao thức': 'WireGuard Obfuscated • Tor Over VPN',
-      'Định tuyến': '5 bước nhảy (Multi-Hop) ngẫu nhiên',
-      'Bàn giao': 'Mã Drop tự hủy sau 1 lần đọc'
+      'Giao thức': 'WireGuard Encrypted Tunnel',
+      'Phạm vi': 'Nhân viên toàn thời gian & Remote',
+      'Bàn giao': 'Mã tải cấu hình tự hủy sau 1 lần đọc'
     }
   },
   {
     id: 'sec-ssl-03',
-    name: 'Chứng Chỉ SSL Bulletproof & DNS Chống Giám Sát',
+    name: 'Chứng Chỉ SSL Nội Bộ & Quyền Truy Cập GitLab Private',
     category: 'network',
-    badge: 'Mạng Lưới',
+    badge: 'Hệ Thống',
     icon: '🛡️',
-    securityLevel: 'Cấp 4 • ECH DNSSEC',
-    currency: 'XMR',
+    securityLevel: 'SSH / TLS 1.3',
+    currency: 'Nhóm',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.15,
-    currentBidXMR: 0.20,
-    buyNowPrice: 0.20,
+    startingBidXMR: 2,
+    currentBidXMR: 4,
+    buyNowPrice: 8,
     minBidIncrement: 0,
     bidCount: 1,
-    highestBidder: 'Ghost-2A19',
+    highestBidder: 'NV-Ops-07',
     bids: [],
     auctionEndTime: Date.now() + (21600 * 1000),
-    priceXMR: '0.20 XMR',
-    rawPriceXMR: 0.20,
-    approxUSD: '~$35 USD',
-    stock: 'Sẵn hàng',
-    desc: 'Cụm tên miền và chứng chỉ wildcard SSL phát hành nặc danh, định tuyến qua hệ thống Anycast DNS chống chặn ISP và loại bỏ rò rỉ SNI (ESNI/ECH).',
+    priceXMR: '4 Nhóm',
+    rawPriceXMR: 4,
+    approxUSD: 'Core Infrastructure',
+    stock: 'Đang hoạt động',
+    desc: 'Bộ chứng chỉ Root CA nội bộ để chạy môi trường HTTPS local và hướng dẫn cấu hình SSH Key truy cập kho mã nguồn GitLab công ty.',
     specs: {
-      'Công nghệ': 'Encrypted Client Hello (ECH) • DNSSEC',
-      'Định danh': 'Ẩn hoàn toàn thông tin Whois / Khách hàng',
-      'Bàn giao': 'Gói chứng chỉ nén kèm Private Key PGP'
+      'Công nghệ': 'Internal Root CA • TLS 1.3 • SSH Ed25519',
+      'Đối tượng': 'Toàn bộ kỹ sư phần mềm & QA',
+      'Bàn giao': 'Tệp chứng chỉ kèm hướng dẫn qua RAM'
     }
   },
   {
     id: 'doc-audit-04',
-    name: 'Báo Cáo Nghiên Cứu Lỗ Hổng Zero-Day White-Hat Audit',
+    name: 'Báo Cáo Đánh Giá Bảo Mật & Checklist Vá Lỗi Q4',
     category: 'audit',
-    badge: 'Audit & PoC',
+    badge: 'Kiểm Toán IT',
     icon: '📑',
-    securityLevel: 'Cấp 5 • Top-Secret',
-    currency: 'XMR',
+    securityLevel: 'Mật • Ban Giám Đốc',
+    currency: 'Trang',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.60,
-    currentBidXMR: 0.85,
-    buyNowPrice: 0.85,
+    startingBidXMR: 24,
+    currentBidXMR: 48,
+    buyNowPrice: 48,
     minBidIncrement: 0,
     bidCount: 3,
-    highestBidder: 'Ghost-5B71',
+    highestBidder: 'NV-Audit-01',
     bids: [],
     auctionEndTime: Date.now() + (9000 * 1000),
-    priceXMR: '0.85 XMR',
-    rawPriceXMR: 0.85,
-    approxUSD: '~$140 USD',
-    stock: '2 bản đệm',
-    desc: 'Tài liệu phân tích kỹ thuật độc quyền về kiến trúc chống nghe lén dữ liệu qua kênh bên (Side-channel attacks) và phương pháp vá lỗi cho giao thức mật mã đối xứng.',
+    priceXMR: '48 Trang',
+    rawPriceXMR: 48,
+    approxUSD: 'Tài liệu nội bộ',
+    stock: '2 bản chia sẻ kín',
+    desc: 'Báo cáo kiểm thử xâm nhập định kỳ quý 4 và danh sách các hạng mục cần tối ưu bảo mật cho ứng dụng web và API nội bộ.',
     specs: {
-      'Định dạng': 'PDF mã hóa AES-256-GCM + Khóa giải mật',
-      'Nội dung': 'Whitepaper 48 trang + Script kiểm thử PoC',
-      'Bàn giao': 'Mã Drop RAM-only'
+      'Định dạng': 'PDF mã hóa AES-256-GCM',
+      'Nội dung': 'Báo cáo 48 trang & Danh sách đầu việc vá lỗi',
+      'Bàn giao': 'Liên kết giải mã RAM một lần'
     }
   },
   {
     id: 'os-amnesic-05',
-    name: 'Tails/Qubes Amnesic USB OS Bootable Image',
+    name: 'Bộ Cài Đặt Môi Trường Dev & Docker Registry Nội Bộ',
     category: 'crypto',
-    badge: 'Hệ Điều Hành',
-    icon: '💾',
-    securityLevel: 'Cấp 5 • Zero-Trace',
-    currency: 'XMR',
+    badge: 'Kỹ Thuật',
+    icon: '🐳',
+    securityLevel: 'Internal Registry',
+    currency: 'Image',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.20,
-    currentBidXMR: 0.30,
-    buyNowPrice: 0.30,
+    startingBidXMR: 4,
+    currentBidXMR: 6,
+    buyNowPrice: 6,
     minBidIncrement: 0,
     bidCount: 2,
-    highestBidder: 'Ghost-6F04',
+    highestBidder: 'NV-BE-12',
     bids: [],
     auctionEndTime: Date.now() + (12600 * 1000),
-    priceXMR: '0.30 XMR',
-    rawPriceXMR: 0.30,
-    approxUSD: '~$50 USD',
-    stock: 'Sẵn hàng',
-    desc: 'Bản phân phối Linux bảo mật tối đa được tùy biến sâu. Tự động xóa sạch RAM khi tắt máy, định tuyến 100% lưu lượng qua Tor, vô hiệu hóa hoàn toàn ghi đĩa.',
+    priceXMR: '6 Image',
+    rawPriceXMR: 6,
+    approxUSD: 'v2.4 Production',
+    stock: 'Sẵn sàng sử dụng',
+    desc: 'Bộ Docker Image chuẩn và script thiết lập máy trạm tự động cho các dự án Node.js, Redis và Postgres của công ty.',
     specs: {
-      'Bảo mật': 'Amnesic RAM-Only • Chống Forensic',
-      'Checksum': 'SHA-256 xác thực kèm chữ ký PGP',
-      'Bàn giao': 'Link tải tốc độ cao kèm khóa token'
+      'Phiên bản': 'Docker Compose v2.4 • Node 24 LTS',
+      'Xác thực': 'Checksum SHA-256 nội bộ',
+      'Bàn giao': 'Token đăng nhập Registry qua RAM'
     }
   },
   {
     id: 'key-pgp-06',
-    name: 'Cặp Khóa PGP 4096-bit Sinh Trong Lồng Faraday',
+    name: 'Bộ API Key Thanh Toán & Chứng Thư Ký Hợp Đồng Số',
     category: 'crypto',
-    badge: 'Mật Mã Học',
+    badge: 'Tài Chính / API',
     icon: '🗝️',
-    securityLevel: 'Cấp 5 • Faraday Key',
-    currency: 'XMR',
+    securityLevel: 'RAM-Only • Hạn chế',
+    currency: 'Bộ',
     isAuction: true,
     allowBid: true,
     allowBuyNow: true,
-    startingBidXMR: 0.05,
-    currentBidXMR: 0.10,
-    buyNowPrice: 0.10,
+    startingBidXMR: 1,
+    currentBidXMR: 2,
+    buyNowPrice: 2,
     minBidIncrement: 0,
     bidCount: 1,
-    highestBidder: 'Ghost-0D33',
+    highestBidder: 'NV-Fin-05',
     bids: [],
     auctionEndTime: Date.now() + (16200 * 1000),
-    priceXMR: '0.10 XMR',
-    rawPriceXMR: 0.10,
-    approxUSD: '~$18 USD',
-    stock: '10 cặp khóa',
-    desc: 'Cặp khóa riêng tư RSA-4096 / Ed25519 được sinh từ nguồn entropy phần cứng trong phòng cách ly sóng điện từ (Faraday cage), chưa từng chạm mạng Internet.',
+    priceXMR: '2 Bộ',
+    rawPriceXMR: 2,
+    approxUSD: 'Kế toán & Pháp chế',
+    stock: 'Cần xác nhận trưởng nhóm',
+    desc: 'Thông tin khóa API kết nối cổng thanh toán đối tác và chứng thư số ký hợp đồng điện tử, truyền tải tuyệt đối bảo mật không lưu log.',
     specs: {
-      'Độ dài khóa': 'RSA 4096-bit + Ed25519 Subkeys',
-      'Bảo mật': 'Zero Internet Exposure',
-      'Bàn giao': 'Mã hóa gửi qua kênh drop dùng 1 lần'
+      'Bảo mật': 'Mã hóa đầu cuối AES-256-GCM',
+      'Phân quyền': 'Phòng Tài chính & Nhóm Tích hợp',
+      'Bàn giao': 'Mã Drop tự hủy sau khi người nhận mở'
     }
   }
 ];
@@ -356,6 +356,15 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function formatColleagueAlias(raw) {
+  if (!raw) return 'Đồng nghiệp';
+  return String(raw)
+    .replace(/^ID-Mua #/i, 'Thành viên #')
+    .replace(/^ID-Bán #/i, 'Phụ trách #')
+    .replace(/^ID-Mua$/i, 'Thành viên')
+    .replace(/^ID-Bán$/i, 'Phụ trách');
 }
 
 /**
@@ -412,15 +421,15 @@ export function showToast(message, type = 'info') {
    ========================================================================== */
 
 const STORAGE_KEYS = {
-  ALIAS: 'ghost_anon_alias',
-  MARKET_PRODUCTS: 'ghost_market_products_v1',
-  REVOKED_IDS: 'ghost_revoked_product_ids_v1',
-  MY_LISTINGS: 'ghost_my_vendor_listings',
-  ACTIVE_ORDER: 'ghost_active_order_v1',
-  ACTIVE_DEAL: 'ghost_active_blind_deal_v1',
-  CHAT_MESSAGES: 'ghost_chat_messages_v1',
-  ACTIVE_TAB: 'ghost_active_tab_v1',
-  SESSION_SECONDS: 'ghost_session_seconds_v1'
+  ALIAS: 'nexus_member_alias_v2',
+  MARKET_PRODUCTS: 'nexus_workspace_items_v2',
+  REVOKED_IDS: 'nexus_revoked_item_ids_v2',
+  MY_LISTINGS: 'nexus_my_listings_v2',
+  ACTIVE_ORDER: 'nexus_active_handover_v2',
+  ACTIVE_DEAL: 'nexus_active_session_v2',
+  CHAT_MESSAGES: 'nexus_chat_messages_v2',
+  ACTIVE_TAB: 'nexus_active_tab_v2',
+  SESSION_SECONDS: 'nexus_session_seconds_v2'
 };
 
 let revokedProductIds = new Set();
@@ -608,6 +617,20 @@ function saveChatMessagesToStorage() {
   } catch {}
 }
 
+function saveActiveDealToStorage(deal) {
+  if (isPurgingNow) return;
+  try {
+    if (deal) {
+      const json = JSON.stringify(deal);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_DEAL, json);
+      sessionStorage.setItem(STORAGE_KEYS.ACTIVE_DEAL, json);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+      sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_DEAL);
+    }
+  } catch {}
+}
+
 function saveActiveOrderToStorage() {
   if (isPurgingNow) return;
   try {
@@ -653,7 +676,7 @@ function generateEphemeralIdentity(forceNew = false) {
     const randHex = Array.from(crypto.getRandomValues(new Uint8Array(2)))
       .map(b => b.toString(16).padStart(2, '0').toUpperCase())
       .join('');
-    anonymousAlias = `Ghost-${randHex}`;
+    anonymousAlias = `NV-${randHex}`;
   }
 
   try {
@@ -807,7 +830,7 @@ function initTelemetryAndMask() {
   if (regenBtn) {
     regenBtn.addEventListener('click', () => {
       generateEphemeralIdentity(true);
-      showToast(`Đã cấp danh tính mới: ${anonymousAlias}`, 'info');
+      showToast(`Đã cập nhật mã thành viên phiên: ${anonymousAlias}`, 'info');
     });
   }
 
@@ -943,7 +966,7 @@ async function fetchBazaarProducts(silent = true) {
       renderMyListings();
       updateRamMonitor();
       if (!silent) {
-        showToast('Đã đồng bộ và cập nhật danh sách mặt hàng mới nhất từ RAM!', 'success');
+        showToast('Đã cập nhật bảng tin và tài nguyên mới nhất từ RAM!', 'success');
       }
     }
   } catch (err) {
@@ -955,7 +978,7 @@ async function fetchBazaarProducts(silent = true) {
     renderMyListings();
     updateRamMonitor();
     if (!silent) {
-      showToast('Đã đồng bộ và làm mới danh sách mặt hàng hiện tại!', 'success');
+      showToast('Đã làm mới danh sách hạng mục công việc!', 'success');
     }
   }
 }
@@ -1026,7 +1049,7 @@ function initMarketCatalog() {
         filterAndRenderProducts();
         renderMyListings();
         updateRamMonitor();
-        showToast(`📢 Gian hàng vừa có mặt hàng mới: "${prod.name}"!`, 'info');
+        showToast(`📢 Bảng tin công ty vừa có mục mới: "${prod.name}"!`, 'info');
       } else if (msg.type === 'BID_PLACED') {
         const prod = MARKET_PRODUCTS.find(p => p.id === msg.productId);
         if (prod) {
@@ -1048,7 +1071,7 @@ function initMarketCatalog() {
           filterAndRenderProducts();
           renderMyListings();
           updateRamMonitor();
-          showToast(`🔨 "${prod.name}" vừa có lượt trả giá: ${msg.amount} ${msg.currency || 'XMR'} từ ${msg.bidder}!`, 'info');
+          showToast(`✋ "${prod.name}" có đề xuất mới: ${msg.amount} ${msg.currency || 'Giờ'} từ ${msg.bidder}!`, 'info');
         }
       } else if (msg.type === 'REVOKE_PRODUCT') {
         addRevokedProductId(msg.productId);
@@ -1220,17 +1243,17 @@ function renderProducts(products) {
     grid.innerHTML = `
       <div class="empty-recovery-box" style="grid-column: 1 / -1;">
         <span class="empty-icon">🔍</span>
-        <h3 class="empty-title">Không tìm thấy vật phẩm phù hợp trong RAM</h3>
-        <p class="empty-desc">Bạn có thể tìm với từ khóa khác hoặc nhấn "➕ Đăng Bán / Đấu Giá Ngay" để niêm yết bất kỳ món đồ nào bạn muốn!</p>
+        <h3 class="empty-title">Không tìm thấy hạng mục phù hợp</h3>
+        <p class="empty-desc">Hãy thử từ khóa khác hoặc nhấn "➕ Tạo Thông Báo Mới" để chia sẻ tài liệu, tài nguyên với đồng nghiệp.</p>
       </div>
     `;
     return;
   }
 
   grid.innerHTML = products.map(item => {
-    const currency = item.currency || 'XMR';
+    const currency = item.currency || 'Giờ';
     const badgeCategory = escapeHtml(item.category || 'auction');
-    const badgeText = escapeHtml(item.badge || 'Đấu Giá & Mua Ngay');
+    const badgeText = escapeHtml(item.badge || 'Nội Bộ Công Ty');
 
     const endAttr = item.auctionEndTime !== undefined ? item.auctionEndTime : (Date.now() + 3600000);
     const topRightBadge = endAttr === 0
@@ -1239,22 +1262,22 @@ function renderProducts(products) {
 
     const currentVal = item.currentBidXMR ?? item.rawPriceXMR ?? 0;
     const buyNowVal = item.buyNowPrice ?? item.rawPriceXMR ?? currentVal;
-    const priceLabel = 'Giá hiện tại / Đấu giá mở:';
+    const priceLabel = 'Ước lượng / Quy mô hiện tại:';
     const priceDisplay = `${formatPriceNum(currentVal)} ${escapeHtml(currency)}`;
     const priceClass = 'product-price auction-price';
-    const priceMeta = `${item.bidCount || 0} lượt trả giá • Mua đứt: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
+    const priceMeta = `${item.bidCount || 0} đề xuất • Hạn mức: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
 
     const actionButtons = `
-      <button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Đấu giá / Trả giá tự do cho vật phẩm này">
-        <span>🔨</span> Đấu Giá
+      <button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Gửi đề xuất khối lượng hoặc ước lượng cho hạng mục này">
+        <span>✋</span> Đề Xuất
       </button>
-      <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Mua đứt ngay lập tức qua Ký quỹ RAM">
-        <span>🛒</span> Mua
+      <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Tạo phiếu tiếp nhận bàn giao tài nguyên / đầu việc này">
+        <span>📥</span> Tiếp Nhận
       </button>
-      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" title="Chat thương lượng trực tiếp">
+      <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" title="Mở kênh thảo luận nội bộ cho hạng mục này">
         <span>💬</span>
       </button>
-      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" title="Sao chép link mặt hàng này gửi cho khách">
+      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" title="Sao chép liên kết chia sẻ cho đồng nghiệp">
         <span>🔗</span>
       </button>
     `;
@@ -1329,7 +1352,7 @@ function renderProducts(products) {
       const shareUrl = `${window.location.origin}${window.location.pathname}#item=${encodeURIComponent(prodId)}`;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(shareUrl).then(() => {
-          showToast(`Đã sao chép link mặt hàng "${prod ? prod.name : prodId}" vào bộ đệm!`, 'success');
+          showToast(`Đã sao chép liên kết nội bộ "${prod ? prod.name : prodId}"`, 'success');
         }).catch(() => {});
       }
     });
@@ -1364,7 +1387,7 @@ function updateOrderPreviewCard() {
       </div>
     </div>
     <div class="preview-price-row">
-      <span class="detail-label">Tổng thanh toán ký quỹ:</span>
+      <span class="detail-label">Quy mô / Số lượng tiếp nhận:</span>
       <span class="preview-price-val">${escapeHtml(product.priceXMR)}</span>
     </div>
     <div class="product-specs" style="margin-bottom: 0;">
@@ -1387,7 +1410,7 @@ function initiateOrderForProduct(productId) {
     updateOrderPreviewCard();
   }
   switchTab('tab-order');
-  showToast('Đã nạp sản phẩm vào cổng Ký quỹ & Đơn hàng!', 'info');
+  showToast('Đã nạp hạng mục vào Phiếu Bàn Giao Nội Bộ!', 'info');
 }
 
 function initiateChatForProduct(productName, productId = '') {
@@ -1402,7 +1425,7 @@ function initiateChatForProduct(productName, productId = '') {
 
   const input = document.getElementById('chat-input-field');
   if (input) {
-    input.value = `Chào shop, tôi muốn mua sản phẩm "${productName}". Vui lòng hướng dẫn bàn giao qua Ký quỹ RAM!`;
+    input.value = `Chào bạn, mình cần trao đổi và tiếp nhận hạng mục "${productName}". Nhờ bạn chia sẻ thông tin bàn giao qua kênh này nhé!`;
     input.focus();
   }
 }
@@ -1415,7 +1438,7 @@ function generateRoomCode() {
   const rand = Array.from(crypto.getRandomValues(new Uint8Array(2)))
     .map(b => b.toString(16).padStart(2, '0').toUpperCase())
     .join('');
-  return `GHOST-${rand}`;
+  return `TEAM-${rand}`;
 }
 
 function getRoomShareableLink(code) {
@@ -1441,14 +1464,14 @@ function updateP2PStatusUI(state, extraInfo = null) {
 
   if (state === 'disconnected') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot disconnected';
-    if (statusText) statusText.textContent = '🔴 Chế độ Bot Tự Động (Chưa kết nối P2P)';
+    if (statusText) statusText.textContent = '🔴 Chế độ Trợ Lý (Chưa nối máy P2P)';
     if (setupRow) setupRow.style.display = 'flex';
     if (activeRow) activeRow.style.display = 'none';
 
-    if (avatarText) avatarText.textContent = 'M';
-    if (peerName) peerName.textContent = 'Merchant-Node-01';
+    if (avatarText) avatarText.textContent = 'N';
+    if (peerName) peerName.textContent = 'Trợ Lý Điều Phối Nội Bộ';
     if (peerBadge) {
-      peerBadge.textContent = '✓ ĐÃ XÁC MINH PGP';
+      peerBadge.textContent = '✓ ĐÃ XÁC THỰC NỘI BỘ';
       peerBadge.className = 'verified-vendor-badge';
     }
     if (peerStat) peerStat.textContent = '★ 5.0 (98 giao dịch)';
@@ -1458,7 +1481,7 @@ function updateP2PStatusUI(state, extraInfo = null) {
     }
   } else if (state === 'hosting') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot waiting';
-    if (statusText) statusText.textContent = `🟡 Đang mở phòng [${extraInfo}] • Chờ khách mở link kết nối...`;
+    if (statusText) statusText.textContent = `🟡 Đang mở phòng họp [${extraInfo}] • Chờ đồng nghiệp vào link...`;
     if (setupRow) setupRow.style.display = 'none';
     if (activeRow) activeRow.style.display = 'flex';
     if (roomCodeDisplay) roomCodeDisplay.textContent = extraInfo;
@@ -1470,11 +1493,11 @@ function updateP2PStatusUI(state, extraInfo = null) {
     if (roomCodeDisplay) roomCodeDisplay.textContent = extraInfo;
   } else if (state === 'connected') {
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
-    if (statusText) statusText.textContent = '🟢 ĐÃ KẾT NỐI P2P TRỰC TIẾP (Máy ↔ Máy • Zero-Server • Không Lưu Log)';
+    if (statusText) statusText.textContent = '🟢 ĐÃ NỐI MÁY P2P NỘI BỘ (Máy ↔ Máy • Không Qua Máy Chủ)';
     if (setupRow) setupRow.style.display = 'none';
     if (activeRow) activeRow.style.display = 'flex';
 
-    const partnerName = extraInfo?.peerAlias || p2pPeerAlias || 'Khách / Đối Tác P2P';
+    const partnerName = extraInfo?.peerAlias || p2pPeerAlias || 'Đồng nghiệp P2P';
     if (avatarText) avatarText.textContent = partnerName.charAt(0).toUpperCase();
     if (peerName) peerName.textContent = partnerName;
     if (peerBadge) {
@@ -1515,13 +1538,13 @@ function startHostingP2PRoom(customCode = null) {
 
   peerInstance.on('open', () => {
     updateP2PStatusUI('hosting', roomCode);
-    showToast(`Đã mở phòng [${roomCode}]! Hãy sao chép link gửi cho khách để kết nối trực tiếp.`, 'success');
+    showToast(`Đã mở phòng họp P2P [${roomCode}]! Gửi link cho đồng nghiệp để trao đổi trực tiếp.`, 'success');
 
     inMemoryChatMessages.push({
       author: 'HỆ THỐNG P2P',
       role: 'system',
       time: getCurrentTimeStr(),
-      text: `🔔 Phòng chat mật [${roomCode}] đã được khởi tạo thành công trên RAM. Hãy sao chép link phòng và gửi cho khách hoặc đối tác. Khi đối tác mở link, hai thiết bị sẽ tự động bắt tay P2P kết nối trực tiếp!`
+      text: `🔔 Phòng thảo luận nội bộ P2P [${roomCode}] đã sẵn sàng trên RAM. Gửi link mời cho đồng nghiệp để trao đổi trực tiếp máy-tới-máy!`
     });
     renderChatMessages();
     updateRamMonitor();
@@ -1687,7 +1710,7 @@ function setupP2PConnection(conn) {
       renderMyListings();
       updateRamMonitor();
       playNotificationChime();
-      showToast(`🔔 Đối tác P2P vừa niêm yết: "${prod.name}"!`, 'info');
+      showToast(`🔔 Đồng nghiệp vừa đăng mục mới: "${prod.name}"!`, 'info');
     } else if (packet.type === 'market_sync_batch' && Array.isArray(packet.products)) {
       MARKET_PRODUCTS = mergeProductCatalogs(MARKET_PRODUCTS, packet.products);
       saveMarketProductsToStorage();
@@ -1717,7 +1740,7 @@ function setupP2PConnection(conn) {
         renderMyListings();
         updateRamMonitor();
         playNotificationChime();
-        showToast(`🔨 Đối tác P2P vừa trả giá: ${packet.amount} ${packet.currency || 'XMR'} cho "${prod.name}"!`, 'info');
+        showToast(`✋ Đồng nghiệp vừa gửi đề xuất ${packet.amount} ${packet.currency || ''} cho "${prod.name}"`, 'info');
       }
     } else if (packet.type === 'market_item_revoked') {
       addRevokedProductId(packet.productId);
@@ -1826,7 +1849,7 @@ function getActiveThread() {
 
 function loadChatThreadsFromStorage() {
   try {
-    const raw = sessionStorage.getItem('ghost_messenger_threads_v2');
+    const raw = sessionStorage.getItem('nexus_threads_v3');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1836,7 +1859,7 @@ function loadChatThreadsFromStorage() {
   } catch {}
 
   try {
-    const savedId = sessionStorage.getItem('ghost_active_thread_v2');
+    const savedId = sessionStorage.getItem('nexus_active_thread_v3');
     if (savedId && chatThreads.some(t => t.id === savedId)) {
       activeThreadId = savedId;
     }
@@ -1848,20 +1871,20 @@ function loadChatThreadsFromStorage() {
         id: 'thread-merchant-general',
         dealId: null,
         productId: 'general',
-        productName: 'Tư vấn chung',
-        peerAlias: 'ID-Bán #BOT01',
+        productName: 'Kênh chung toàn công ty',
+        peerAlias: 'Trợ Lý Điều Phối #BOT01',
         peerRole: 'merchant',
-        avatarText: 'B',
-        lastMessage: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar...',
+        avatarText: 'N',
+        lastMessage: 'Kênh trao đổi nội bộ đã sẵn sàng trên RAM (AES-256-GCM)...',
         lastTime: getCurrentTimeStr(),
         unreadCount: 0,
         messages: [
           {
             id: 'msg-init-1',
-            author: 'ID-Bán #BOT01',
+            author: 'Trợ Lý Điều Phối',
             role: 'merchant',
             time: getCurrentTimeStr(),
-            text: 'Xác thực E2EE hoàn tất. Chào bạn, tôi là đại diện bán hàng tự động của Ghost Bazaar. Toàn bộ phiên đàm thoại này đang nằm trên RAM khả biến máy khách, được mã hóa bằng AES-256-GCM và sẽ tự động xóa sạch hoàn toàn khi bạn rời trang hoặc nhấn ESC.'
+            text: 'Chào đồng nghiệp! Kênh thảo luận nội bộ của Nexus Workspace đã được kích hoạt. Mọi tin nhắn và thông tin nhạy cảm (mật khẩu Server, API Key, cấu hình) trao đổi tại đây chỉ lưu tạm trong RAM, được mã hóa AES-256-GCM và tự động xóa sạch khi kết thúc phiên.'
           }
         ]
       }
@@ -1877,9 +1900,9 @@ function saveChatThreadsToStorage() {
   if (isPurgingNow) return;
   try {
     const json = JSON.stringify(chatThreads);
-    sessionStorage.setItem('ghost_messenger_threads_v2', json);
+    sessionStorage.setItem('nexus_threads_v3', json);
     if (activeThreadId) {
-      sessionStorage.setItem('ghost_active_thread_v2', activeThreadId);
+      sessionStorage.setItem('nexus_active_thread_v3', activeThreadId);
     }
   } catch {}
 }
@@ -1938,8 +1961,8 @@ function renderMessengerThreads() {
     const unreadHtml = t.unreadCount > 0 ? `<span class="thread-unread-pill">${t.unreadCount}</span>` : '';
     const dealBadge = t.dealId ? `<span style="color: #34d399; font-size: 0.65rem; font-family: var(--font-mono); margin-left: 4px;">[${t.dealId}]</span>` : '';
     const subBadgeText = t.dealId
-      ? `${t.buyerBlindId || 'ID-Mua'} ↔ ${t.sellerBlindId || 'ID-Bán'}`
-      : `📦 ${t.productName || 'Tư vấn chung'}`;
+      ? `${formatColleagueAlias(t.buyerBlindId)} ↔ ${formatColleagueAlias(t.sellerBlindId)}`
+      : `📌 ${t.productName || 'Kênh chung'}`;
 
     return `
       <div class="messenger-thread-item ${isActive ? 'active' : ''}" data-thread-id="${escapeHtml(t.id)}">
@@ -1949,7 +1972,7 @@ function renderMessengerThreads() {
         </div>
         <div class="thread-content">
           <div class="thread-top-row">
-            <span class="thread-peer-name">${escapeHtml(t.peerAlias || 'ID-Ẩn-Danh')}${dealBadge}</span>
+            <span class="thread-peer-name">${escapeHtml(formatColleagueAlias(t.peerAlias) || 'Đồng nghiệp')}${dealBadge}</span>
             <span class="thread-time">${escapeHtml(t.lastTime || '')}</span>
           </div>
           <div>
@@ -2001,11 +2024,11 @@ function updateActiveThreadHeader() {
   const pulseDot = document.getElementById('p2p-pulse-dot');
 
   if (avatarText) avatarText.textContent = (thread.avatarText || thread.peerAlias || 'M').charAt(0).toUpperCase();
-  if (peerName) peerName.textContent = thread.peerAlias || 'ID-Bán #BOT01';
+  if (peerName) peerName.textContent = formatColleagueAlias(thread.peerAlias) || 'Trợ Lý Điều Phối';
 
   if (thread.dealId) {
-    const myId = thread.myBlindId || (getMyDealRole(thread) === 'buyer' ? thread.buyerBlindId : thread.sellerBlindId) || 'ID-Ẩn-Danh';
-    const pairLabel = `${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
+    const myId = formatColleagueAlias(thread.myBlindId || (getMyDealRole(thread) === 'buyer' ? thread.buyerBlindId : thread.sellerBlindId) || 'Thành viên');
+    const pairLabel = `${formatColleagueAlias(thread.buyerBlindId)} ↔ ${formatColleagueAlias(thread.sellerBlindId)}`;
     if (prodTag) prodTag.textContent = pairLabel;
     if (peerBadge) {
       peerBadge.textContent = `Bạn: ${myId}`;
@@ -2014,12 +2037,12 @@ function updateActiveThreadHeader() {
     if (statusText) statusText.textContent = `🟢 ${pairLabel} • [${thread.dealId}]`;
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot connected';
   } else {
-    if (prodTag) prodTag.textContent = 'ID-Mua ↔ ID-Bán #BOT01';
+    if (prodTag) prodTag.textContent = thread.productName || 'Trao đổi chung';
     if (peerBadge) {
-      peerBadge.textContent = '✓ ĐÃ XÁC MINH PGP';
+      peerBadge.textContent = '✓ ĐÃ XÁC THỰC NỘI BỘ';
       peerBadge.className = 'verified-vendor-badge';
     }
-    if (statusText) statusText.textContent = '🔴 Chế độ Bot Tự Động (Chưa kết nối P2P)';
+    if (statusText) statusText.textContent = '🔴 Chế độ Trợ Lý (Chưa nối máy P2P)';
     if (pulseDot) pulseDot.className = 'p2p-pulse-dot disconnected';
   }
 
@@ -2031,9 +2054,9 @@ function updateActiveThreadHeader() {
   if (thread.dealId) {
     if (banner) banner.style.display = 'flex';
     if (codeBadge) codeBadge.textContent = thread.dealId;
-    if (prodLabel) prodLabel.textContent = `${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
+    if (prodLabel) prodLabel.textContent = thread.productName || 'Công việc nội bộ';
     const blindBadge = document.getElementById('auto-deal-blind-badge');
-    if (blindBadge) blindBadge.textContent = `🛡️ ${thread.buyerBlindId || 'ID-Mua'} ↔ ${thread.sellerBlindId || 'ID-Bán'}`;
+    if (blindBadge) blindBadge.textContent = `🛡️ ${formatColleagueAlias(thread.buyerBlindId)} ↔ ${formatColleagueAlias(thread.sellerBlindId)}`;
   } else {
     if (banner) banner.style.display = 'none';
   }
@@ -2119,7 +2142,7 @@ async function startAutoBlindDeal(productName, productId = '') {
     myBlindId: createdDeal.buyerBlindId,
     peerAlias: createdDeal.sellerBlindId || 'ID-Bán',
     peerRole: 'merchant',
-    avatarText: 'B',
+    avatarText: 'N',
     lastMessage: `${createdDeal.buyerBlindId} ↔ ${createdDeal.sellerBlindId}`,
     lastTime: getCurrentTimeStr(),
     unreadCount: 0,
@@ -2153,7 +2176,7 @@ async function startAutoBlindDeal(productName, productId = '') {
   renderChatMessages();
   updateFloatingMessengerBadge();
 
-  showToast(`🔗 Đã kết nối [${createdDeal.dealId}]: ${createdDeal.buyerBlindId} ↔ ${createdDeal.sellerBlindId}`, 'success');
+  showToast(`💬 Đã mở kênh thảo luận [${createdDeal.dealId}] cho "${productName}"`, 'success');
   return createdDeal;
 }
 
@@ -2214,7 +2237,7 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
       seenDealNotifications.add(deal.dealId);
       if (!isInitiator) {
         playNotificationChime();
-        showToast(`🔔 Kết nối mới [${deal.dealId}]: ${deal.buyerBlindId} ↔ ${deal.sellerBlindId}`, 'info');
+        showToast(`💬 Kênh trao đổi mới [${deal.dealId}]: ${deal.productName || 'Công việc'}`, 'info');
       }
     }
   } else {
@@ -2271,7 +2294,7 @@ function applyIncomingBlindDealState(deal, isInitiator = false) {
           matchingThread.unreadCount = (matchingThread.unreadCount || 0) + otherMessages.length;
         }
         playNotificationChime();
-        showToast(`💬 Tin nhắn mới từ ${matchingThread.peerAlias}`, 'info');
+        showToast(`💬 Tin nhắn mới từ ${formatColleagueAlias(matchingThread.peerAlias)}`, 'info');
       }
     }
   }
@@ -2418,9 +2441,9 @@ async function confirmBlindDealPayment() {
     author: 'KÝ QUỸ RAM (ESCROW)',
     role: 'system',
     time: getCurrentTimeStr(),
-    text: `💸 [ĐÃ NẠP KÝ QUỸ & GỠ MẶT HÀNG KHỎI CHỢ]: Người mua ẩn danh đã thanh toán cho phiên [${thread.dealId}]. Mặt hàng "${prodName}" đã tự động biến mất khỏi gian hàng công khai! Nhấn "✅ Hoàn Tất Mua Hàng & Thanh Toán" để tự hủy đoạn chat này!`
+    text: `📋 [ĐÃ TIẾP NHẬN BÀN GIAO]: Đồng nghiệp đã xác nhận tiếp nhận cho phiên [${thread.dealId}]. Hạng mục "${prodName}" đã được rút khỏi bảng tin chung! Khi bàn giao xong, nhấn "✅ Hoàn Tất Bàn Giao (Tự Hủy Chat)" để xóa sạch lịch sử khỏi RAM.`
   });
-  thread.lastMessage = 'Đã thanh toán & gỡ hàng khỏi chợ';
+  thread.lastMessage = 'Đã tiếp nhận bàn giao';
   thread.lastTime = getCurrentTimeStr();
 
   saveChatThreadsToStorage();
@@ -2436,7 +2459,7 @@ async function confirmBlindDealPayment() {
     } catch {}
   }
 
-  showToast(`💸 Đã xác nhận người mua cho "${prodName}"! Mặt hàng đã tự động biến mất khỏi gian hàng.`, 'success');
+  showToast(`📋 Đã xác nhận tiếp nhận "${prodName}"! Mục này đã được lưu kho nội bộ.`, 'success');
 }
 
 async function completeDealAndAutoBurn() {
@@ -2524,7 +2547,7 @@ function executeLocalDealAutoBurn(dealId, isRemoteTrigger = false, soldProductId
 
   playNotificationChime();
   showToast(
-    `🔥 Đã hoàn tất mua hàng! Mặt hàng và toàn bộ đoạn chat [${burnedCode}] đã TỰ ĐỘNG BIẾN MẤT khỏi RAM cả 2 bên!`,
+    `✅ Đã hoàn tất bàn giao! Hạng mục và lịch sử hội thoại [${burnedCode}] đã tự động xóa sạch khỏi RAM cả 2 bên.`,
     'success'
   );
 }
@@ -2586,7 +2609,7 @@ function initEncryptedChat() {
   // New Thread CTA
   if (newThreadBtn) {
     newThreadBtn.addEventListener('click', () => {
-      const topic = prompt('Nhập tên vật phẩm hoặc chủ đề muốn đàm thoại:', 'Vật phẩm đấu giá');
+      const topic = prompt('Nhập tên đầu việc hoặc chủ đề cần thảo luận:', 'Họp nhóm dự án');
       if (topic && topic.trim()) {
         startAutoBlindDeal(topic.trim(), 'custom');
       }
@@ -2625,7 +2648,7 @@ function initEncryptedChat() {
   if (btnHost) {
     btnHost.addEventListener('click', () => {
       const roomCode = generateRoomCode();
-      hostP2PRoom(roomCode);
+      startHostingP2PRoom(roomCode);
     });
   }
 
@@ -2645,10 +2668,10 @@ function initEncryptedChat() {
 
   if (btnCopy) {
     btnCopy.addEventListener('click', () => {
-      if (p2pRoomCode) {
-        const link = getRoomShareableLink(p2pRoomCode);
+      if (currentRoomCode) {
+        const link = getRoomShareableLink(currentRoomCode);
         navigator.clipboard.writeText(link).then(() => {
-          showToast('Đã sao chép link phòng P2P! Gửi link này cho khách.', 'success');
+          showToast('Đã sao chép link phòng họp P2P! Gửi cho đồng nghiệp để tham gia.', 'success');
         });
       }
     });
@@ -2728,7 +2751,7 @@ function initEncryptedChat() {
         if (typing) typing.style.display = 'none';
         const reply = generateMerchantReply(text);
         thread.messages.push({
-          author: thread.peerAlias || 'Merchant-Node-01',
+          author: thread.peerAlias || 'Trợ Lý Điều Phối',
           role: 'merchant',
           time: getCurrentTimeStr(),
           text: reply
@@ -2814,7 +2837,7 @@ function renderChatMessages() {
     }
 
     if (msg.role === 'buyer') {
-      const myAuthor = msg.author || thread?.myBlindId || 'ID-Mua';
+      const myAuthor = formatColleagueAlias(msg.author || thread?.myBlindId || 'Thành viên');
       return `
         <div class="chat-msg buyer">
           <div class="msg-bubble">
@@ -2829,7 +2852,7 @@ function renderChatMessages() {
     return `
       <div class="chat-msg merchant">
         <div class="msg-bubble">
-          <div class="msg-author-tag">${escapeHtml(msg.author || thread?.peerAlias || 'ID-Bán')}</div>
+          <div class="msg-author-tag">${escapeHtml(formatColleagueAlias(msg.author || thread?.peerAlias || 'Phụ trách'))}</div>
           <div class="msg-text">${escapeHtml(msg.text)}</div>
           <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
         </div>
@@ -2843,23 +2866,23 @@ function renderChatMessages() {
 function generateMerchantReply(userMsg) {
   const lower = userMsg.toLowerCase();
 
-  if (lower.includes('monero') || lower.includes('xmr') || lower.includes('thanh toán')) {
-    return 'Giao dịch tại Ghost Bazaar sử dụng 100% Monero (XMR) để bảo đảm tính không thể truy vết (Stealth Addresses & RingCT). Khi bạn tạo đơn hàng, hệ thống sẽ phát sinh địa chỉ ví tạm thời dùng 1 lần trong RAM.';
+  if (lower.includes('tiến độ') || lower.includes('phụ trách')) {
+    return 'Hạng mục này hiện đang được xử lý bởi nhóm phụ trách liên quan. Bạn có thể sang tab "Bàn Giao & Cấp Phát Mật" để tạo phiếu tiếp nhận và lấy mã Token đối chiếu.';
   }
 
-  if (lower.includes('drop') || lower.includes('bàn giao') || lower.includes('nhận hàng')) {
-    return 'Các mặt hàng số (cấu hình mạng, chứng chỉ, whitepaper, khóa PGP) được đóng gói và mã hóa AES-256-GCM thành mã Drop ID dùng 1 lần (Burn-After-Reading). Ngay khi bạn tải về, dữ liệu sẽ tự hủy hoàn toàn trên máy chủ.';
+  if (lower.includes('drop') || lower.includes('bàn giao') || lower.includes('mật khẩu')) {
+    return 'Mọi thông tin nhạy cảm (file .env, API Key, cấu hình VPN, tài liệu nội bộ) đều được mã hóa AES-256-GCM dưới dạng Drop Token tự hủy 1 lần. Ngay khi đồng nghiệp mở xem, dữ liệu sẽ biến mất khỏi RAM máy chủ.';
   }
 
-  if (lower.includes('pgp') || lower.includes('xác minh') || lower.includes('chữ ký')) {
-    return 'Dấu vân tay khóa PGP chính thức của Merchant Node: [4A8F C310 998D E21B 77A4 0019 FF45 8891 00C2 91BC]. Bạn có thể yêu cầu gói hàng được mã hóa riêng cho PGP Public Key của bạn ở tab Đơn Hàng.';
+  if (lower.includes('pgp') || lower.includes('quyền') || lower.includes('xác minh')) {
+    return 'Dấu vân tay chứng thư nội bộ hiện hành: [4A8F C310 998D E21B 77A4 0019 FF45 8891 00C2 91BC]. Bạn có thể gắn PGP Public Key của phòng ban khi tạo Phiếu Bàn Giao.';
   }
 
-  if (lower.includes('zero-log') || lower.includes('ip') || lower.includes('lưu')) {
-    return 'Hệ thống vận hành theo nguyên tắc Zero-Log triệt để: Máy chủ không chạy Apache/Nginx access logs, không lưu địa chỉ IP, không ghi ổ đĩa. Mọi tin nhắn này sẽ biến mất vĩnh viễn ngay khi bạn đóng tab hoặc nhấn ESC.';
+  if (lower.includes('zero-log') || lower.includes('log') || lower.includes('lưu')) {
+    return 'Hệ thống làm việc nội bộ vận hành hoàn toàn trên RAM khả biến (Zero-Log): không lưu lịch sử xuống ổ đĩa cứng. Toàn bộ tin nhắn sẽ tự xóa sạch khi đóng phiên hoặc nhấn ESC.';
   }
 
-  return `Đã nhận yêu cầu: "${userMsg}". Merchant-Node-01 đã sẵn sàng xử lý đơn hàng ẩn danh của bạn qua hợp đồng ký quỹ tạm thời (RAM Escrow). Bạn có thể sang tab "Đơn Hàng" để khởi tạo đơn mua.`;
+  return `Đã ghi nhận tin nhắn: "${userMsg}". Bạn có thể mời đồng nghiệp vào phòng họp P2P trực tiếp máy-tới-máy ở góc phải, hoặc chuyển sang tab "Bàn Giao" để tạo phiếu tiếp nhận tài nguyên.`;
 }
 
 function getCurrentTimeStr() {
@@ -2925,13 +2948,13 @@ function initOrderSystem() {
       const orderHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
         .map(b => b.toString(16).padStart(2, '0').toUpperCase())
         .join('');
-      const orderId = `ORD-XMR-${orderHex}`;
+      const orderId = `HDV-RAM-${orderHex}`;
 
-      const xmrPrefix = '888tNkZrPN6';
+      const xmrPrefix = 'TKN-NEXUS-';
       const xmrSuffix = Array.from(crypto.getRandomValues(new Uint8Array(12)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-      const xmrAddress = `${xmrPrefix}${xmrSuffix}99XMR`;
+      const xmrAddress = `${xmrPrefix}${xmrSuffix.slice(0, 12).toUpperCase()}`;
 
       activeOrder = {
         orderId,
@@ -2962,7 +2985,7 @@ function initOrderSystem() {
         }).catch(() => {});
       });
       removeSoldProductFromMarket(product.id, product.name);
-      showToast(`Đã mua "${product.name}"! Mặt hàng đã tự động biến mất khỏi chợ & kênh chat ẩn danh đã kết nối!`, 'success');
+      showToast(`Đã tạo phiếu tiếp nhận "${product.name}"! Kênh thảo luận nội bộ đã được mở.`, 'success');
     });
   }
 
@@ -3001,7 +3024,7 @@ function initOrderSystem() {
       const resultBox = document.getElementById('order-result-box');
       if (resultBox) resultBox.style.display = 'none';
       updateRamMonitor();
-      showToast('Đã hủy và xóa sạch đơn hàng khỏi bộ nhớ RAM!', 'info');
+      showToast('Đã hủy phiếu bàn giao và xóa sạch khỏi RAM!', 'info');
     });
   }
 
@@ -3010,7 +3033,7 @@ function initOrderSystem() {
       const addrInput = document.getElementById('receipt-xmr-address');
       if (addrInput && navigator.clipboard) {
         navigator.clipboard.writeText(addrInput.value).then(() => {
-          showToast('Đã sao chép địa chỉ ví Monero (XMR) vào bộ đệm!', 'success');
+          showToast('Đã sao chép mã Token bàn giao nội bộ!', 'success');
         });
       }
     });
@@ -3024,7 +3047,7 @@ function initOrderSystem() {
       if (qrBox && qrOverlay) {
         qrBox.innerHTML = '';
         const qr = qrcode(0, 'M');
-        qr.addData(`monero:${activeOrder.xmrAddress}?tx_amount=${activeOrder.product.priceXMR.replace(' XMR', '')}`);
+        qr.addData(`nexus-handover:${activeOrder.orderId}?token=${activeOrder.xmrAddress}`);
         qr.make();
         qrBox.innerHTML = qr.createSvgTag(6, 0);
         qrOverlay.style.display = 'flex';
@@ -3082,7 +3105,7 @@ function displayOrderResult(order) {
       activeOrder = null;
       resultBox.style.display = 'none';
       updateRamMonitor();
-      showToast('Đơn hàng đã tự hủy khỏi RAM do hết thời gian hiệu lực (TTL)!', 'error');
+      showToast('Phiếu bàn giao đã hết hạn TTL và tự hủy khỏi RAM!', 'error');
     }
   }, 1000);
 }
@@ -3148,13 +3171,10 @@ function updateAuctionCountdowns() {
   });
 }
 
-function estimateUSDString(val, currency = 'XMR') {
+function estimateUSDString(val, currency = 'Giờ') {
   const num = Number(val) || 0;
-  if (currency === 'USD' || currency === 'USDT') return `~$${formatPriceNum(num)} USD`;
-  if (currency === 'BTC') return `~$${Math.round(num * 68000).toLocaleString('en-US')} USD`;
-  if (currency === 'ETH') return `~$${Math.round(num * 3200).toLocaleString('en-US')} USD`;
   if (currency === 'VNĐ') return `~${Math.round(num).toLocaleString('en-US')} VNĐ`;
-  return `~$${Math.round(num * 165).toLocaleString('en-US')} USD`;
+  return `${formatPriceNum(num)} ${currency} • Nội bộ công ty`;
 }
 
 function initAuctionBidding() {
@@ -3317,7 +3337,7 @@ function initAuctionBidding() {
         } catch {}
       }
 
-      showToast(`Đã ghi nhận mức giá ${formatPriceNum(bidVal)} ${currency} cho "${product.name}"!`, 'success');
+      showToast(`Đã gửi đề xuất ${formatPriceNum(bidVal)} ${currency} cho "${product.name}"!`, 'success');
       closeModal();
       filterAndRenderProducts();
       renderMyListings();
@@ -3356,11 +3376,11 @@ function openBidModal(productId) {
       </div>
       <div class="bid-info-price-grid">
         <div class="bid-price-cell">
-          <span class="detail-label">Giá hiện tại / Cao nhất:</span>
+          <span class="detail-label">Mức đề xuất hiện tại:</span>
           <span style="font-family: var(--font-mono); font-weight: 700; color: #fbbf24;">${formatPriceNum(currentBid)} ${escapeHtml(currency)}</span>
         </div>
         <div class="bid-price-cell">
-          <span class="detail-label">Mua đứt ngay / Dẫn đầu:</span>
+          <span class="detail-label">Hạn mức / Người đề xuất:</span>
           <span style="font-family: var(--font-mono); font-weight: 600; color: #38bdf8;">${formatPriceNum(buyNowVal)} ${escapeHtml(currency)} • ${escapeHtml(product.highestBidder || 'Mở tự do')}</span>
         </div>
       </div>
@@ -3376,14 +3396,14 @@ function openBidModal(productId) {
 
   if (hintEl) {
     hintEl.textContent = minStep > 0
-      ? `Bước giá tối thiểu: +${minStep} ${currency} (Gợi ý: ${suggestedBid.toFixed(2)} ${currency})`
-      : `Không giới hạn bước giá — Bạn có thể nhập bất kỳ mức giá đề xuất nào bằng ${currency}!`;
+      ? `Mức điều chỉnh tối thiểu: +${minStep} ${currency} (Gợi ý: ${suggestedBid.toFixed(2)} ${currency})`
+      : `Tự do đề xuất — Nhập ước lượng của bạn theo đơn vị ${currency}`;
   }
 
   if (feedEl) {
     const bids = product.bids || [];
     if (bids.length === 0) {
-      feedEl.innerHTML = '<div style="font-size: 0.76rem; color: #94a3b8; font-style: italic;">Chưa có lượt trả giá nào. Bạn có thể mở bát với bất kỳ mức giá nào!</div>';
+      feedEl.innerHTML = '<div style="font-size: 0.76rem; color: #94a3b8; font-style: italic;">Chưa có đề xuất nào từ các phòng ban. Hãy là người đầu tiên đóng góp ước lượng!</div>';
     } else {
       feedEl.innerHTML = bids.map(b => `
         <div class="bid-feed-item">
@@ -3408,13 +3428,13 @@ let myVendorListings = [];
 let currentListingMode = 'hybrid';
 
 const CATEGORY_DEFAULT_BADGES = {
-  physical: 'Hàng Vật Lý',
-  digital: 'Tài Sản Số',
-  service: 'Dịch Vụ',
-  hardware: 'Phần Cứng',
-  network: 'Mạng Lưới',
-  crypto: 'Mật Mã Học',
-  audit: 'Audit & PoC'
+  physical: 'Thiết Bị VP',
+  digital: 'Tài Nguyên Số',
+  service: 'Phối Hợp Nhóm',
+  hardware: 'DevOps & Phần Cứng',
+  network: 'Hạ Tầng Mạng',
+  crypto: 'API & Mật Khẩu',
+  audit: 'Tài Liệu Audit'
 };
 
 function initVendorDesk() {
@@ -3516,7 +3536,7 @@ function initVendorDesk() {
       if (customBadgeInp) customBadgeInp.value = '';
       if (descInp) descInp.value = '';
       updateVendorLivePreview();
-      showToast('Đã làm mới biểu mẫu niêm yết tự do', 'info');
+      showToast('Đã làm mới biểu mẫu đăng thông báo nội bộ', 'info');
     });
   }
 
@@ -3533,15 +3553,15 @@ function updateVendorLivePreview() {
   const previewContainer = document.getElementById('live-vendor-preview');
   if (!previewContainer) return;
 
-  const name = (document.getElementById('listing-name')?.value || '').trim() || 'Bất kỳ vật phẩm / Tài sản tự do của bạn';
+  const name = (document.getElementById('listing-name')?.value || '').trim() || 'Tiêu đề thông báo / Tài nguyên công ty';
   const category = document.getElementById('listing-category')?.value || 'physical';
   const customBadge = (document.getElementById('listing-custom-badge')?.value || '').trim();
-  const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '💎';
-  const currency = document.getElementById('listing-currency')?.value || 'XMR';
-  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Escrow 2 Chiều • Không Giới Hạn';
-  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mọi mặt hàng vật lý, tài sản số, dịch vụ hoặc đồ sưu tầm đều có thể vừa bán thẳng vừa nhận đấu giá tự do...';
-  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Mới 100% / Chính chủ';
-  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Giao hàng ẩn danh / Mã Drop tự hủy';
+  const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '📌';
+  const currency = document.getElementById('listing-currency')?.value || 'Giờ';
+  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Nội bộ • Ưu tiên Trung bình';
+  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mô tả chi tiết nội dung công việc, tài liệu chia sẻ hoặc yêu cầu phối hợp giữa các phòng ban...';
+  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Phòng Kỹ Thuật / IT';
+  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Token RAM / Thảo luận trực tiếp';
 
   const fixedPrice = parseFloat(document.getElementById('listing-price-xmr')?.value || '1.00') || 0;
   const startBid = parseFloat(document.getElementById('listing-start-bid')?.value || '0.50') || 0;
@@ -3557,7 +3577,7 @@ function updateVendorLivePreview() {
           <span class="product-badge ${escapeHtml(category)}">${escapeHtml(badgeTitle)}</span>
           <span class="security-level-tag">${escapeHtml(secTag)}</span>
         </div>
-        <span class="auction-countdown-pill" data-end="0">♾️ <span class="countdown-val">BÁN & ĐẤU GIÁ</span></span>
+        <span class="auction-countdown-pill" data-end="0">♾️ <span class="countdown-val">PHỐI HỢP NỘI BỘ</span></span>
       </div>
 
       <div class="product-title-row">
@@ -3569,7 +3589,7 @@ function updateVendorLivePreview() {
 
       <div class="product-specs">
         <div class="spec-row">
-          <span class="spec-key"><span class="spec-bullet">▸</span>Thuộc tính:</span>
+          <span class="spec-key"><span class="spec-bullet">▸</span>Phụ trách:</span>
           <span class="spec-val">${escapeHtml(spec1)}</span>
         </div>
         <div class="spec-row">
@@ -3580,13 +3600,13 @@ function updateVendorLivePreview() {
 
       <div class="product-card-footer">
         <div class="product-price-block">
-          <span class="product-price-label">Giá hiện tại / Đấu giá mở:</span>
+          <span class="product-price-label">Ước lượng / Quy mô hiện tại:</span>
           <span class="product-price auction-price">${formatPriceNum(displayPrice)} ${escapeHtml(currency)}</span>
-          <span class="product-bid-meta">Mua đứt: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}</span>
+          <span class="product-bid-meta">Hạn mức: ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}</span>
         </div>
         <div class="product-actions">
-          <button type="button" class="bid-btn" style="pointer-events: none;"><span>🔨</span> Đấu Giá</button>
-          <button type="button" class="buy-btn" style="pointer-events: none;"><span>🛒</span> Mua</button>
+          <button type="button" class="bid-btn" style="pointer-events: none;"><span>✋</span> Đề Xuất</button>
+          <button type="button" class="buy-btn" style="pointer-events: none;"><span>📥</span> Tiếp Nhận</button>
         </div>
       </div>
     </article>
@@ -3599,16 +3619,16 @@ async function handlePublishListing() {
     .join('');
 
   const rawName = (document.getElementById('listing-name')?.value || '').trim();
-  const name = rawName || `Vật Phẩm Tự Do #${randHex.slice(0, 4)}`;
+  const name = rawName || `Thông Báo Nội Bộ #${randHex.slice(0, 4)}`;
 
   const category = document.getElementById('listing-category')?.value || 'physical';
   const customBadge = (document.getElementById('listing-custom-badge')?.value || '').trim();
-  const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '💎';
-  const currency = document.getElementById('listing-currency')?.value || 'XMR';
-  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Escrow 2 Chiều • Tự Do';
-  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Vật phẩm tự do được niêm yết trực tiếp trên sàn RAM ẩn danh — cho phép cả trả giá đấu giá và mua đứt ngay.';
-  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Chính chủ • Đảm bảo';
-  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Giao hàng ẩn danh / Drop tự hủy';
+  const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '📌';
+  const currency = document.getElementById('listing-currency')?.value || 'Giờ';
+  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Nội bộ • Ưu tiên Trung bình';
+  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Thông báo hoặc tài nguyên nội bộ chia sẻ trực tiếp trên RAM công ty — các thành viên có thể thảo luận và tiếp nhận ngay.';
+  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Phòng Kỹ Thuật / IT';
+  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Token RAM / Thảo luận trực tiếp';
   const vendorPubkey = (document.getElementById('listing-vendor-pubkey')?.value || '').trim();
 
   const productId = `usr-${category}-${randHex}`;
@@ -3621,7 +3641,7 @@ async function handlePublishListing() {
   const startBidInput = parseFloat(document.getElementById('listing-start-bid')?.value || '0.50');
   const minStepInput = parseFloat(document.getElementById('listing-min-step')?.value || '0');
   const duration = parseInt(document.getElementById('listing-auction-duration')?.value || '14400', 10);
-  const stockText = (document.getElementById('listing-stock')?.value || '').trim() || 'Sẵn sàng giao ngay';
+  const stockText = (document.getElementById('listing-stock')?.value || '').trim() || 'Sẵn sàng phối hợp';
 
   const fixedPrice = isNaN(fixedPriceInput) ? 1.00 : Math.max(0, fixedPriceInput);
   const startBid = isNaN(startBidInput) ? fixedPrice : Math.max(0, startBidInput);
@@ -3629,7 +3649,7 @@ async function handlePublishListing() {
 
   const initialPrice = currentListingMode === 'fixed' ? fixedPrice : startBid;
   const buyNowPrice = currentListingMode === 'auction' ? Math.max(startBid, fixedPrice || startBid) : fixedPrice;
-  const badgeTitle = customBadge || CATEGORY_DEFAULT_BADGES[category] || 'Đấu Giá & Mua Ngay';
+  const badgeTitle = customBadge || CATEGORY_DEFAULT_BADGES[category] || 'Nội Bộ Công Ty';
 
   let newProduct = {
     id: productId,
@@ -3647,7 +3667,7 @@ async function handlePublishListing() {
     buyNowPrice,
     minBidIncrement: minStep,
     bidCount: 0,
-    highestBidder: 'Mở tự do',
+    highestBidder: 'Chưa phân công',
     bids: [],
     auctionEndTime: duration === 0 ? 0 : (Date.now() + (duration * 1000)),
     priceXMR: `${formatPriceNum(initialPrice)} ${currency}`,
@@ -3656,10 +3676,10 @@ async function handlePublishListing() {
     stock: stockText,
     desc,
     specs: {
-      'Thuộc tính': spec1,
+      'Phụ trách': spec1,
       'Bàn giao': spec2,
-      'Hình thức': minStep > 0 ? `Bước giá +${minStep} ${currency} & Mua ngay` : 'Trả giá tự do & Mua đứt ngay',
-      'Người bán': vendorPubkey ? `${vendorPubkey.slice(0, 14)}...` : (anonymousAlias || 'Anonymous Vendor')
+      'Hình thức': minStep > 0 ? `Điều chỉnh tối thiểu +${minStep} ${currency}` : 'Đề xuất tự do & Bàn giao ngay',
+      'Người tạo': vendorPubkey ? `${vendorPubkey.slice(0, 14)}...` : (anonymousAlias || 'Thành viên Nội bộ')
     },
     vendorKillToken,
     isUserCreated: true,
@@ -3732,7 +3752,7 @@ async function handlePublishListing() {
   if (descEl) descEl.value = '';
   updateVendorLivePreview();
 
-  showToast(`🎉 Đã mở bán & đấu giá "${name}" thành công! Mã thu hồi: ${newProduct.vendorKillToken || vendorKillToken}`, 'success');
+  showToast(`📢 Đã đăng thông báo "${name}" lên Bảng Tin Nội Bộ! Mã thu hồi: ${newProduct.vendorKillToken || vendorKillToken}`, 'success');
 }
 
 function renderMyListings() {
@@ -3740,12 +3760,12 @@ function renderMyListings() {
   if (!container) return;
 
   if (myVendorListings.length === 0) {
-    container.innerHTML = '<p class="empty-listings-note">Chưa có vật phẩm nào được đăng trong phiên RAM hiện tại. Bạn có thể đăng bán hoặc đấu giá bất kỳ thứ gì ở khung bên trái!</p>';
+    container.innerHTML = '<p class="empty-listings-note">Bạn chưa tạo thông báo hay chia sẻ tài nguyên nào trong phiên này.</p>';
     return;
   }
 
   container.innerHTML = myVendorListings.map(item => {
-    const currency = item.currency || 'XMR';
+    const currency = item.currency || 'Giờ';
     return `
       <div class="my-listing-card" id="my-item-${escapeHtml(item.id)}">
         <div class="my-listing-top">
@@ -3759,11 +3779,11 @@ function renderMyListings() {
         </div>
 
         <div style="font-size: 0.8rem; font-family: var(--font-mono); color: #cbd5e1;">
-          Giá hiện tại: <strong style="color: #fbbf24;">${formatPriceNum(item.currentBidXMR)} ${escapeHtml(currency)}</strong> (${item.bidCount || 0} lượt trả giá) • Mua ngay: <strong style="color: #10b981;">${formatPriceNum(item.buyNowPrice)} ${escapeHtml(currency)}</strong>
+          Ước lượng: <strong style="color: #38bdf8;">${formatPriceNum(item.currentBidXMR)} ${escapeHtml(currency)}</strong> (${item.bidCount || 0} phản hồi) • Hạn mức: <strong style="color: #34d399;">${formatPriceNum(item.buyNowPrice)} ${escapeHtml(currency)}</strong>
         </div>
 
         <div class="kill-token-box">
-          <span>Vendor Kill Token: <strong class="kill-token-val">${escapeHtml(item.vendorKillToken)}</strong></span>
+          <span>Mã Thu Hồi Nội Bộ: <strong class="kill-token-val">${escapeHtml(item.vendorKillToken)}</strong></span>
           <button type="button" class="copy-mini-btn" data-token="${escapeHtml(item.vendorKillToken)}">Chép</button>
         </div>
 
@@ -3780,7 +3800,7 @@ function renderMyListings() {
       const token = btn.getAttribute('data-token');
       if (token) {
         navigator.clipboard.writeText(token).then(() => {
-          showToast(`Đã sao chép Vendor Kill Token: ${token}`, 'success');
+          showToast(`Đã sao chép Mã Thu Hồi Nội Bộ: ${token}`, 'success');
         });
       }
     });
@@ -3841,5 +3861,5 @@ async function revokeUserListing(productId) {
   renderMyListings();
   updateRamMonitor();
 
-  showToast(`Đã thu hồi và xóa sạch mặt hàng "${prodName}" khỏi RAM máy chủ!`, 'error');
+  showToast(`Đã thu hồi và gỡ bỏ thông báo "${prodName}" khỏi RAM!`, 'info');
 }

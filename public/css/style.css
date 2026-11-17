@@ -4738,3 +4738,431 @@ body.vault-page {
   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
 }
 
+/* ==========================================================================
+   18. FLAT ENTERPRISE WORKSPACE (ZERO NESTED BOXES • LINEAR / SLACK STYLE)
+   - Replaces heavy dark-market boxes with hairline 1px dividers
+   - Eliminates box-inside-box nesting across Nav, Filters, Cards, Chat & Forms
+   ========================================================================== */
+
+body.vault-page.flat-workspace {
+  background-color: #070b14;
+  background-image:
+    radial-gradient(ellipse 80% 45% at 20% -10%, rgba(56, 189, 248, 0.055), transparent 60%),
+    radial-gradient(ellipse 70% 40% at 85% 0%, rgba(16, 185, 129, 0.045), transparent 60%);
+}
+
+/* Flat Minimal Header & Telemetry */
+body.vault-page.flat-workspace .vault-header {
+  background: rgba(7, 11, 20, 0.88);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .vault-brand-icon-wrap {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .vault-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: none;
+  -webkit-text-fill-color: #f8fafc;
+  color: #f8fafc;
+}
+
+body.vault-page.flat-workspace .panic-btn {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fda4af;
+  box-shadow: none;
+  border-radius: 8px;
+  height: 36px;
+}
+
+body.vault-page.flat-workspace .panic-btn:hover {
+  background: #be123c;
+  color: #ffffff;
+  border-color: #e11d48;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .telemetry-strip {
+  background: rgba(7, 11, 20, 0.96);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* Flat Underline Navigation Tabs (Linear / GitHub Style — Zero Outer Box) */
+body.vault-page.flat-workspace .covert-nav-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0;
+  padding: 0;
+  margin: 0.25rem 0 1.1rem 0;
+  box-shadow: none;
+  gap: 0.35rem;
+}
+
+body.vault-page.flat-workspace .nav-tab {
+  flex: 1 1 auto;
+  padding: 0.72rem 1rem;
+  border-radius: 8px 8px 0 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .nav-tab:hover {
+  color: #f8fafc;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+body.vault-page.flat-workspace .nav-tab.active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.07);
+  border-bottom-color: #38bdf8;
+  box-shadow: none;
+}
+
+/* Guideline Strip (Flat Callout) */
+body.vault-page.flat-workspace .instruction-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: none;
+  border-left: 3px solid #38bdf8;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 4px 8px 8px 4px;
+  box-shadow: none;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Flat Filter & Search Toolbar (Zero Outer Container Box) */
+body.vault-page.flat-workspace .market-filter-bar {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0;
+  padding: 0.15rem 0 1rem 0;
+  margin-bottom: 1.15rem;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .market-search-wrap input,
+body.vault-page.flat-workspace .mini-select {
+  background: #0b1120;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .market-pill {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+}
+
+body.vault-page.flat-workspace .market-pill:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #f8fafc;
+  transform: none;
+}
+
+body.vault-page.flat-workspace .market-pill.active {
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: none;
+}
+
+/* Flat Enterprise Resource Cards (ZERO Nested Inner Boxes) */
+body.vault-page.flat-workspace .product-card {
+  background: #0b1120;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  padding: 1.15rem 1.2rem;
+  box-shadow: none;
+  gap: 0.72rem;
+}
+
+body.vault-page.flat-workspace .product-card:hover {
+  transform: translateY(-2px);
+  background: #0f172a;
+  border-color: rgba(56, 189, 248, 0.38);
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.55);
+}
+
+body.vault-page.flat-workspace .product-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: rgba(56, 189, 248, 0.1);
+  border: none;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .product-specs {
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 0;
+  padding: 0.62rem 0 0.1rem 0;
+  gap: 0.28rem;
+}
+
+body.vault-page.flat-workspace .product-card-footer {
+  padding-top: 0.68rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  gap: 0.65rem;
+}
+
+body.vault-page.flat-workspace .product-price-block {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+body.vault-page.flat-workspace .product-price.auction-price {
+  color: #38bdf8 !important;
+  font-size: 1.08rem;
+}
+
+body.vault-page.flat-workspace .bid-btn {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  color: #7dd3fc;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .bid-btn:hover {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .buy-btn {
+  background: #047857;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .buy-btn:hover {
+  background: #059669;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .chat-btn,
+body.vault-page.flat-workspace .share-card-btn {
+  flex: 0 0 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.vault-page.flat-workspace .chat-btn:hover,
+body.vault-page.flat-workspace .share-card-btn:hover {
+  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(148, 163, 184, 0.38);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Unified Flat Slack-Style Chat Shell (Zero Double Frames, Zero Box-in-Box Composer) */
+body.vault-page.flat-workspace .messenger-shell {
+  grid-template-columns: 290px 1fr;
+  gap: 0;
+  background: #0b1120;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 600px;
+}
+
+body.vault-page.flat-workspace .messenger-sidebar {
+  background: #070b14;
+  border: none;
+  border-right: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .messenger-main-pane,
+body.vault-page.flat-workspace .flat-chat-container {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .messenger-sidebar-header,
+body.vault-page.flat-workspace .chat-header-bar.flat-header {
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+body.vault-page.flat-workspace .messenger-search-bar {
+  background: transparent;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  padding: 0.65rem 0.85rem;
+}
+
+body.vault-page.flat-workspace .messenger-search-bar input {
+  border-radius: 8px;
+  background: #0b1120;
+}
+
+body.vault-page.flat-workspace .messenger-thread-item {
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+body.vault-page.flat-workspace .messenger-thread-item.active {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: none;
+}
+
+/* Flat Auto-Deal / Task Status Strip */
+.auto-deal-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0.62rem 1.25rem;
+  background: rgba(56, 189, 248, 0.06);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.auto-deal-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+
+.auto-deal-code {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+
+.auto-deal-title {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.auto-deal-relay-tag {
+  color: #94a3b8;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.auto-deal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+body.vault-page.flat-workspace .chat-quick-inquiries {
+  background: transparent;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+body.vault-page.flat-workspace .chat-message-list {
+  background: transparent;
+  flex: 1;
+}
+
+/* Completely Flat Bottom Composer Bar — Eliminates Box-inside-Box */
+body.vault-page.flat-workspace .chat-composer-wrap {
+  padding: 0;
+  background: rgba(7, 11, 20, 0.45);
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+body.vault-page.flat-workspace .chat-composer-pill {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0.65rem 1.25rem;
+}
+
+body.vault-page.flat-workspace .chat-composer-pill:focus-within {
+  box-shadow: none;
+  background: rgba(56, 189, 248, 0.03);
+}
+
+/* Flat Form & Preview Columns (Tab 3 & Tab 4) */
+body.vault-page.flat-workspace .order-form-col,
+body.vault-page.flat-workspace .vendor-form-col,
+body.vault-page.flat-workspace .vendor-card-shell,
+body.vault-page.flat-workspace .order-preview-card,
+body.vault-page.flat-workspace .order-result-box {
+  background: #0b1120;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+body.vault-page.flat-workspace .preview-price-row,
+body.vault-page.flat-workspace .order-details-grid {
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 0;
+  padding: 0.85rem 0;
+}
+
+body.vault-page.flat-workspace .escrow-assurance-box {
+  background: rgba(16, 185, 129, 0.05);
+  border: none;
+  border-left: 3px solid #10b981;
+  border-radius: 4px 10px 10px 4px;
+}
+
+body.vault-page.flat-workspace .my-listing-card,
+body.vault-page.flat-workspace .kill-token-box {
+  background: rgba(7, 11, 20, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+@media (max-width: 900px) {
+  body.vault-page.flat-workspace .messenger-shell {
+    grid-template-columns: 1fr;
+  }
+
+  body.vault-page.flat-workspace .messenger-sidebar {
+    border-right: none;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    max-height: 280px;
+  }
+}
+
