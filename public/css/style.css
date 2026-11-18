@@ -6790,3 +6790,458 @@ body.vault-page.obsidian-studio .messenger-new-pill {
   min-height: 44px;
   padding: 0 0.85rem;
 }
+
+/* ==========================================================================
+   22. ENTERPRISE WORKSPACE v7.5 (HR, TASKS, MENTIONS, ATTACHMENTS, MSG APPROVE)
+   ========================================================================== */
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 3rem !important;
+}
+
+.pwd-toggle-btn {
+  position: absolute;
+  right: 2px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.pwd-toggle-btn:hover,
+.pwd-toggle-btn[aria-pressed="true"] {
+  color: #38bdf8;
+}
+
+.pwd-toggle-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+}
+
+.quick-dir-search-wrap {
+  margin-bottom: 0.2rem;
+}
+
+.quick-dir-search-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #090b10;
+  color: #f8fafc;
+  font-size: 0.86rem;
+}
+
+.quick-dir-search-input:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.quick-account-btn.is-locked {
+  opacity: 0.55;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.qa-locked-tag {
+  color: #fca5a5;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.header-pwd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.market-filters-cluster {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.project-task-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.task-status-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.16rem 0.5rem;
+  border-radius: 5px;
+}
+
+.task-status-badge.status-todo {
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+.task-status-badge.status-in_progress {
+  background: #0b2238;
+  color: #7dd3fc;
+}
+
+.task-status-badge.status-review {
+  background: #291e09;
+  color: #fcd34d;
+}
+
+.task-status-badge.status-done {
+  background: #07241a;
+  color: #6ee7b7;
+}
+
+.task-assignee-text {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+.assign-task-btn,
+.delete-proj-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: 9px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assign-task-btn {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
+}
+
+.assign-task-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: #ffffff;
+}
+
+.delete-proj-btn {
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: #fca5a5;
+  padding: 0 0.7rem;
+}
+
+.delete-proj-btn:hover {
+  background: #2c0d12;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.room-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.85rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.room-filter-chip {
+  min-height: 36px;
+  padding: 0.25rem 0.65rem;
+  border-radius: 7px;
+  background: #10141e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.room-filter-chip.active,
+.room-filter-chip:hover {
+  background: #0b2238;
+  border-color: rgba(56, 189, 248, 0.38);
+  color: #7dd3fc;
+}
+
+.chat-composer-wrap {
+  position: relative;
+}
+
+.mention-autocomplete-list {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(100% + 4px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.45rem;
+  border-radius: 10px;
+  background: #0b0e16;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  z-index: 30;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.mention-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mention-option-btn strong {
+  color: #7dd3fc;
+  font-family: var(--font-mono);
+}
+
+.mention-option-btn span {
+  color: #94a3b8;
+  font-size: 0.76rem;
+}
+
+.mention-option-btn.active,
+.mention-option-btn:hover {
+  background: #141a28;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.mention-tag {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.chat-attach-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chat-attach-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #7dd3fc;
+}
+
+.pending-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: #0b2238;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #e0f2fe;
+  font-size: 0.8rem;
+}
+
+.pending-att-remove {
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  cursor: pointer;
+}
+
+.msg-attachment-box {
+  margin-top: 0.45rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.msg-att-preview-img {
+  max-width: 260px;
+  max-height: 180px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+}
+
+.msg-att-dl-link {
+  color: #7dd3fc;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.msg-pending-delete-pill {
+  margin-bottom: 0.35rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 6px;
+  background: #2c0d12;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.chat-msg.is-pending-delete .msg-bubble {
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.msg-footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.msg-inline-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.msg-mini-btn {
+  min-height: 30px;
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.msg-mini-btn.danger {
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+}
+
+.msg-mini-btn.danger:hover {
+  background: #2c0d12;
+}
+
+.msg-mini-btn.approve {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: #07241a;
+  color: #6ee7b7;
+}
+
+.emp-status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+}
+
+.emp-status-pill.active {
+  background: #07241a;
+  color: #6ee7b7;
+}
+
+.emp-status-pill.locked {
+  background: #2c0d12;
+  color: #fca5a5;
+}
+
+.is-locked-row {
+  opacity: 0.65;
+  border-color: rgba(248, 113, 113, 0.32);
+}
+
+.assign-project-preview {
+  padding: 0.65rem 0.85rem;
+  border-radius: 9px;
+  background: #0b0e16;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+body.vault-page.obsidian-studio input[type="date"] {
+  color-scheme: dark;
+}
+
+/* Header Responsive Non-Clipping Layout Fix */
+body.vault-page.obsidian-studio .vault-header-inner {
+  height: auto;
+  min-height: 64px;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+body.vault-page.obsidian-studio .vault-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+body.vault-page.obsidian-studio .member-id-cluster {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+body.vault-page.obsidian-studio .header-pwd-btn,
+body.vault-page.obsidian-studio .logout-btn,
+body.vault-page.obsidian-studio .panic-btn,
+body.vault-page.obsidian-studio .user-role-pill,
+body.vault-page.obsidian-studio .user-dept-pill,
+body.vault-page.obsidian-studio .member-id-code {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+body.vault-page.obsidian-studio .msg-mini-btn {
+  min-height: 36px;
+}

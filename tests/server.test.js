@@ -1,7 +1,16 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import http from 'node:http';
-import { createServer, storeDrop, retrieveDrop, resetCompanyWorkspaceForTests } from '../server.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  createServer,
+  storeDrop,
+  retrieveDrop,
+  resetCompanyWorkspaceForTests,
+  reloadCompanyWorkspaceFromDiskForTests
+} from '../server.js';
 
 describe('Server RAM-Only & Ephemeral Drop Tests', () => {
   let server;
@@ -613,6 +622,207 @@ describe('Closed-Company 3-Role RBAC Tests (Employee / Manager / Director)', () 
       body: JSON.stringify({ text: 'Unauthorized employee' })
     });
     assert.strictEqual(empPost.statusCode, 403);
+  });
+
+  it('should persist scrypt-hashed password change and rooms across disk reload', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-persist-'));
+    try {
+      resetCompanyWorkspaceForTests(tmpDir);
+      const emp = await loginAs('nv.devops1', '123');
+      assert.strictEqual(emp.status, 200);
+
+      // Change password for nv.devops1
+      const chgRes = await makeRequest(`${baseUrl}/api/company/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': emp.data.token },
+        body: JSON.stringify({ currentPassword: '123', newPassword: 'MatKhauMoi@99' })
+      });
+      assert.strictEqual(chgRes.statusCode, 200);
+
+      // Verify state file saved with scrypt hash (never plaintext password)
+      const savedJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'company-state.json'), 'utf8'));
+      const savedUser = savedJson.users.find(u => u.username === 'nv.devops1');
+      assert.ok(savedUser.passwordHash.startsWith('scrypt:'));
+      assert.strictEqual(savedUser.password, undefined);
+
+      // Simulate server restart reading from disk
+      reloadCompanyWorkspaceFromDiskForTests(tmpDir);
+      const oldLogin = await loginAs('nv.devops1', '123');
+      assert.strictEqual(oldLogin.status, 401);
+
+      const newLogin = await loginAs('nv.devops1', 'MatKhauMoi@99');
+      assert.strictEqual(newLogin.status, 200);
+    } finally {
+      resetCompanyWorkspaceForTests();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should allow Manager to add/lock own-dept Employee with immediate session revocation and enforce 403 cross-dept', async () => {
+    resetCompanyWorkspaceForTests();
+    const mgrDevops = await loginAs('ql.devops');
+    const empDevops = await loginAs('nv.devops1');
+
+    // Employee cannot add another employee
+    const empAttempt = await makeRequest(`${baseUrl}/api/company/employees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': empDevops.data.token },
+      body: JSON.stringify({ name: 'Hacker', username: 'nv.hack' })
+    });
+    assert.strictEqual(empAttempt.statusCode, 403);
+
+    // Manager cannot add employee to another department
+    const crossAdd = await makeRequest(`${baseUrl}/api/company/employees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({ name: 'Other Dept Emp', username: 'nv.it2', department: 'admin_it' })
+    });
+    assert.strictEqual(crossAdd.statusCode, 403);
+
+    // Manager adds employee to own department
+    const addEmpRes = await makeRequest(`${baseUrl}/api/company/employees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({ name: 'Lê Minh Tuấn', username: 'nv.devops2', department: 'devops', title: 'Kỹ sư SRE' })
+    });
+    assert.strictEqual(addEmpRes.statusCode, 201);
+    const newEmp = JSON.parse(addEmpRes.body).employee;
+
+    // New employee logs in cleanly
+    const newEmpLogin = await loginAs('nv.devops2', '123');
+    assert.strictEqual(newEmpLogin.status, 200);
+
+    // Manager locks nv.devops2 -> existing session token immediately invalidated (401)
+    const lockRes = await makeRequest(`${baseUrl}/api/company/employees/${newEmp.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({ active: false })
+    });
+    assert.strictEqual(lockRes.statusCode, 200);
+
+    const stateAfterLock = await makeRequest(`${baseUrl}/api/company/state`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': newEmpLogin.data.token }
+    });
+    assert.strictEqual(stateAfterLock.statusCode, 401);
+
+    const lockedRelogin = await loginAs('nv.devops2', '123');
+    assert.strictEqual(lockedRelogin.status, 403);
+  });
+
+  it('should enforce RBAC on project deletion, task assignment, message-level delete approval, and chat attachments', async () => {
+    resetCompanyWorkspaceForTests();
+    const empDevops = await loginAs('nv.devops1');
+    const empIt = await loginAs('nv.it1');
+    const mgrDevops = await loginAs('ql.devops');
+    const dir = await loginAs('giamdoc');
+
+    // 1. Task assignment & progress RBAC
+    const empAssignAttempt = await makeRequest(`${baseUrl}/api/company/projects/auction-chip-07/task`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': empDevops.data.token },
+      body: JSON.stringify({ assigneeId: 'u-emp-devops' })
+    });
+    assert.strictEqual(empAssignAttempt.statusCode, 403);
+
+    const mgrAssignRes = await makeRequest(`${baseUrl}/api/company/projects/auction-chip-07/task`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({ assigneeId: 'u-emp-devops', taskStatus: 'in_progress', dueDate: '2026-12-01' })
+    });
+    assert.strictEqual(mgrAssignRes.statusCode, 200);
+    assert.strictEqual(JSON.parse(mgrAssignRes.body).project.assigneeName, 'Trần Minh Quân');
+
+    const empProgressRes = await makeRequest(`${baseUrl}/api/company/projects/auction-chip-07/task`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': empDevops.data.token },
+      body: JSON.stringify({ taskStatus: 'review' })
+    });
+    assert.strictEqual(empProgressRes.statusCode, 200);
+    assert.strictEqual(JSON.parse(empProgressRes.body).project.taskStatus, 'review');
+
+    // 2. Attachment upload & unsafe extension block + cross-dept download 403
+    const unsafeFileRes = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({
+        text: '@nv.devops1 xem file',
+        attachment: { name: 'xss.html', mimeType: 'text/html', dataBase64: Buffer.from('<script>alert(1)</script>').toString('base64') }
+      })
+    });
+    assert.strictEqual(unsafeFileRes.statusCode, 400);
+
+    const safeFileRes = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({
+        text: '@nv.devops1 kiểm tra tài liệu cấu hình',
+        attachment: { name: 'gateway-config.txt', mimeType: 'text/plain', dataBase64: Buffer.from('PORT=3000').toString('base64') }
+      })
+    });
+    assert.strictEqual(safeFileRes.statusCode, 200);
+    const postedMsg = JSON.parse(safeFileRes.body).message;
+    assert.ok(postedMsg.mentions.includes('nv.devops1'));
+    assert.ok(postedMsg.attachment && postedMsg.attachment.id);
+
+    // Cross-dept employee blocked from downloading DevOps attachment
+    const itDownload = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/attachments/${postedMsg.attachment.id}`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': empIt.data.token }
+    });
+    assert.strictEqual(itDownload.statusCode, 403);
+
+    const devopsDownload = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/attachments/${postedMsg.attachment.id}`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': empDevops.data.token }
+    });
+    assert.strictEqual(devopsDownload.statusCode, 200);
+    assert.strictEqual(devopsDownload.headers['x-content-type-options'], 'nosniff');
+    assert.strictEqual(devopsDownload.body, 'PORT=3000');
+
+    // 3. Message-level deletion requires Director approval
+    const empMsgDel = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/messages/${postedMsg.id}/request-delete`, {
+      method: 'POST',
+      headers: { 'X-Session-Token': empDevops.data.token }
+    });
+    assert.strictEqual(empMsgDel.statusCode, 403);
+
+    const mgrMsgDel = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/messages/${postedMsg.id}/request-delete`, {
+      method: 'POST',
+      headers: { 'X-Session-Token': mgrDevops.data.token }
+    });
+    assert.strictEqual(mgrMsgDel.statusCode, 200);
+    assert.strictEqual(JSON.parse(mgrMsgDel.body).status, 'pending_delete');
+
+    // Manager cannot approve own message deletion
+    const mgrSelfMsgApprove = await makeRequest(`${baseUrl}/api/company/approvals/messages/room-devops-main/${postedMsg.id}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+      body: JSON.stringify({ decision: 'approve' })
+    });
+    assert.strictEqual(mgrSelfMsgApprove.statusCode, 403);
+
+    // Director approves message deletion -> message removed permanently
+    const dirMsgApprove = await makeRequest(`${baseUrl}/api/company/approvals/messages/room-devops-main/${postedMsg.id}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': dir.data.token },
+      body: JSON.stringify({ decision: 'approve' })
+    });
+    assert.strictEqual(dirMsgApprove.statusCode, 200);
+    assert.strictEqual(JSON.parse(dirMsgApprove.body).status, 'deleted');
+
+    // 4. Project delete RBAC: Employee blocked (403), Manager deletes own dept project (200)
+    const empDelProj = await makeRequest(`${baseUrl}/api/company/projects/auction-chip-07`, {
+      method: 'DELETE',
+      headers: { 'X-Session-Token': empDevops.data.token }
+    });
+    assert.strictEqual(empDelProj.statusCode, 403);
+
+    const mgrDelProj = await makeRequest(`${baseUrl}/api/company/projects/auction-chip-07`, {
+      method: 'DELETE',
+      headers: { 'X-Session-Token': mgrDevops.data.token }
+    });
+    assert.strictEqual(mgrDelProj.statusCode, 200);
   });
 });
 

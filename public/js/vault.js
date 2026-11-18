@@ -451,12 +451,25 @@ let lastProjectsSig = '';
 let lastRoomsSig = '';
 let lastApprovalsSig = '';
 let lastManagersSig = '';
+let lastTeamSig = '';
 let lastAuditSig = '';
+let accountsDirectoryCache = [];
+let activeRoomFilter = 'all';
+let pendingAttachmentPayload = null;
+let mentionActiveIndex = 0;
+let mentionSuggestions = [];
 
 const ROLE_LABELS_VI = {
   employee: 'Nhân viên',
   manager: 'Quản lí',
   director: 'Giám đốc'
+};
+
+const TASK_STATUS_LABELS_VI = {
+  todo: 'Chưa giao / Mới',
+  in_progress: 'Đang thực hiện',
+  review: 'Chờ kiểm tra',
+  done: 'Đã hoàn thành'
 };
 
 const SCOPE_LABELS_VI = {
@@ -691,6 +704,7 @@ function initWorkspaceModulesOnce() {
   initOrderSystem();
   initAuctionBidding();
   initClosedCompanyModalsAndAdmin();
+  bindV75ModalAndTeamForms();
   updateRamMonitor();
   checkUrlForP2PRoom();
 }
@@ -867,17 +881,22 @@ function initPanicAndPurgeHooks() {
 
   // Modal Escape handling & Tab Focus Trap
   window.addEventListener('keydown', (e) => {
-    const bidModal = document.getElementById('bid-modal-overlay');
-    const qrModal = document.getElementById('qr-modal-overlay');
-    const createRoomModal = document.getElementById('create-room-modal-overlay');
+    const modalIds = [
+      'create-room-modal-overlay',
+      'change-pwd-modal-overlay',
+      'assign-task-modal-overlay',
+      'bid-modal-overlay',
+      'qr-modal-overlay'
+    ];
     let openModal = null;
-    if (createRoomModal && createRoomModal.style.display !== 'none') {
-      openModal = createRoomModal;
-    } else if (bidModal && bidModal.style.display !== 'none') {
-      openModal = bidModal;
-    } else if (qrModal && qrModal.style.display !== 'none') {
-      openModal = qrModal;
+    for (const id of modalIds) {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') {
+        openModal = el;
+        break;
+      }
     }
+    const bidModal = document.getElementById('bid-modal-overlay');
 
     if (!openModal) return;
 
@@ -999,6 +1018,10 @@ function switchTab(tabId) {
     const role = currentCompanyState.user.role;
     if (tabId === 'tab-vendor' && role === 'employee') {
       showToast('Nhân viên chỉ có quyền xem dự án của phòng ban mình.', 'warning');
+      tabId = 'tab-market';
+    }
+    if (tabId === 'tab-team' && role === 'employee') {
+      showToast('Nhân viên không có quyền truy cập mục Nhân Sự & Ban.', 'warning');
       tabId = 'tab-market';
     }
     if (tabId === 'tab-admin' && role !== 'director') {
@@ -1318,6 +1341,13 @@ function initMarketCatalog() {
     });
   }
 
+  const taskFilterSelect = document.getElementById('market-task-filter-select');
+  if (taskFilterSelect) {
+    taskFilterSelect.addEventListener('change', () => {
+      filterAndRenderProducts();
+    });
+  }
+
   if (categoryPills) {
     categoryPills.addEventListener('click', (e) => {
       const pill = e.target.closest('.market-pill');
@@ -1372,8 +1402,13 @@ function filterAndRenderProducts() {
   const activePill = document.querySelector('.market-pill.active');
   const category = activePill ? activePill.getAttribute('data-category') : 'all';
   const sort = document.getElementById('market-sort-select')?.value || 'default';
+  const taskFilter = document.getElementById('market-task-filter-select')?.value || 'all';
 
   let filtered = [...MARKET_PRODUCTS];
+
+  if (taskFilter !== 'all') {
+    filtered = filtered.filter(p => (p.taskStatus || 'todo') === taskFilter);
+  }
 
   if (category === 'auction') {
     filtered = filtered.filter(p => p.isAuction !== false);
@@ -1450,20 +1485,42 @@ function renderProducts(products) {
     const priceDisplay = `${formatPriceNum(currentVal)} ${escapeHtml(currency)}`;
     const priceMeta = `${item.bidCount || 0} đề xuất · Hạn mức ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
     const specValues = Object.values(item.specs || {}).slice(0, 2).map(v => escapeHtml(v)).join(' · ');
+    const taskStateKey = item.taskStatus || 'todo';
+    const taskStateLabel = TASK_STATUS_LABELS_VI[taskStateKey] || 'Mới';
+    const assigneeLine = item.assigneeName
+      ? `<span>Phụ trách: <strong>${escapeHtml(item.assigneeName)}</strong>${item.dueDate ? ' · Hạn ' + escapeHtml(item.dueDate) : ''}</span>`
+      : '<span>Chưa phân công người phụ trách</span>';
+
+    const taskStatusBar = isCompanyAuthActive()
+      ? `<div class="project-task-meta-row">
+           <span class="task-status-badge status-${escapeHtml(taskStateKey)}">${escapeHtml(taskStateLabel)}</span>
+           <span class="task-assignee-text">${assigneeLine}</span>
+         </div>`
+      : '';
+
+    const canManageProj = isCompanyAuthActive() && (currentCompanyState.user.role === 'director' || currentCompanyState.user.role === 'manager');
+    const taskBtnHtml = isCompanyAuthActive()
+      ? `<button type="button" class="assign-task-btn" data-id="${escapeHtml(item.id)}" title="${canManageProj ? 'Giao việc & cập nhật tiến độ' : 'Cập nhật tiến độ công việc'}">
+           ${SVG_ICONS.edit} <span>${canManageProj ? 'Giao việc' : 'Tiến độ'}</span>
+         </button>`
+      : `<button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Gửi đề xuất khối lượng">
+           ${SVG_ICONS.edit} <span>Đề xuất</span>
+         </button>`;
+    const deleteProjHtml = canManageProj
+      ? `<button type="button" class="delete-proj-btn" data-id="${escapeHtml(item.id)}" aria-label="Thu hồi dự án ${escapeHtml(item.name)}" title="Thu hồi dự án khỏi bảng tin">
+           ${SVG_ICONS.trash}
+         </button>`
+      : '';
 
     const actionButtons = `
-      <button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Gửi đề xuất khối lượng hoặc ước lượng cho hạng mục này">
-        ${SVG_ICONS.edit} <span>Đề xuất</span>
-      </button>
+      ${taskBtnHtml}
       <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Tạo phiếu tiếp nhận bàn giao tài nguyên / đầu việc này">
         ${SVG_ICONS.check} <span>Tiếp nhận</span>
       </button>
       <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" aria-label="Mở kênh thảo luận nội bộ cho ${escapeHtml(item.name)}" title="Thảo luận nội bộ">
         ${SVG_ICONS.chat}
       </button>
-      <button type="button" class="share-card-btn" data-id="${escapeHtml(item.id)}" aria-label="Sao chép liên kết chia sẻ cho ${escapeHtml(item.name)}" title="Sao chép liên kết">
-        ${SVG_ICONS.link}
-      </button>
+      ${deleteProjHtml}
     `;
 
     return `
@@ -1485,6 +1542,7 @@ function renderProducts(products) {
             <h3 class="product-title">${escapeHtml(item.name)}</h3>
           </div>
           <p class="product-desc">${escapeHtml(item.desc)}</p>
+          ${taskStatusBar}
           ${specValues ? `<p class="product-specs-inline">${specValues}</p>` : ''}
         </div>
 
@@ -1524,16 +1582,26 @@ function renderProducts(products) {
     });
   });
 
-  grid.querySelectorAll('.share-card-btn').forEach(btn => {
+  grid.querySelectorAll('.assign-task-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const prodId = btn.getAttribute('data-id') || '';
+      const prodId = btn.getAttribute('data-id');
+      if (prodId) openAssignTaskModal(prodId);
+    });
+  });
+
+  grid.querySelectorAll('.delete-proj-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const prodId = btn.getAttribute('data-id');
       const prod = MARKET_PRODUCTS.find(p => p.id === prodId);
-      const shareUrl = `${window.location.origin}${window.location.pathname}#item=${encodeURIComponent(prodId)}`;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          showToast(`Đã sao chép liên kết nội bộ "${prod ? prod.name : prodId}"`, 'success');
-        }).catch(() => {});
+      if (!prodId || !window.confirm(`Thu hồi dự án "${prod?.name || prodId}" khỏi hệ thống?`)) return;
+      const res = await bazaarApiFetch(`/api/company/projects/${encodeURIComponent(prodId)}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không có quyền thu hồi dự án.', 'error');
+        return;
       }
+      showToast('Đã thu hồi dự án thành công!', 'success');
+      await fetchCompanyState(true);
     });
   });
 
@@ -2130,6 +2198,12 @@ function renderMessengerThreads() {
   const filterKw = (searchInput?.value || '').trim().toLowerCase();
 
   const filtered = chatThreads.filter(t => {
+    if (activeRoomFilter !== 'all') {
+      if (activeRoomFilter === 'department' && t.scope !== 'department') return false;
+      if (activeRoomFilter === 'work' && t.scope !== 'work') return false;
+      if (activeRoomFilter === 'exec' && t.scope !== 'manager_to_manager' && t.scope !== 'manager_director') return false;
+      if (activeRoomFilter === 'pending' && t.status !== 'pending_create' && t.status !== 'pending_delete') return false;
+    }
     if (!filterKw) return true;
     return (t.peerAlias && t.peerAlias.toLowerCase().includes(filterKw)) ||
            (t.productName && t.productName.toLowerCase().includes(filterKw)) ||
@@ -3015,20 +3089,101 @@ function initEncryptedChat() {
     });
   }
 
+  // Room filter pills
+  const roomFilterWrap = document.getElementById('room-filter-pills');
+  if (roomFilterWrap) {
+    roomFilterWrap.addEventListener('click', (e) => {
+      const chip = e.target.closest('.room-filter-chip');
+      if (!chip) return;
+      activeRoomFilter = chip.getAttribute('data-room-filter') || 'all';
+      roomFilterWrap.querySelectorAll('.room-filter-chip').forEach(btn => {
+        const active = btn === chip;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      renderMessengerThreads();
+    });
+  }
+
+  // Attachment button & staging
+  const attachBtn = document.getElementById('attach-file-btn');
+  const fileInput = document.getElementById('chat-file-input');
+  const removeAttBtn = document.getElementById('remove-attachment-btn');
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener('click', () => {
+      if (chatInput?.disabled) return;
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Tệp vượt quá giới hạn tối đa 2MB.', 'warning');
+        fileInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingAttachmentPayload = {
+          name: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+          dataBase64: reader.result
+        };
+        const chip = document.getElementById('pending-attachment-chip');
+        const chipName = document.getElementById('pending-attachment-name');
+        if (chipName) chipName.textContent = `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
+        if (chip) chip.style.display = 'inline-flex';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  if (removeAttBtn) {
+    removeAttBtn.addEventListener('click', clearPendingAttachment);
+  }
+
+  // @Mention autocomplete
+  if (chatInput) {
+    chatInput.addEventListener('input', handleMentionAutocompleteInput);
+    chatInput.addEventListener('keydown', (e) => {
+      const popup = document.getElementById('mention-autocomplete-list');
+      if (!popup || popup.style.display === 'none' || mentionSuggestions.length === 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        mentionActiveIndex = (mentionActiveIndex + 1) % mentionSuggestions.length;
+        renderMentionPopup();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        mentionActiveIndex = (mentionActiveIndex - 1 + mentionSuggestions.length) % mentionSuggestions.length;
+        renderMentionPopup();
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        applyMentionSuggestion(mentionSuggestions[mentionActiveIndex]);
+      } else if (e.key === 'Escape') {
+        hideMentionPopup();
+      }
+    });
+  }
+
   // Send message
   const handleSend = async () => {
     if (!chatInput) return;
     const text = chatInput.value.trim();
-    if (!text) return;
-
     const thread = getActiveThread();
     if (!thread) return;
 
     if (thread.isCompanyRoom && isCompanyAuthActive()) {
+      if (!text && !pendingAttachmentPayload) return;
+      const att = pendingAttachmentPayload;
       chatInput.value = '';
-      await sendCompanyRoomMessage(thread.id, text);
+      clearPendingAttachment();
+      hideMentionPopup();
+      await sendCompanyRoomMessage(thread.id, text, att);
       return;
     }
+
+    if (!text) return;
 
     chatInput.value = '';
 
@@ -3151,6 +3306,7 @@ function renderChatMessages() {
     return;
   }
 
+  const curUser = isCompanyAuthActive() ? currentCompanyState.user : null;
   container.innerHTML = msgs.map(msg => {
     if (msg.role === 'system') {
       return `
@@ -3161,34 +3317,92 @@ function renderChatMessages() {
       `;
     }
 
-    if (msg.role === 'buyer') {
-      const myAuthor = thread?.isCompanyRoom
-        ? (msg.author || 'Bạn')
-        : formatColleagueAlias(msg.author || thread?.myBlindId || 'Thành viên');
-      return `
-        <div class="chat-msg buyer">
-          <div class="msg-bubble">
-            <div class="msg-author-tag" style="color: #a7f3d0;">${escapeHtml(myAuthor)}</div>
-            <div class="msg-text">${escapeHtml(msg.text)}</div>
-            <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
-          </div>
-        </div>
-      `;
+    const isSelf = msg.role === 'buyer';
+    const displayAuthor = isSelf
+      ? (thread?.isCompanyRoom ? (msg.author || 'Bạn') : formatColleagueAlias(msg.author || thread?.myBlindId || 'Thành viên'))
+      : (thread?.isCompanyRoom ? (msg.author || 'Đồng nghiệp') : formatColleagueAlias(msg.author || thread?.peerAlias || 'Phụ trách'));
+
+    const formattedText = formatMessageWithMentions(msg.text || '');
+
+    let attachmentHtml = '';
+    if (thread?.isCompanyRoom && msg.attachment && msg.attachment.id && companyAuthToken) {
+      const attUrl = `/api/company/rooms/${encodeURIComponent(thread.id)}/attachments/${encodeURIComponent(msg.attachment.id)}?token=${encodeURIComponent(companyAuthToken)}`;
+      const isImg = (msg.attachment.mimeType || '').startsWith('image/');
+      const sizeKb = Math.max(1, Math.round((msg.attachment.size || 0) / 1024));
+      attachmentHtml = isImg
+        ? `<div class="msg-attachment-box is-image">
+             <a href="${attUrl}" target="_blank" rel="noopener noreferrer" download="${escapeHtml(msg.attachment.name)}">
+               <img src="${attUrl}" alt="${escapeHtml(msg.attachment.name)}" class="msg-att-preview-img">
+             </a>
+             <a href="${attUrl}" download="${escapeHtml(msg.attachment.name)}" class="msg-att-dl-link">${escapeHtml(msg.attachment.name)} (${sizeKb} KB)</a>
+           </div>`
+        : `<div class="msg-attachment-box">
+             <a href="${attUrl}" download="${escapeHtml(msg.attachment.name)}" class="msg-att-dl-link">📎 ${escapeHtml(msg.attachment.name)} (${sizeKb} KB)</a>
+           </div>`;
     }
 
-    const peerAuthor = thread?.isCompanyRoom
-      ? (msg.author || 'Đồng nghiệp')
-      : formatColleagueAlias(msg.author || thread?.peerAlias || 'Phụ trách');
+    const pendingBannerHtml = msg.deleteStatus === 'pending_delete'
+      ? `<div class="msg-pending-delete-pill">Chờ Giám đốc duyệt xóa · Đề xuất: ${escapeHtml(msg.deleteRequestedByName || 'Quản lí')}</div>`
+      : '';
+
+    let msgActionBtns = '';
+    if (thread?.isCompanyRoom && curUser && msg.id) {
+      if (curUser.role === 'director') {
+        if (msg.deleteStatus === 'pending_delete') {
+          msgActionBtns = `
+            <div class="msg-inline-actions">
+              <button type="button" class="msg-mini-btn approve msg-decide-del-btn" data-msg-id="${escapeHtml(msg.id)}" data-decision="approve">Duyệt xóa</button>
+              <button type="button" class="msg-mini-btn msg-decide-del-btn" data-msg-id="${escapeHtml(msg.id)}" data-decision="reject">Giữ lại</button>
+            </div>`;
+        } else {
+          msgActionBtns = `
+            <div class="msg-inline-actions">
+              <button type="button" class="msg-mini-btn danger msg-req-del-btn" data-msg-id="${escapeHtml(msg.id)}">Xóa tin</button>
+            </div>`;
+        }
+      } else if (
+        curUser.role === 'manager' &&
+        (thread.scope === 'department' || thread.scope === 'work') &&
+        thread.department === curUser.department
+      ) {
+        if (msg.deleteStatus !== 'pending_delete') {
+          msgActionBtns = `
+            <div class="msg-inline-actions">
+              <button type="button" class="msg-mini-btn danger msg-req-del-btn" data-msg-id="${escapeHtml(msg.id)}">Yêu cầu xóa</button>
+            </div>`;
+        }
+      }
+    }
+
     return `
-      <div class="chat-msg merchant">
+      <div class="chat-msg ${isSelf ? 'buyer' : 'merchant'} ${msg.deleteStatus === 'pending_delete' ? 'is-pending-delete' : ''}">
         <div class="msg-bubble">
-          <div class="msg-author-tag">${escapeHtml(peerAuthor)}</div>
-          <div class="msg-text">${escapeHtml(msg.text)}</div>
-          <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
+          <div class="msg-author-tag" ${isSelf ? 'style="color: #a7f3d0;"' : ''}>${escapeHtml(displayAuthor)}</div>
+          ${pendingBannerHtml}
+          <div class="msg-text">${formattedText}</div>
+          ${attachmentHtml}
+          <div class="msg-footer-meta">
+            <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
+            ${msgActionBtns}
+          </div>
         </div>
       </div>
     `;
   }).join('');
+
+  container.querySelectorAll('.msg-req-del-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mId = btn.getAttribute('data-msg-id');
+      if (mId && thread) requestDeleteCompanyMessage(thread.id, mId);
+    });
+  });
+  container.querySelectorAll('.msg-decide-del-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mId = btn.getAttribute('data-msg-id');
+      const decision = btn.getAttribute('data-decision');
+      if (mId && thread && decision) decideMessageApproval(thread.id, mId, decision);
+    });
+  });
 
   container.scrollTop = container.scrollHeight;
 }
@@ -4277,6 +4491,23 @@ function bindAuthGateEvents() {
       logoutCompanySession('Đã đăng xuất phiên hiện tại.');
     });
   }
+
+  const togglePwdBtn = document.getElementById('toggle-login-password-btn');
+  const pwdInput = document.getElementById('login-password');
+  if (togglePwdBtn && pwdInput) {
+    togglePwdBtn.addEventListener('click', () => {
+      const isHidden = pwdInput.type === 'password';
+      pwdInput.type = isHidden ? 'text' : 'password';
+      togglePwdBtn.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
+    });
+  }
+
+  const quickDirSearch = document.getElementById('quick-dir-search');
+  if (quickDirSearch) {
+    quickDirSearch.addEventListener('input', () => {
+      renderQuickLoginDirectory(accountsDirectoryCache);
+    });
+  }
 }
 
 async function loadQuickLoginDirectory() {
@@ -4290,6 +4521,7 @@ async function loadQuickLoginDirectory() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+    accountsDirectoryCache = accounts;
     renderQuickLoginDirectory(accounts);
   } catch {
     container.innerHTML = '<p class="auth-loading-note">Không thể tải danh bạ tài khoản từ máy chủ.</p>';
@@ -4300,23 +4532,33 @@ function renderQuickLoginDirectory(accounts) {
   const container = document.getElementById('quick-login-directory');
   if (!container) return;
 
+  const kw = (document.getElementById('quick-dir-search')?.value || '').trim().toLowerCase();
+  const filteredAccounts = kw
+    ? accounts.filter(a =>
+        a.name.toLowerCase().includes(kw) ||
+        a.username.toLowerCase().includes(kw) ||
+        (a.title || '').toLowerCase().includes(kw) ||
+        (a.departmentName || '').toLowerCase().includes(kw)
+      )
+    : accounts;
+
   const groups = [
     { role: 'director', label: 'Cấp 1 · Giám Đốc Điều Hành' },
     { role: 'manager', label: 'Cấp 2 · Quản Lí Phòng Ban' },
     { role: 'employee', label: 'Cấp 3 · Nhân Viên Các Ban' }
   ];
 
-  container.innerHTML = groups.map(group => {
-    const items = accounts.filter(a => a.role === group.role);
+  const html = groups.map(group => {
+    const items = filteredAccounts.filter(a => a.role === group.role);
     if (items.length === 0) return '';
     return `
       <div class="quick-role-group">
-        <div class="quick-role-group-title">${escapeHtml(group.label)}</div>
+        <div class="quick-role-group-title">${escapeHtml(group.label)} (${items.length})</div>
         <div class="quick-role-cards">
           ${items.map(acc => `
-            <button type="button" class="quick-account-btn role-${escapeHtml(acc.role)}" data-username="${escapeHtml(acc.username)}">
+            <button type="button" class="quick-account-btn role-${escapeHtml(acc.role)} ${acc.active === false ? 'is-locked' : ''}" data-username="${escapeHtml(acc.username)}">
               <span class="qa-main">
-                <strong class="qa-name">${escapeHtml(acc.name)}</strong>
+                <strong class="qa-name">${escapeHtml(acc.name)} ${acc.active === false ? '<span class="qa-locked-tag">(Đã khóa)</span>' : ''}</strong>
                 <span class="qa-meta">${escapeHtml(acc.title)} · ${escapeHtml(acc.departmentName)}</span>
               </span>
               <code class="qa-user">${escapeHtml(acc.username)}</code>
@@ -4326,6 +4568,8 @@ function renderQuickLoginDirectory(accounts) {
       </div>
     `;
   }).join('');
+
+  container.innerHTML = html || '<p class="auth-loading-note">Không tìm thấy tài khoản phù hợp.</p>';
 
   container.querySelectorAll('.quick-account-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -4383,6 +4627,7 @@ async function performCompanyLogin(username, password) {
     lastRoomsSig = '';
     lastApprovalsSig = '';
     lastManagersSig = '';
+    lastTeamSig = '';
     lastAuditSig = '';
 
     enterAuthenticatedWorkspace(data);
@@ -4481,7 +4726,10 @@ async function logoutCompanySession(toastText = '') {
   lastRoomsSig = '';
   lastApprovalsSig = '';
   lastManagersSig = '';
+  lastTeamSig = '';
   lastAuditSig = '';
+  pendingAttachmentPayload = null;
+  hideMentionPopup();
 
   try {
     sessionStorage.removeItem(COMPANY_TOKEN_KEY);
@@ -4543,6 +4791,7 @@ function applyCompanyState(state) {
 
   // Scope Banner & Nav Visibility
   const navVendor = document.getElementById('nav-tab-vendor');
+  const navTeam = document.getElementById('nav-tab-team');
   const navAdmin = document.getElementById('nav-tab-admin');
   const quickOpenVendorBtn = document.getElementById('quick-open-vendor-btn');
   const newThreadBtn = document.getElementById('btn-new-thread');
@@ -4556,6 +4805,7 @@ function applyCompanyState(state) {
 
   if (user.role === 'employee') {
     if (navVendor) navVendor.style.display = 'none';
+    if (navTeam) navTeam.style.display = 'none';
     if (navAdmin) navAdmin.style.display = 'none';
     if (quickOpenVendorBtn) quickOpenVendorBtn.style.display = 'none';
     if (newThreadBtn) newThreadBtn.style.display = 'none';
@@ -4565,6 +4815,7 @@ function applyCompanyState(state) {
     }
   } else if (user.role === 'manager') {
     if (navVendor) navVendor.style.display = '';
+    if (navTeam) navTeam.style.display = '';
     if (navAdmin) navAdmin.style.display = 'none';
     if (quickOpenVendorBtn) quickOpenVendorBtn.style.display = '';
     if (newThreadBtn) newThreadBtn.style.display = '';
@@ -4581,6 +4832,7 @@ function applyCompanyState(state) {
     }
   } else if (user.role === 'director') {
     if (navVendor) navVendor.style.display = '';
+    if (navTeam) navTeam.style.display = '';
     if (navAdmin) navAdmin.style.display = '';
     if (quickOpenVendorBtn) quickOpenVendorBtn.style.display = '';
     if (newThreadBtn) newThreadBtn.style.display = '';
@@ -4614,7 +4866,16 @@ function applyCompanyState(state) {
 
   // Projects list (strictly RBAC-filtered by server)
   const incomingProjects = Array.isArray(state.projects) ? state.projects : [];
-  const nextProjectsSig = JSON.stringify(incomingProjects.map(p => ({ id: p.id, bidCount: p.bidCount, currentBidXMR: p.currentBidXMR, name: p.name, department: p.department })));
+  const nextProjectsSig = JSON.stringify(incomingProjects.map(p => ({
+    id: p.id,
+    bidCount: p.bidCount,
+    currentBidXMR: p.currentBidXMR,
+    name: p.name,
+    department: p.department,
+    assigneeId: p.assigneeId || '',
+    taskStatus: p.taskStatus || 'todo',
+    dueDate: p.dueDate || ''
+  })));
   if (nextProjectsSig !== lastProjectsSig) {
     lastProjectsSig = nextProjectsSig;
     MARKET_PRODUCTS = incomingProjects;
@@ -4632,8 +4893,7 @@ function applyCompanyState(state) {
     name: r.name,
     scope: r.scope,
     status: r.status,
-    msgLen: (r.messages || []).length,
-    lastMsgId: r.messages && r.messages.length ? r.messages[r.messages.length - 1].id : ''
+    msgs: (r.messages || []).map(m => `${m.id}:${m.deleteStatus || ''}`)
   })));
 
   if (nextRoomsSig !== lastRoomsSig) {
@@ -4647,10 +4907,17 @@ function applyCompanyState(state) {
         const roleTag = ROLE_LABELS_VI[m.senderRole] || '';
         const displayName = roleTag ? `${m.senderName} (${roleTag})` : m.senderName;
         return {
+          id: m.id,
+          senderId: m.senderId,
+          senderRole: m.senderRole,
           author: displayName,
           role: m.senderId === user.id ? 'buyer' : 'merchant',
           time: m.time || '',
-          text: m.text
+          text: m.text,
+          mentions: m.mentions || [],
+          attachment: m.attachment || null,
+          deleteStatus: m.deleteStatus || null,
+          deleteRequestedByName: m.deleteRequestedByName || ''
         };
       });
       const lastM = msgs[msgs.length - 1];
@@ -4686,18 +4953,23 @@ function applyCompanyState(state) {
     renderChatMessages();
   }
 
+  if (user.role === 'manager' || user.role === 'director') {
+    renderTeamTab(state);
+  }
   if (user.role === 'director') {
     renderDirectorConsole(state);
   }
   updateRamMonitor();
 }
 
-async function sendCompanyRoomMessage(roomId, text) {
+async function sendCompanyRoomMessage(roomId, text, attachment = null) {
   try {
+    const payload = { text };
+    if (attachment) payload.attachment = attachment;
     const res = await bazaarApiFetch(`/api/company/rooms/${encodeURIComponent(roomId)}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      body: JSON.stringify(payload)
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -4989,37 +5261,54 @@ function renderDirectorConsole(state) {
   const departments = Array.isArray(state.departments) ? state.departments : [];
   const auditLog = Array.isArray(state.auditLog) ? state.auditLog : [];
 
-  // 1. Approvals Queue
+  // 1. Unified Approvals Queue (Rooms + Message Deletions)
   const appSig = JSON.stringify(approvals);
   if (appSig !== lastApprovalsSig) {
     lastApprovalsSig = appSig;
     const appBox = document.getElementById('director-approvals-list');
     if (appBox) {
       if (approvals.length === 0) {
-        appBox.innerHTML = '<p class="empty-listings-note">Không có yêu cầu tạo hoặc xóa phòng chat nào đang chờ phê duyệt.</p>';
+        appBox.innerHTML = '<p class="empty-listings-note">Không có yêu cầu tạo/xóa phòng chat hoặc xóa tin nhắn nào đang chờ phê duyệt.</p>';
       } else {
-        appBox.innerHTML = approvals.map(a => `
-          <div class="approval-card ${a.pendingAction === 'delete' ? 'is-delete' : 'is-create'}">
-            <div class="approval-card-body">
-              <div class="approval-badges">
-                <span class="approval-type-pill ${a.pendingAction === 'delete' ? 'delete' : 'create'}">
-                  ${a.pendingAction === 'delete' ? 'Đề xuất XÓA phòng chat' : 'Đề xuất TẠO phòng mới'}
-                </span>
-                <span class="approval-dept-pill">${escapeHtml(a.departmentName)}</span>
+        appBox.innerHTML = approvals.map(a => {
+          const isMsg = a.kind === 'message';
+          const isDel = a.pendingAction === 'delete' || isMsg;
+          const badgeText = isMsg
+            ? 'Đề xuất XÓA đoạn chat'
+            : (a.pendingAction === 'delete' ? 'Đề xuất XÓA phòng chat' : 'Đề xuất TẠO phòng mới');
+          const detailLine = isMsg
+            ? `Tin nhắn của <strong>${escapeHtml(a.messageSenderName || '')}</strong>: "${escapeHtml(a.messagePreview || '')}" · Phòng: ${escapeHtml(a.roomName)}`
+            : `Phòng: <strong>${escapeHtml(a.roomName)}</strong> (${escapeHtml(SCOPE_LABELS_VI[a.scope] || a.scope)})`;
+
+          return `
+            <div class="approval-card ${isDel ? 'is-delete' : 'is-create'}">
+              <div class="approval-card-body">
+                <div class="approval-badges">
+                  <span class="approval-type-pill ${isDel ? 'delete' : 'create'}">${badgeText}</span>
+                  <span class="approval-dept-pill">${escapeHtml(a.departmentName)}</span>
+                </div>
+                <div class="approval-room-name">${detailLine}</div>
+                <div class="approval-meta">Quản lí đề xuất: <strong>${escapeHtml(a.requestedByName)}</strong></div>
               </div>
-              <div class="approval-room-name">${escapeHtml(a.roomName)}</div>
-              <div class="approval-meta">Quản lí đề xuất: <strong>${escapeHtml(a.requestedByName)}</strong> · Loại: ${escapeHtml(SCOPE_LABELS_VI[a.scope] || a.scope)}</div>
+              <div class="approval-actions">
+                <button type="button" class="primary-btn approval-decide-btn" data-kind="${escapeHtml(a.kind || 'room')}" data-room-id="${escapeHtml(a.roomId)}" data-msg-id="${escapeHtml(a.msgId || '')}" data-decision="approve">Phê duyệt</button>
+                <button type="button" class="secondary-btn approval-decide-btn" data-kind="${escapeHtml(a.kind || 'room')}" data-room-id="${escapeHtml(a.roomId)}" data-msg-id="${escapeHtml(a.msgId || '')}" data-decision="reject">Từ chối</button>
+              </div>
             </div>
-            <div class="approval-actions">
-              <button type="button" class="primary-btn approval-decide-btn" data-room-id="${escapeHtml(a.roomId)}" data-decision="approve">Phê duyệt</button>
-              <button type="button" class="secondary-btn approval-decide-btn" data-room-id="${escapeHtml(a.roomId)}" data-decision="reject">Từ chối</button>
-            </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
 
         appBox.querySelectorAll('.approval-decide-btn').forEach(btn => {
           btn.addEventListener('click', () => {
-            decideRoomApproval(btn.getAttribute('data-room-id'), btn.getAttribute('data-decision'));
+            const kind = btn.getAttribute('data-kind');
+            const rId = btn.getAttribute('data-room-id');
+            const mId = btn.getAttribute('data-msg-id');
+            const dec = btn.getAttribute('data-decision');
+            if (kind === 'message' && mId) {
+              decideMessageApproval(rId, mId, dec);
+            } else {
+              decideRoomApproval(rId, dec);
+            }
           });
         });
       }
@@ -5057,9 +5346,29 @@ function renderDirectorConsole(state) {
               ${departments.map(d => `<option value="${escapeHtml(d.id)}" ${d.id === m.department ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('')}
             </select>
             <button type="button" class="secondary-btn mgr-coord-btn" data-user-id="${escapeHtml(m.id)}">Điều phối Ban</button>
+            <button type="button" class="secondary-btn mgr-toggle-lock-btn" data-user-id="${escapeHtml(m.id)}" data-active="${m.active !== false ? 'true' : 'false'}">${m.active !== false ? 'Khóa' : 'Mở khóa'}</button>
           </div>
         </div>
       `).join('');
+
+      mgrListBox.querySelectorAll('.mgr-toggle-lock-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const userId = btn.getAttribute('data-user-id');
+          const curActive = btn.getAttribute('data-active') === 'true';
+          const res = await bazaarApiFetch(`/api/company/managers/${encodeURIComponent(userId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: !curActive })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showToast(data.error || 'Không thể cập nhật trạng thái Quản lí.', 'error');
+            return;
+          }
+          showToast(curActive ? 'Đã khóa tài khoản Quản lí!' : 'Đã mở khóa tài khoản Quản lí!', 'info');
+          await fetchCompanyState(true);
+        });
+      });
 
       mgrListBox.querySelectorAll('.mgr-coord-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -5101,5 +5410,358 @@ function renderDirectorConsole(state) {
         </div>
       `).join('');
     }
+  }
+}
+
+
+/* ==========================================================================
+   11. ENTERPRISE v7.5 MODULES (PASSWORD • HR EMPLOYEES • TASKS • MENTIONS • MSG DELETE)
+   ========================================================================== */
+
+function clearPendingAttachment() {
+  pendingAttachmentPayload = null;
+  const chip = document.getElementById('pending-attachment-chip');
+  const fileInput = document.getElementById('chat-file-input');
+  if (chip) chip.style.display = 'none';
+  if (fileInput) fileInput.value = '';
+}
+
+function formatMessageWithMentions(rawText) {
+  const escaped = escapeHtml(rawText || '');
+  return escaped.replace(/@([a-zA-Z0-9._-]+)/g, '<span class="mention-tag">@$1</span>');
+}
+
+function handleMentionAutocompleteInput() {
+  const input = document.getElementById('chat-input-field');
+  if (!input || !isCompanyAuthActive()) {
+    hideMentionPopup();
+    return;
+  }
+  const cursor = input.selectionStart ?? input.value.length;
+  const beforeCursor = input.value.slice(0, cursor);
+  const match = beforeCursor.match(/(?:^|\s)@([a-zA-Z0-9._-]*)$/);
+  if (!match) {
+    hideMentionPopup();
+    return;
+  }
+  const kw = match[1].toLowerCase();
+  const candidates = Array.isArray(currentCompanyState.mentionCandidates) ? currentCompanyState.mentionCandidates : [];
+  mentionSuggestions = candidates
+    .filter(c => c.username.toLowerCase().includes(kw) || c.name.toLowerCase().includes(kw))
+    .slice(0, 6);
+
+  if (mentionSuggestions.length === 0) {
+    hideMentionPopup();
+    return;
+  }
+  mentionActiveIndex = 0;
+  renderMentionPopup();
+}
+
+function renderMentionPopup() {
+  const popup = document.getElementById('mention-autocomplete-list');
+  if (!popup) return;
+  popup.innerHTML = mentionSuggestions.map((u, idx) => `
+    <button type="button" class="mention-option-btn ${idx === mentionActiveIndex ? 'active' : ''}" role="option" aria-selected="${idx === mentionActiveIndex ? 'true' : 'false'}" data-username="${escapeHtml(u.username)}">
+      <strong>@${escapeHtml(u.username)}</strong>
+      <span>${escapeHtml(u.name)} · ${escapeHtml(u.departmentName)}</span>
+    </button>
+  `).join('');
+  popup.style.display = 'flex';
+  popup.querySelectorAll('.mention-option-btn').forEach((btn, idx) => {
+    btn.addEventListener('click', () => applyMentionSuggestion(mentionSuggestions[idx]));
+  });
+}
+
+function applyMentionSuggestion(userObj) {
+  const input = document.getElementById('chat-input-field');
+  if (!input || !userObj) return;
+  const cursor = input.selectionStart ?? input.value.length;
+  const before = input.value.slice(0, cursor);
+  const after = input.value.slice(cursor);
+  const replaced = before.replace(/@([a-zA-Z0-9._-]*)$/, `@${userObj.username} `);
+  input.value = replaced + after;
+  input.focus();
+  input.setSelectionRange(replaced.length, replaced.length);
+  hideMentionPopup();
+}
+
+function hideMentionPopup() {
+  const popup = document.getElementById('mention-autocomplete-list');
+  if (popup) popup.style.display = 'none';
+  mentionSuggestions = [];
+  mentionActiveIndex = 0;
+}
+
+async function requestDeleteCompanyMessage(roomId, msgId) {
+  if (!isCompanyAuthActive()) return;
+  const isDir = currentCompanyState.user.role === 'director';
+  const promptText = isDir
+    ? 'Xóa vĩnh viễn tin nhắn/đoạn chat này?'
+    : 'Gửi yêu cầu tới Giám đốc để phê duyệt xóa tin nhắn/đoạn chat này?';
+  if (!window.confirm(promptText)) return;
+
+  const res = await bazaarApiFetch(`/api/company/rooms/${encodeURIComponent(roomId)}/messages/${encodeURIComponent(msgId)}/request-delete`, {
+    method: 'POST'
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showToast(data.error || 'Không thể gửi yêu cầu xóa tin nhắn.', 'error');
+    return;
+  }
+  showToast(data.status === 'deleted' ? 'Giám đốc đã xóa vĩnh viễn tin nhắn.' : 'Đã gửi yêu cầu xóa tin nhắn! Chờ Giám đốc phê duyệt.', 'info');
+  await fetchCompanyState(true);
+}
+
+async function decideMessageApproval(roomId, msgId, decision) {
+  const res = await bazaarApiFetch(`/api/company/approvals/messages/${encodeURIComponent(roomId)}/${encodeURIComponent(msgId)}/decide`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showToast(data.error || 'Không thể xử lý phê duyệt xóa tin nhắn.', 'error');
+    return;
+  }
+  showToast(decision === 'approve' ? 'Giám đốc đã PHÊ DUYỆT xóa tin nhắn!' : 'Giám đốc đã giữ lại tin nhắn.', decision === 'approve' ? 'success' : 'info');
+  await fetchCompanyState(true);
+}
+
+function renderTeamTab(state) {
+  const user = state.user;
+  const empDeptSelect = document.getElementById('emp-dept');
+  const empDeptSub = document.getElementById('team-add-emp-desc');
+  if (empDeptSelect) {
+    if (user.role === 'manager') {
+      empDeptSelect.value = user.department;
+      empDeptSelect.disabled = true;
+      if (empDeptSub) empDeptSub.textContent = `Nhân viên mới sẽ thuộc ${user.departmentName} do bạn quản lí.`;
+    } else {
+      empDeptSelect.disabled = false;
+      if (empDeptSub) empDeptSub.textContent = 'Giám đốc có thể thêm và điều chuyển Nhân viên cho bất kỳ phòng ban nào.';
+    }
+  }
+
+  const listData = user.role === 'director'
+    ? (Array.isArray(state.employees) ? state.employees : [])
+    : (Array.isArray(state.departmentEmployees) ? state.departmentEmployees : []);
+  const sig = JSON.stringify(listData) + '|' + user.role;
+  if (sig === lastTeamSig) return;
+  lastTeamSig = sig;
+
+  const box = document.getElementById('team-employees-list');
+  if (!box) return;
+
+  if (listData.length === 0) {
+    box.innerHTML = '<p class="empty-listings-note">Chưa có tài khoản Nhân viên nào trong phạm vi hiển thị.</p>';
+    return;
+  }
+
+  const departments = Array.isArray(state.departments) ? state.departments : [];
+  box.innerHTML = listData.map(emp => `
+    <div class="manager-row-card ${emp.active === false ? 'is-locked-row' : ''}">
+      <div class="manager-info-col">
+        <div class="manager-name-line">
+          <strong>${escapeHtml(emp.name)}</strong>
+          <code>@${escapeHtml(emp.username)}</code>
+          <span class="emp-status-pill ${emp.active === false ? 'locked' : 'active'}">${emp.active === false ? 'Đã khóa' : 'Hoạt động'}</span>
+        </div>
+        <div class="manager-sub-line">${escapeHtml(emp.title)} · ${escapeHtml(emp.departmentName)}</div>
+      </div>
+      <div class="manager-coord-col">
+        ${user.role === 'director' ? `
+          <label class="sr-only" for="emp-move-dept-${escapeHtml(emp.id)}">Chuyển ban cho ${escapeHtml(emp.name)}</label>
+          <select id="emp-move-dept-${escapeHtml(emp.id)}" class="custom-select mini-select emp-dept-select" data-user-id="${escapeHtml(emp.id)}">
+            ${departments.map(d => `<option value="${escapeHtml(d.id)}" ${d.id === emp.department ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('')}
+          </select>
+          <button type="button" class="secondary-btn emp-move-btn" data-user-id="${escapeHtml(emp.id)}">Chuyển Ban</button>
+        ` : ''}
+        <button type="button" class="secondary-btn emp-toggle-lock-btn" data-user-id="${escapeHtml(emp.id)}" data-active="${emp.active !== false ? 'true' : 'false'}">${emp.active !== false ? 'Khóa TK' : 'Mở khóa'}</button>
+      </div>
+    </div>
+  `).join('');
+
+  box.querySelectorAll('.emp-move-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.getAttribute('data-user-id');
+      const newDept = document.getElementById(`emp-move-dept-${uid}`)?.value;
+      if (!uid || !newDept) return;
+      const res = await bazaarApiFetch(`/api/company/employees/${encodeURIComponent(uid)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ department: newDept })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(data.error || 'Lỗi chuyển ban.', 'error'); return; }
+      showToast(`Đã chuyển ${data.employee?.name || ''} sang ban mới!`, 'success');
+      await fetchCompanyState(true);
+    });
+  });
+
+  box.querySelectorAll('.emp-toggle-lock-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.getAttribute('data-user-id');
+      const curActive = btn.getAttribute('data-active') === 'true';
+      const res = await bazaarApiFetch(`/api/company/employees/${encodeURIComponent(uid)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !curActive })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(data.error || 'Không thể khóa/mở khóa tài khoản.', 'error'); return; }
+      showToast(curActive ? 'Đã khóa tài khoản Nhân viên (thu hồi phiên lập tức)!' : 'Đã mở khóa tài khoản Nhân viên!', 'info');
+      await fetchCompanyState(true);
+    });
+  });
+}
+
+function openAssignTaskModal(projectId) {
+  if (!isCompanyAuthActive()) return;
+  const proj = MARKET_PRODUCTS.find(p => p.id === projectId);
+  if (!proj) return;
+  const user = currentCompanyState.user;
+  const overlay = document.getElementById('assign-task-modal-overlay');
+  const idInput = document.getElementById('assign-project-id');
+  const titleBox = document.getElementById('assign-project-title-preview');
+  const userSelect = document.getElementById('assign-user-select');
+  const statusSelect = document.getElementById('assign-status-select');
+  const dueInput = document.getElementById('assign-due-input');
+
+  if (idInput) idInput.value = proj.id;
+  if (titleBox) titleBox.textContent = proj.name;
+  if (statusSelect) statusSelect.value = proj.taskStatus || 'todo';
+  if (dueInput) {
+    dueInput.value = proj.dueDate || '';
+    dueInput.disabled = user.role === 'employee';
+  }
+
+  if (userSelect) {
+    const pool = user.role === 'director'
+      ? [...(currentCompanyState.employees || []), ...(currentCompanyState.managers || [])].filter(u => u.department === proj.department && u.active !== false)
+      : [...(currentCompanyState.departmentEmployees || [])].filter(u => u.active !== false);
+    userSelect.innerHTML = '<option value="">-- Chưa phân công --</option>' +
+      pool.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)} (${ROLE_LABELS_VI[u.role] || u.role})</option>`).join('');
+    userSelect.value = proj.assigneeId || '';
+    userSelect.disabled = user.role === 'employee';
+  }
+
+  openAccessibleModal(overlay, user.role === 'employee' ? '#assign-status-select' : '#assign-user-select');
+}
+
+function bindV75ModalAndTeamForms() {
+  // Change Password Modal
+  const openPwdBtn = document.getElementById('open-change-pwd-btn');
+  const closePwdBtn = document.getElementById('close-change-pwd-btn');
+  const cancelPwdBtn = document.getElementById('cancel-change-pwd-btn');
+  const pwdOverlay = document.getElementById('change-pwd-modal-overlay');
+  const pwdForm = document.getElementById('change-pwd-form');
+
+  if (openPwdBtn && pwdOverlay) {
+    openPwdBtn.addEventListener('click', () => openAccessibleModal(pwdOverlay, '#cur-pwd-input'));
+  }
+  if (closePwdBtn) closePwdBtn.addEventListener('click', () => closeAccessibleModal(pwdOverlay));
+  if (cancelPwdBtn) cancelPwdBtn.addEventListener('click', () => closeAccessibleModal(pwdOverlay));
+  if (pwdOverlay) {
+    pwdOverlay.addEventListener('click', (e) => {
+      if (e.target === pwdOverlay) closeAccessibleModal(pwdOverlay);
+    });
+  }
+  if (pwdForm) {
+    pwdForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const curPwd = document.getElementById('cur-pwd-input')?.value || '';
+      const newPwd = document.getElementById('new-pwd-input')?.value || '';
+      const confirmPwd = document.getElementById('confirm-pwd-input')?.value || '';
+      if (newPwd !== confirmPwd) {
+        showToast('Mật khẩu mới và xác nhận không khớp!', 'warning');
+        return;
+      }
+      const res = await bazaarApiFetch('/api/company/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: curPwd, newPassword: newPwd })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không thể đổi mật khẩu.', 'error');
+        return;
+      }
+      pwdForm.reset();
+      closeAccessibleModal(pwdOverlay);
+      showToast('Đã cập nhật và mã hóa mật khẩu mới thành công!', 'success');
+    });
+  }
+
+  // Assign Task Modal
+  const assignOverlay = document.getElementById('assign-task-modal-overlay');
+  const closeAssignBtn = document.getElementById('close-assign-task-btn');
+  const cancelAssignBtn = document.getElementById('cancel-assign-task-btn');
+  const assignForm = document.getElementById('assign-task-form');
+  if (closeAssignBtn) closeAssignBtn.addEventListener('click', () => closeAccessibleModal(assignOverlay));
+  if (cancelAssignBtn) cancelAssignBtn.addEventListener('click', () => closeAccessibleModal(assignOverlay));
+  if (assignOverlay) {
+    assignOverlay.addEventListener('click', (e) => {
+      if (e.target === assignOverlay) closeAccessibleModal(assignOverlay);
+    });
+  }
+  if (assignForm) {
+    assignForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!isCompanyAuthActive()) return;
+      const projectId = document.getElementById('assign-project-id')?.value || '';
+      const taskStatus = document.getElementById('assign-status-select')?.value || 'todo';
+      const payload = { taskStatus };
+      if (currentCompanyState.user.role !== 'employee') {
+        payload.assigneeId = document.getElementById('assign-user-select')?.value || '';
+        payload.dueDate = document.getElementById('assign-due-input')?.value || '';
+      }
+      const res = await bazaarApiFetch(`/api/company/projects/${encodeURIComponent(projectId)}/task`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không thể lưu phân công công việc.', 'error');
+        return;
+      }
+      closeAccessibleModal(assignOverlay);
+      showToast('Đã cập nhật phân công & tiến độ công việc!', 'success');
+      await fetchCompanyState(true);
+    });
+  }
+
+  // Add Employee Form in #tab-team
+  const addEmpForm = document.getElementById('team-add-employee-form');
+  if (addEmpForm) {
+    addEmpForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!isCompanyAuthActive()) return;
+      const user = currentCompanyState.user;
+      const name = (document.getElementById('emp-name')?.value || '').trim();
+      const username = (document.getElementById('emp-username')?.value || '').trim();
+      const password = document.getElementById('emp-password')?.value || '123';
+      const title = (document.getElementById('emp-title')?.value || '').trim();
+      const department = user.role === 'director'
+        ? (document.getElementById('emp-dept')?.value || 'devops')
+        : user.department;
+
+      const res = await bazaarApiFetch('/api/company/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, password, department, title })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không thể thêm Nhân viên.', 'error');
+        return;
+      }
+      addEmpForm.reset();
+      if (document.getElementById('emp-password')) document.getElementById('emp-password').value = '123';
+      showToast(`Đã thêm Nhân viên ${data.employee?.name || name}!`, 'success');
+      loadQuickLoginDirectory();
+      await fetchCompanyState(true);
+    });
   }
 }

@@ -372,8 +372,20 @@ const INITIAL_BAZAAR_PRODUCTS = [
 
 let inMemoryBazaarProducts = JSON.parse(JSON.stringify(INITIAL_BAZAAR_PRODUCTS));
 
-export function resetCompanyWorkspaceForTests() {
-  seedCompanyWorkspace();
+export function setCompanyDataDirForTests(customDir) {
+  companyTestDataDir = customDir || null;
+}
+
+export function resetCompanyWorkspaceForTests(customDir = null) {
+  companyTestDataDir = customDir || null;
+  companyAttachmentsRAM.clear();
+  seedCompanyWorkspace({ persist: Boolean(customDir) });
+}
+
+export function reloadCompanyWorkspaceFromDiskForTests(customDir = null) {
+  if (customDir) companyTestDataDir = customDir;
+  companySessions.clear();
+  loadCompanyWorkspaceFromDisk();
 }
 
 export function getBazaarItems() {
@@ -396,6 +408,7 @@ export function addBazaarItem(item) {
   if (inMemoryBazaarProducts.length > 200) {
     inMemoryBazaarProducts.pop();
   }
+  persistCompanyWorkspace();
   return item;
 }
 
@@ -502,6 +515,112 @@ const companyUsers = new Map();
 const companySessions = new Map();
 const companyRooms = new Map();
 const companyAuditLog = [];
+const companyAttachmentsRAM = new Map();
+let companyTestDataDir = null;
+
+function isTestProcess() {
+  return Boolean(process.env.NODE_TEST_CONTEXT) || process.argv.some(arg => arg.includes('.test.'));
+}
+
+function getEffectiveDataDir() {
+  if (companyTestDataDir) return companyTestDataDir;
+  if (process.env.NEXUS_COMPANY_DATA_DIR) return process.env.NEXUS_COMPANY_DATA_DIR;
+  if (isTestProcess()) return null;
+  return path.join(__dirname, 'data');
+}
+
+function hashPassword(plain) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(plain), salt, 64).toString('hex');
+  return `scrypt:${salt}:${hash}`;
+}
+
+function verifyPassword(plain, storedHash) {
+  if (!storedHash || typeof storedHash !== 'string') return { valid: false, needsUpgrade: false };
+  if (storedHash.startsWith('scrypt:')) {
+    const parts = storedHash.split(':');
+    if (parts.length !== 3) return { valid: false, needsUpgrade: false };
+    const [, salt, hexExpected] = parts;
+    const actualBuf = crypto.scryptSync(String(plain), salt, 64);
+    const expectedBuf = Buffer.from(hexExpected, 'hex');
+    if (actualBuf.length !== expectedBuf.length) return { valid: false, needsUpgrade: false };
+    return { valid: crypto.timingSafeEqual(actualBuf, expectedBuf), needsUpgrade: false };
+  }
+  const a = Buffer.from(String(plain), 'utf8');
+  const b = Buffer.from(storedHash, 'utf8');
+  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+  return { valid, needsUpgrade: valid };
+}
+
+function revokeUserSessions(userId) {
+  for (const [token, sess] of companySessions.entries()) {
+    if (sess.userId === userId) {
+      companySessions.delete(token);
+    }
+  }
+}
+
+function persistCompanyWorkspace() {
+  const dir = getEffectiveDataDir();
+  if (!dir) return;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const stateFile = path.join(dir, 'company-state.json');
+    const tmpFile = path.join(dir, `company-state.${process.pid}.tmp`);
+    const snapshot = {
+      version: 1,
+      savedAt: Date.now(),
+      users: Array.from(companyUsers.values()),
+      rooms: Array.from(companyRooms.values()),
+      projects: inMemoryBazaarProducts,
+      soldOrRevokedIds: Array.from(inMemorySoldOrRevokedIds),
+      auditLog: companyAuditLog
+    };
+    fs.writeFileSync(tmpFile, JSON.stringify(snapshot, null, 2), 'utf8');
+    fs.renameSync(tmpFile, stateFile);
+  } catch {
+    // Non-fatal fallback if filesystem is read-only
+  }
+}
+
+function saveAttachmentBinary(attId, buffer) {
+  companyAttachmentsRAM.set(attId, buffer);
+  const dir = getEffectiveDataDir();
+  if (!dir) return;
+  try {
+    const attDir = path.join(dir, 'company-attachments');
+    fs.mkdirSync(attDir, { recursive: true });
+    fs.writeFileSync(path.join(attDir, `${attId}.bin`), buffer);
+  } catch {}
+}
+
+function loadAttachmentBinary(attId) {
+  if (companyAttachmentsRAM.has(attId)) {
+    return companyAttachmentsRAM.get(attId);
+  }
+  const dir = getEffectiveDataDir();
+  if (!dir) return null;
+  const targetPath = path.join(dir, 'company-attachments', `${attId}.bin`);
+  try {
+    if (fs.existsSync(targetPath)) {
+      const buf = fs.readFileSync(targetPath);
+      companyAttachmentsRAM.set(attId, buf);
+      return buf;
+    }
+  } catch {}
+  return null;
+}
+
+function deleteAttachmentBinary(attId) {
+  if (!attId) return;
+  companyAttachmentsRAM.delete(attId);
+  const dir = getEffectiveDataDir();
+  if (!dir) return;
+  try {
+    const targetPath = path.join(dir, 'company-attachments', `${attId}.bin`);
+    if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+  } catch {}
+}
 
 function addAuditEntry(actor, action, detail) {
   companyAuditLog.unshift({
@@ -512,30 +631,33 @@ function addAuditEntry(actor, action, detail) {
     detail,
     time: new Date().toLocaleTimeString('vi-VN', { hour12: false })
   });
-  if (companyAuditLog.length > 60) companyAuditLog.pop();
+  if (companyAuditLog.length > 80) companyAuditLog.pop();
 }
 
-function seedCompanyWorkspace() {
+function seedCompanyWorkspace({ persist = true } = {}) {
   companyUsers.clear();
   companySessions.clear();
   companyRooms.clear();
   companyAuditLog.length = 0;
+  inMemoryBazaarProducts = JSON.parse(JSON.stringify(INITIAL_BAZAAR_PRODUCTS));
+  inMemorySoldOrRevokedIds.clear();
 
+  const seededPasswordHash = hashPassword('123');
   const initialUsers = [
     // Nhân viên các ban
-    { id: 'u-emp-devops', username: 'nv.devops1', password: '123', name: 'Trần Minh Quân', role: 'employee', title: 'Kỹ sư DevOps', department: 'devops', active: true },
-    { id: 'u-emp-it', username: 'nv.it1', password: '123', name: 'Nguyễn Thảo Vy', role: 'employee', title: 'Chuyên viên IT', department: 'admin_it', active: true },
-    { id: 'u-emp-net', username: 'nv.net1', password: '123', name: 'Phạm Hoàng Nam', role: 'employee', title: 'Kỹ sư Hạ tầng Mạng', department: 'network', active: true },
-    { id: 'u-emp-fin', username: 'nv.fin1', password: '123', name: 'Lê Thu Hà', role: 'employee', title: 'Chuyên viên Tài chính', department: 'finance', active: true },
+    { id: 'u-emp-devops', username: 'nv.devops1', passwordHash: seededPasswordHash, name: 'Trần Minh Quân', role: 'employee', title: 'Kỹ sư DevOps', department: 'devops', active: true },
+    { id: 'u-emp-it', username: 'nv.it1', passwordHash: seededPasswordHash, name: 'Nguyễn Thảo Vy', role: 'employee', title: 'Chuyên viên IT', department: 'admin_it', active: true },
+    { id: 'u-emp-net', username: 'nv.net1', passwordHash: seededPasswordHash, name: 'Phạm Hoàng Nam', role: 'employee', title: 'Kỹ sư Hạ tầng Mạng', department: 'network', active: true },
+    { id: 'u-emp-fin', username: 'nv.fin1', passwordHash: seededPasswordHash, name: 'Lê Thu Hà', role: 'employee', title: 'Chuyên viên Tài chính', department: 'finance', active: true },
 
     // Quản lí các ban
-    { id: 'u-mgr-devops', username: 'ql.devops', password: '123', name: 'Vũ Đức Anh', role: 'manager', title: 'Trưởng ban DevOps', department: 'devops', active: true },
-    { id: 'u-mgr-it', username: 'ql.it', password: '123', name: 'Đặng Bảo Ngọc', role: 'manager', title: 'Trưởng ban Hành chính IT', department: 'admin_it', active: true },
-    { id: 'u-mgr-net', username: 'ql.net', password: '123', name: 'Bùi Quốc Khánh', role: 'manager', title: 'Trưởng ban Mạng & An ninh', department: 'network', active: true },
-    { id: 'u-mgr-fin', username: 'ql.fin', password: '123', name: 'Hoàng Gia Bảo', role: 'manager', title: 'Trưởng ban Tài chính', department: 'finance', active: true },
+    { id: 'u-mgr-devops', username: 'ql.devops', passwordHash: seededPasswordHash, name: 'Vũ Đức Anh', role: 'manager', title: 'Trưởng ban DevOps', department: 'devops', active: true },
+    { id: 'u-mgr-it', username: 'ql.it', passwordHash: seededPasswordHash, name: 'Đặng Bảo Ngọc', role: 'manager', title: 'Trưởng ban Hành chính IT', department: 'admin_it', active: true },
+    { id: 'u-mgr-net', username: 'ql.net', passwordHash: seededPasswordHash, name: 'Bùi Quốc Khánh', role: 'manager', title: 'Trưởng ban Mạng & An ninh', department: 'network', active: true },
+    { id: 'u-mgr-fin', username: 'ql.fin', passwordHash: seededPasswordHash, name: 'Hoàng Gia Bảo', role: 'manager', title: 'Trưởng ban Tài chính', department: 'finance', active: true },
 
     // Giám đốc điều hành
-    { id: 'u-director', username: 'giamdoc', password: '123', name: 'Nguyễn Thành Đạt', role: 'director', title: 'Tổng Giám Đốc', department: 'all', active: true }
+    { id: 'u-director', username: 'giamdoc', passwordHash: seededPasswordHash, name: 'Nguyễn Thành Đạt', role: 'director', title: 'Tổng Giám Đốc', department: 'all', active: true }
   ];
 
   initialUsers.forEach(u => companyUsers.set(u.id, u));
@@ -665,10 +787,69 @@ function seedCompanyWorkspace() {
   ];
 
   initialRooms.forEach(r => companyRooms.set(r.id, r));
-  addAuditEntry(initialUsers[8], 'Khởi tạo hệ thống', 'Kích hoạt cổng điều hành nội bộ khép kín (RAM-Only).');
+  addAuditEntry(initialUsers[8], 'Khởi tạo hệ thống', 'Kích hoạt cổng điều hành nội bộ khép kín.');
+  if (persist) {
+    persistCompanyWorkspace();
+  }
 }
 
-seedCompanyWorkspace();
+function loadCompanyWorkspaceFromDisk() {
+  const dir = getEffectiveDataDir();
+  if (!dir) {
+    seedCompanyWorkspace({ persist: false });
+    return;
+  }
+  const stateFile = path.join(dir, 'company-state.json');
+  if (!fs.existsSync(stateFile)) {
+    seedCompanyWorkspace({ persist: true });
+    return;
+  }
+  try {
+    const raw = fs.readFileSync(stateFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    companyUsers.clear();
+    companyRooms.clear();
+    companyAuditLog.length = 0;
+
+    if (Array.isArray(parsed.users) && parsed.users.length > 0) {
+      let migrated = false;
+      parsed.users.forEach(u => {
+        if (u && u.id) {
+          if (!u.passwordHash && u.password) {
+            u.passwordHash = hashPassword(u.password);
+            delete u.password;
+            migrated = true;
+          }
+          companyUsers.set(u.id, u);
+        }
+      });
+      if (migrated) persistCompanyWorkspace();
+    } else {
+      seedCompanyWorkspace({ persist: true });
+      return;
+    }
+
+    if (Array.isArray(parsed.rooms)) {
+      parsed.rooms.forEach(r => {
+        if (r && r.id) companyRooms.set(r.id, r);
+      });
+    }
+    if (Array.isArray(parsed.projects)) {
+      inMemoryBazaarProducts = parsed.projects;
+    }
+    inMemorySoldOrRevokedIds.clear();
+    if (Array.isArray(parsed.soldOrRevokedIds)) {
+      parsed.soldOrRevokedIds.forEach(id => inMemorySoldOrRevokedIds.add(id));
+    }
+    if (Array.isArray(parsed.auditLog)) {
+      parsed.auditLog.slice(0, 80).forEach(a => companyAuditLog.push(a));
+    }
+  } catch {
+    seedCompanyWorkspace({ persist: true });
+  }
+}
+
+loadCompanyWorkspaceFromDisk();
 
 function sanitizeUser(u) {
   if (!u) return null;
@@ -742,9 +923,10 @@ function formatCompanyStateForUser(user) {
     .filter(r => canViewRoom(user, r))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-  const allPendingApprovals = Array.from(companyRooms.values())
+  const roomApprovals = Array.from(companyRooms.values())
     .filter(r => r.status === 'pending_create' || r.status === 'pending_delete')
     .map(r => ({
+      kind: 'room',
       roomId: r.id,
       roomName: r.name,
       scope: r.scope,
@@ -757,6 +939,33 @@ function formatCompanyStateForUser(user) {
       requestedAt: r.requestedAt || r.createdAt
     }));
 
+  const messageApprovals = [];
+  for (const r of companyRooms.values()) {
+    if (!Array.isArray(r.messages)) continue;
+    for (const m of r.messages) {
+      if (m && m.deleteStatus === 'pending_delete') {
+        messageApprovals.push({
+          kind: 'message',
+          roomId: r.id,
+          roomName: r.name,
+          msgId: m.id,
+          messagePreview: String(m.text || '').slice(0, 140),
+          messageSenderName: m.senderName,
+          scope: r.scope,
+          department: r.department,
+          departmentName: COMPANY_DEPARTMENTS.find(d => d.id === r.department)?.name || r.department,
+          status: 'pending_delete',
+          pendingAction: 'message_delete',
+          requestedBy: m.deleteRequestedBy || '',
+          requestedByName: m.deleteRequestedByName || '',
+          requestedAt: m.deleteRequestedAt || Date.now()
+        });
+      }
+    }
+  }
+
+  const allPendingApprovals = [...roomApprovals, ...messageApprovals];
+
   const approvals = user.role === 'director'
     ? allPendingApprovals
     : (user.role === 'manager' ? allPendingApprovals.filter(a => a.department === user.department) : []);
@@ -764,6 +973,15 @@ function formatCompanyStateForUser(user) {
   const allUsers = Array.from(companyUsers.values()).map(sanitizeUser);
   const managers = allUsers.filter(u => u.role === 'manager');
   const employees = allUsers.filter(u => u.role === 'employee');
+  const departmentEmployees = user.role === 'manager'
+    ? employees.filter(e => e.department === user.department)
+    : (user.role === 'director' ? employees : []);
+  const mentionCandidates = allUsers.filter(u => {
+    if (!u.active) return false;
+    if (user.role === 'director') return true;
+    if (user.role === 'manager') return u.department === user.department || u.role === 'manager' || u.role === 'director';
+    return u.department === user.department;
+  });
 
   return {
     user: safeUser,
@@ -773,7 +991,9 @@ function formatCompanyStateForUser(user) {
     approvals,
     managers: (user.role === 'director' || user.role === 'manager') ? managers : [],
     employees: user.role === 'director' ? employees : [],
-    auditLog: user.role === 'director' ? companyAuditLog.slice(0, 20) : []
+    departmentEmployees,
+    mentionCandidates,
+    auditLog: user.role === 'director' ? companyAuditLog.slice(0, 30) : []
   };
 }
 
@@ -1735,15 +1955,34 @@ export function createServer() {
 
         const uname = String(body.username || '').trim().toLowerCase();
         const pwd = String(body.password || '');
-        const matched = Array.from(companyUsers.values()).find(
-          u => u.username.toLowerCase() === uname && u.password === pwd && u.active !== false
+        const candidate = Array.from(companyUsers.values()).find(
+          u => u.username.toLowerCase() === uname
         );
 
-        if (!matched) {
+        if (!candidate) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Sai tên đăng nhập hoặc mật khẩu nội bộ!' }));
           return;
         }
+        if (candidate.active === false) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Tài khoản này đã bị vô hiệu hóa bởi Quản lí/Giám đốc!' }));
+          return;
+        }
+
+        const storedCred = candidate.passwordHash || candidate.password;
+        const pwdCheck = verifyPassword(pwd, storedCred);
+        if (!pwdCheck.valid) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Sai tên đăng nhập hoặc mật khẩu nội bộ!' }));
+          return;
+        }
+        if (pwdCheck.needsUpgrade) {
+          candidate.passwordHash = hashPassword(pwd);
+          delete candidate.password;
+          persistCompanyWorkspace();
+        }
+        const matched = candidate;
 
         const token = crypto.randomBytes(24).toString('hex');
         companySessions.set(token, { userId: matched.id, createdAt: Date.now() });
@@ -1866,6 +2105,7 @@ export function createServer() {
 
         addBazaarItem(newProject);
         addAuditEntry(auth.user, 'Tạo dự án', `Tạo "${newProject.name}" thuộc ${deptName}`);
+        persistCompanyWorkspace();
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', project: newProject }));
@@ -1951,6 +2191,7 @@ export function createServer() {
 
           companyRooms.set(roomId, newRoom);
           addAuditEntry(auth.user, 'Yêu cầu mở phòng chat', `Đề xuất mở "${name}" (${scope}) — Chờ Giám đốc duyệt`);
+          persistCompanyWorkspace();
 
           res.writeHead(201, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'pending_approval', room: newRoom }));
@@ -1999,6 +2240,7 @@ export function createServer() {
 
         companyRooms.set(roomId, newRoom);
         addAuditEntry(auth.user, 'Tạo phòng chat trực tiếp', `Mở phòng "${name}" (${chosenScope})`);
+        persistCompanyWorkspace();
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'active', room: newRoom }));
@@ -2031,8 +2273,10 @@ export function createServer() {
         }
 
         if (auth.user.role === 'director') {
+          (room.messages || []).forEach(m => deleteAttachmentBinary(m?.attachment?.id));
           companyRooms.delete(roomId);
           addAuditEntry(auth.user, 'Xóa phòng chat', `Giám đốc đã xóa trực tiếp phòng "${room.name}"`);
+          persistCompanyWorkspace();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'deleted', roomId }));
           return;
@@ -2060,6 +2304,7 @@ export function createServer() {
         });
 
         addAuditEntry(auth.user, 'Yêu cầu xóa phòng chat', `Đề xuất xóa "${room.name}" — Chờ Giám đốc duyệt`);
+        persistCompanyWorkspace();
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'pending_delete', room }));
@@ -2110,12 +2355,14 @@ export function createServer() {
               text: `Giám đốc ${auth.user.name} đã PHÊ DUYỆT mở phòng chat này. Nhân viên & Quản lí trong ban có thể tham gia thảo luận.`
             });
             addAuditEntry(auth.user, 'Phê duyệt mở phòng chat', `Đã duyệt mở phòng "${room.name}"`);
+            persistCompanyWorkspace();
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'approved', room }));
             return;
           } else {
             companyRooms.delete(roomId);
             addAuditEntry(auth.user, 'Từ chối mở phòng chat', `Từ chối mở phòng "${room.name}"`);
+            persistCompanyWorkspace();
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'rejected_removed', roomId }));
             return;
@@ -2124,8 +2371,10 @@ export function createServer() {
 
         if (room.status === 'pending_delete') {
           if (decision === 'approve') {
+            (room.messages || []).forEach(m => deleteAttachmentBinary(m?.attachment?.id));
             companyRooms.delete(roomId);
             addAuditEntry(auth.user, 'Phê duyệt xóa phòng chat', `Đã duyệt xóa vĩnh viễn phòng "${room.name}"`);
+            persistCompanyWorkspace();
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'deleted', roomId }));
             return;
@@ -2141,6 +2390,7 @@ export function createServer() {
               text: `Giám đốc ${auth.user.name} đã TỪ CHỐI yêu cầu xóa. Phòng chat tiếp tục hoạt động bình thường.`
             });
             addAuditEntry(auth.user, 'Từ chối xóa phòng chat', `Giữ lại phòng "${room.name}"`);
+            persistCompanyWorkspace();
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'restored', room }));
             return;
@@ -2176,22 +2426,57 @@ export function createServer() {
           return;
         }
 
-        const rawBody = await readRequestBody(req, 16 * 1024);
+        const rawBody = await readRequestBody(req, 3 * 1024 * 1024);
         let body = {};
         try {
           body = JSON.parse(rawBody.toString('utf8'));
         } catch {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid message payload' }));
+          res.end(JSON.stringify({ error: 'Invalid message payload hoặc tệp quá lớn (>2MB)' }));
           return;
         }
 
         const text = String(body.text || '').trim().slice(0, 2000);
-        if (!text) {
+        let attachmentMeta = null;
+
+        if (body.attachment && body.attachment.dataBase64) {
+          const attName = path.basename(String(body.attachment.name || 'tep-dinh-kem.bin')).slice(0, 120);
+          const ext = path.extname(attName).toLowerCase();
+          const unsafeExts = ['.html', '.htm', '.svg', '.js', '.mjs', '.exe', '.bat', '.cmd', '.ps1', '.vbs', '.scr'];
+          if (unsafeExts.includes(ext)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `Định dạng tệp "${ext}" không được phép chia sẻ để đảm bảo an toàn nội bộ!` }));
+            return;
+          }
+
+          let rawBase64 = String(body.attachment.dataBase64);
+          if (rawBase64.includes(',')) rawBase64 = rawBase64.split(',').pop();
+          const binBuf = Buffer.from(rawBase64, 'base64');
+          if (binBuf.length === 0 || binBuf.length > 2 * 1024 * 1024) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Kích thước tệp đính kèm không hợp lệ hoặc vượt quá 2MB.' }));
+            return;
+          }
+
+          const attId = `att-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+          saveAttachmentBinary(attId, binBuf);
+          attachmentMeta = {
+            id: attId,
+            name: attName,
+            mimeType: String(body.attachment.mimeType || 'application/octet-stream').slice(0, 100),
+            size: binBuf.length
+          };
+        }
+
+        if (!text && !attachmentMeta) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Nội dung tin nhắn trống' }));
           return;
         }
+
+        const mentionMatches = Array.from(new Set(
+          (text.match(/@([a-zA-Z0-9._-]+)/g) || []).map(m => m.slice(1).toLowerCase())
+        ));
 
         const newMsg = {
           id: `msg-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
@@ -2200,15 +2485,190 @@ export function createServer() {
           senderRole: auth.user.role,
           senderDept: auth.user.department,
           time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
-          text
+          text: text || `[Đính kèm: ${attachmentMeta.name}]`,
+          mentions: mentionMatches,
+          attachment: attachmentMeta,
+          deleteStatus: null
         };
 
         room.messages.push(newMsg);
-        if (room.messages.length > 200) room.messages.shift();
+        if (room.messages.length > 200) {
+          const evicted = room.messages.shift();
+          deleteAttachmentBinary(evicted?.attachment?.id);
+        }
+        persistCompanyWorkspace();
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', message: newMsg, room }));
         return;
+      }
+
+      // GET /api/company/rooms/:roomId/attachments/:attId (RBAC-protected attachment download)
+      const attDownloadMatch = pathname.match(/^\/api\/company\/rooms\/([^/]+)\/attachments\/([^/]+)$/);
+      if (attDownloadMatch && method === 'GET') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập phiên nội bộ' }));
+          return;
+        }
+        const roomId = decodeURIComponent(attDownloadMatch[1]);
+        const attId = decodeURIComponent(attDownloadMatch[2]);
+        const room = companyRooms.get(roomId);
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Phòng chat không tồn tại' }));
+          return;
+        }
+        if (!canViewRoom(auth.user, room)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Bạn không có quyền truy cập tệp trong phòng chat này' }));
+          return;
+        }
+        const msgWithAtt = (room.messages || []).find(m => m.attachment && m.attachment.id === attId);
+        if (!msgWithAtt) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy tệp đính kèm' }));
+          return;
+        }
+        const binBuf = loadAttachmentBinary(attId);
+        if (!binBuf) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Dữ liệu tệp đính kèm không còn khả dụng' }));
+          return;
+        }
+        const safeMime = msgWithAtt.attachment.mimeType || 'application/octet-stream';
+        const isSafeImage = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(safeMime);
+        const safeFilename = String(msgWithAtt.attachment.name || 'file.bin').replace(/[^a-zA-Z0-9._-]/g, '_');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Disposition', `${isSafeImage ? 'inline' : 'attachment'}; filename="${safeFilename}"`);
+        res.writeHead(200, { 'Content-Type': isSafeImage ? safeMime : 'application/octet-stream' });
+        res.end(binBuf);
+        return;
+      }
+
+      // POST /api/company/rooms/:roomId/messages/:msgId/request-delete (Manager -> pending_delete; Director -> direct delete; Employee -> 403)
+      const msgReqDelMatch = pathname.match(/^\/api\/company\/rooms\/([^/]+)\/messages\/([^/]+)\/request-delete$/);
+      if (msgReqDelMatch && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền xóa đoạn chat/tin nhắn' }));
+          return;
+        }
+        const roomId = decodeURIComponent(msgReqDelMatch[1]);
+        const msgId = decodeURIComponent(msgReqDelMatch[2]);
+        const room = companyRooms.get(roomId);
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Phòng chat không tồn tại' }));
+          return;
+        }
+        const msgIdx = (room.messages || []).findIndex(m => m.id === msgId);
+        if (msgIdx === -1) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy tin nhắn cần xóa' }));
+          return;
+        }
+        const targetMsg = room.messages[msgIdx];
+        if (targetMsg.senderRole === 'system') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không thể xóa thông báo nhật ký hệ thống' }));
+          return;
+        }
+
+        if (auth.user.role === 'director') {
+          deleteAttachmentBinary(targetMsg?.attachment?.id);
+          room.messages.splice(msgIdx, 1);
+          addAuditEntry(auth.user, 'Xóa tin nhắn', `Giám đốc xóa trực tiếp tin nhắn trong "${room.name}"`);
+          persistCompanyWorkspace();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'deleted', roomId, msgId }));
+          return;
+        }
+
+        if (room.department !== auth.user.department || (room.scope !== 'department' && room.scope !== 'work')) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Quản lí chỉ được đề xuất xóa đoạn chat trong phòng thuộc Ban mình' }));
+          return;
+        }
+
+        targetMsg.deleteStatus = 'pending_delete';
+        targetMsg.deleteRequestedBy = auth.user.id;
+        targetMsg.deleteRequestedByName = auth.user.name;
+        targetMsg.deleteRequestedAt = Date.now();
+        addAuditEntry(auth.user, 'Yêu cầu xóa đoạn chat', `Đề xuất xóa tin nhắn của ${targetMsg.senderName} trong "${room.name}" — Chờ Giám đốc duyệt`);
+        persistCompanyWorkspace();
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'pending_delete', message: targetMsg }));
+        return;
+      }
+
+      // POST /api/company/approvals/messages/:roomId/:msgId/decide (STRICTLY DIRECTOR ONLY)
+      const msgApproveMatch = pathname.match(/^\/api\/company\/approvals\/messages\/([^/]+)\/([^/]+)\/decide$/);
+      if (msgApproveMatch && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role !== 'director') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chỉ Giám đốc mới có quyền phê duyệt xóa đoạn chat/tin nhắn' }));
+          return;
+        }
+        const roomId = decodeURIComponent(msgApproveMatch[1]);
+        const msgId = decodeURIComponent(msgApproveMatch[2]);
+        const room = companyRooms.get(roomId);
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Phòng chat không tồn tại' }));
+          return;
+        }
+        const msgIdx = (room.messages || []).findIndex(m => m.id === msgId);
+        if (msgIdx === -1) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Tin nhắn không tồn tại' }));
+          return;
+        }
+        const targetMsg = room.messages[msgIdx];
+        if (targetMsg.deleteStatus !== 'pending_delete') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Tin nhắn không ở trạng thái chờ phê duyệt xóa' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 8 * 1024);
+        let body = {};
+        try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
+        const decision = body.decision === 'reject' ? 'reject' : 'approve';
+
+        if (decision === 'approve') {
+          deleteAttachmentBinary(targetMsg?.attachment?.id);
+          room.messages.splice(msgIdx, 1);
+          addAuditEntry(auth.user, 'Duyệt xóa tin nhắn', `Đã xóa đoạn chat trong phòng "${room.name}"`);
+          persistCompanyWorkspace();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'deleted', roomId, msgId }));
+          return;
+        } else {
+          targetMsg.deleteStatus = null;
+          delete targetMsg.deleteRequestedBy;
+          delete targetMsg.deleteRequestedByName;
+          delete targetMsg.deleteRequestedAt;
+          addAuditEntry(auth.user, 'Từ chối xóa tin nhắn', `Giữ lại tin nhắn trong phòng "${room.name}"`);
+          persistCompanyWorkspace();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'restored', message: targetMsg }));
+          return;
+        }
       }
 
       // POST /api/company/managers (Director adds a new Manager to the company)
@@ -2257,7 +2717,7 @@ export function createServer() {
         const newMgr = {
           id: `u-mgr-${crypto.randomBytes(3).toString('hex')}`,
           username,
-          password,
+          passwordHash: hashPassword(password),
           name,
           role: 'manager',
           title: String(body.title || `Trưởng nhóm ${deptObj?.short || department}`).trim(),
@@ -2267,6 +2727,7 @@ export function createServer() {
 
         companyUsers.set(newMgr.id, newMgr);
         addAuditEntry(auth.user, 'Thêm Quản lí mới', `Bổ nhiệm ${newMgr.name} (${newMgr.username}) phụ trách ${deptObj?.name || department}`);
+        persistCompanyWorkspace();
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', manager: sanitizeUser(newMgr) }));
@@ -2308,15 +2769,267 @@ export function createServer() {
         if (body.title) {
           target.title = String(body.title).trim();
         }
+        if (body.name && String(body.name).trim()) {
+          target.name = String(body.name).trim();
+        }
         if (typeof body.active === 'boolean') {
           target.active = body.active;
+          if (!body.active) revokeUserSessions(target.id);
         }
 
         const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === target.department);
-        addAuditEntry(auth.user, 'Điều phối Quản lí', `Chuyển ${target.name} phụ trách ${deptObj?.name || target.department}`);
+        addAuditEntry(auth.user, 'Điều phối Quản lí', `Cập nhật ${target.name} (${deptObj?.name || target.department}, ${target.active ? 'Hoạt động' : 'Đã khóa'})`);
+        persistCompanyWorkspace();
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', manager: sanitizeUser(target) }));
+        return;
+      }
+
+      // POST /api/company/change-password (Any logged-in user)
+      if (pathname === '/api/company/change-password' && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        const rawBody = await readRequestBody(req, 8 * 1024);
+        let body = {};
+        try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
+        const currentPwd = String(body.currentPassword || '');
+        const newPwd = String(body.newPassword || '');
+        const check = verifyPassword(currentPwd, auth.user.passwordHash || auth.user.password);
+        if (!check.valid) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Mật khẩu hiện tại không chính xác!' }));
+          return;
+        }
+        if (newPwd.length < 4 || newPwd.length > 64) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Mật khẩu mới phải từ 4 đến 64 ký tự!' }));
+          return;
+        }
+        auth.user.passwordHash = hashPassword(newPwd);
+        delete auth.user.password;
+        addAuditEntry(auth.user, 'Đổi mật khẩu', `${auth.user.name} (@${auth.user.username}) đã cập nhật mật khẩu đăng nhập`);
+        persistCompanyWorkspace();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success' }));
+        return;
+      }
+
+      // POST /api/company/employees (Manager adds employee in own dept; Director adds anywhere; Employee -> 403)
+      if (pathname === '/api/company/employees' && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền thêm nhân sự' }));
+          return;
+        }
+        const rawBody = await readRequestBody(req, 16 * 1024);
+        let body = {};
+        try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
+
+        const name = String(body.name || '').trim();
+        const username = String(body.username || '').trim().toLowerCase();
+        const password = String(body.password || '123');
+        if (!name || !username) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Thiếu họ tên hoặc tên đăng nhập nhân viên' }));
+          return;
+        }
+        if (auth.user.role === 'manager' && body.department && body.department !== auth.user.department) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Quản lí chỉ có thể thêm Nhân viên vào chính phòng ban của mình' }));
+          return;
+        }
+        const department = auth.user.role === 'director'
+          ? (COMPANY_DEPARTMENTS.some(d => d.id === body.department) ? body.department : 'devops')
+          : auth.user.department;
+
+        const duplicate = Array.from(companyUsers.values()).some(u => u.username.toLowerCase() === username);
+        if (duplicate) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Tên đăng nhập "${username}" đã tồn tại` }));
+          return;
+        }
+        const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === department);
+        const newEmp = {
+          id: `u-emp-${crypto.randomBytes(3).toString('hex')}`,
+          username,
+          passwordHash: hashPassword(password),
+          name,
+          role: 'employee',
+          title: String(body.title || `Chuyên viên ${deptObj?.short || department}`).trim(),
+          department,
+          active: true
+        };
+        companyUsers.set(newEmp.id, newEmp);
+        addAuditEntry(auth.user, 'Thêm Nhân viên', `Tạo ${newEmp.name} (@${newEmp.username}) thuộc ${deptObj?.name || department}`);
+        persistCompanyWorkspace();
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', employee: sanitizeUser(newEmp) }));
+        return;
+      }
+
+      // PATCH /api/company/employees/:userId (Manager manages own dept employee; Director manages any; Employee -> 403)
+      const empPatchMatch = pathname.match(/^\/api\/company\/employees\/([^/]+)$/);
+      if (empPatchMatch && method === 'PATCH') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền chỉnh sửa tài khoản' }));
+          return;
+        }
+        const targetId = decodeURIComponent(empPatchMatch[1]);
+        const target = companyUsers.get(targetId);
+        if (!target || target.role !== 'employee') {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy tài khoản Nhân viên' }));
+          return;
+        }
+        if (auth.user.role === 'manager' && target.department !== auth.user.department) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Quản lí chỉ được quản lý Nhân viên thuộc phòng ban của mình' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 8 * 1024);
+        let body = {};
+        try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
+
+        if (auth.user.role === 'manager' && body.department && body.department !== auth.user.department) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Quản lí không có quyền điều chuyển Nhân viên sang ban khác' }));
+          return;
+        }
+        if (auth.user.role === 'director' && body.department && COMPANY_DEPARTMENTS.some(d => d.id === body.department)) {
+          target.department = body.department;
+        }
+        if (body.name && String(body.name).trim()) target.name = String(body.name).trim();
+        if (body.title && String(body.title).trim()) target.title = String(body.title).trim();
+        if (typeof body.active === 'boolean') {
+          target.active = body.active;
+          if (!body.active) revokeUserSessions(target.id);
+        }
+
+        const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === target.department);
+        addAuditEntry(auth.user, 'Cập nhật Nhân viên', `Cập nhật ${target.name} (${deptObj?.name || target.department}, ${target.active ? 'Hoạt động' : 'Đã khóa'})`);
+        persistCompanyWorkspace();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', employee: sanitizeUser(target) }));
+        return;
+      }
+
+      // DELETE /api/company/projects/:projectId (Manager own dept or Director)
+      const projDeleteMatch = pathname.match(/^\/api\/company\/projects\/([^/]+)$/);
+      if (projDeleteMatch && method === 'DELETE') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền xóa/thu hồi dự án' }));
+          return;
+        }
+        const projectId = decodeURIComponent(projDeleteMatch[1]);
+        const idx = inMemoryBazaarProducts.findIndex(p => p.id === projectId);
+        if (idx === -1) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy dự án' }));
+          return;
+        }
+        const proj = inMemoryBazaarProducts[idx];
+        const projDept = inferDepartment(proj);
+        if (auth.user.role === 'manager' && projDept !== auth.user.department) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Quản lí chỉ có quyền thu hồi dự án thuộc Ban mình' }));
+          return;
+        }
+        inMemoryBazaarProducts.splice(idx, 1);
+        inMemorySoldOrRevokedIds.add(projectId);
+        addAuditEntry(auth.user, 'Thu hồi dự án', `Gỡ bỏ dự án "${proj.name}" khỏi bảng tin`);
+        persistCompanyWorkspace();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'deleted', projectId }));
+        return;
+      }
+
+      // PATCH /api/company/projects/:projectId/task (Assign employee & update progress)
+      const projTaskMatch = pathname.match(/^\/api\/company\/projects\/([^/]+)\/task$/);
+      if (projTaskMatch && method === 'PATCH') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        const projectId = decodeURIComponent(projTaskMatch[1]);
+        const proj = inMemoryBazaarProducts.find(p => p.id === projectId);
+        if (!proj) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy dự án' }));
+          return;
+        }
+        const projDept = inferDepartment(proj);
+        if (auth.user.role !== 'director' && projDept !== auth.user.department) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không có quyền thao tác dự án của phòng ban khác' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 8 * 1024);
+        let body = {};
+        try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
+
+        if (auth.user.role === 'employee' && (body.assigneeId !== undefined || body.dueDate !== undefined)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên chỉ được cập nhật trạng thái tiến độ, không thể tự phân công lại nhân sự' }));
+          return;
+        }
+
+        const allowedStatuses = ['todo', 'in_progress', 'review', 'done'];
+        if (body.taskStatus && allowedStatuses.includes(body.taskStatus)) {
+          proj.taskStatus = body.taskStatus;
+        }
+        if (auth.user.role !== 'employee') {
+          if (body.assigneeId !== undefined) {
+            if (!body.assigneeId) {
+              proj.assigneeId = '';
+              proj.assigneeName = '';
+            } else {
+              const targetAssignee = companyUsers.get(String(body.assigneeId));
+              if (!targetAssignee || (auth.user.role === 'manager' && targetAssignee.department !== auth.user.department)) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Nhân sự được giao không hợp lệ hoặc thuộc ban khác' }));
+                return;
+              }
+              proj.assigneeId = targetAssignee.id;
+              proj.assigneeName = targetAssignee.name;
+            }
+          }
+          if (body.dueDate !== undefined) {
+            proj.dueDate = String(body.dueDate || '').slice(0, 32);
+          }
+        }
+        addAuditEntry(auth.user, 'Cập nhật công việc', `"${proj.name}" · Tiến độ: ${proj.taskStatus || 'todo'}${proj.assigneeName ? ' · Phụ trách: ' + proj.assigneeName : ''}`);
+        persistCompanyWorkspace();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', project: { ...proj, department: projDept } }));
         return;
       }
 

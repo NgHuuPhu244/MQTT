@@ -13,3 +13,7 @@ yarn-error.log*
 .env.local
 .DS_Store
 Thumbs.db
+
+# Persistent closed-company local runtime state (ignored from Git)
+data/
+*.tmp
