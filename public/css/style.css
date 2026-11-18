@@ -6067,4 +6067,726 @@ body.vault-page.obsidian-studio .vault-footer {
     padding-left: 0;
   }
 }
+/* ==========================================================================
+   21. CLOSED-COMPANY AUTH GATE & DIRECTOR ADMIN CONSOLE (v7.0)
+   ========================================================================== */
 
+body.vault-page.obsidian-studio .auth-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  background: #090b10;
+}
+
+body.vault-page.obsidian-studio .auth-gate[hidden] {
+  display: none !important;
+}
+
+.auth-gate-shell {
+  width: 100%;
+  max-width: 1060px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.auth-brand-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.auth-brand-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+
+.auth-brand-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+
+.auth-card-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.15fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 860px) {
+  .auth-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth-form-col,
+.auth-directory-col {
+  background: #10141e;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 14px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-col-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.auth-col-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #94a3b8;
+}
+
+.company-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.company-login-form input {
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #090b10;
+  color: #f8fafc;
+  font-size: 0.92rem;
+}
+
+.company-login-form input:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.auth-error-msg {
+  padding: 0.7rem 0.85rem;
+  border-radius: 9px;
+  background: #2c0d12;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+.auth-submit-btn {
+  min-height: 46px;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+}
+
+.auth-security-note {
+  margin-top: auto;
+  padding: 0.75rem 0.85rem;
+  border-radius: 9px;
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.auth-security-note code {
+  color: #7dd3fc;
+  font-family: var(--font-mono);
+}
+
+.auth-dir-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.auth-dir-hint {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.quick-login-directory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.quick-role-group-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.45rem;
+}
+
+.quick-role-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.55rem;
+}
+
+.quick-account-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-height: 48px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: #0b0e16;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.quick-account-btn:hover {
+  background: #141a28;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.quick-account-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.quick-account-btn.role-director {
+  border-color: rgba(192, 132, 252, 0.35);
+  background: rgba(192, 132, 252, 0.07);
+}
+
+.quick-account-btn.role-manager {
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+.qa-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.qa-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.qa-meta {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-user {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #7dd3fc;
+  flex-shrink: 0;
+}
+
+/* Header Role & Department Pills + Logout Button */
+.user-role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.user-role-pill.role-employee {
+  background: #0b2238;
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.user-role-pill.role-manager {
+  background: #07241a;
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.user-role-pill.role-director {
+  background: #211136;
+  color: #d8b4fe;
+  border: 1px solid rgba(192, 132, 252, 0.38);
+}
+
+.user-dept-pill {
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  padding-left: 0.4rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Scope Banner & Director KPI Oversight Strip */
+.role-scope-banner {
+  padding: 0.72rem 1rem;
+  border-radius: 10px;
+  background: #10141e;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  color: #e2e8f0;
+  font-size: 0.84rem;
+  margin-bottom: 1rem;
+}
+
+.director-oversight-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 720px) {
+  .director-oversight-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.kpi-tile {
+  background: #10141e;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kpi-tile.kpi-highlight {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.kpi-label {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.kpi-val {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: var(--font-mono);
+}
+
+/* Chat Room RBAC Status Pills & Approval Banner */
+.thread-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.thread-status-tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+}
+
+.thread-status-tag.pending-create {
+  background: #291e09;
+  color: #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.thread-status-tag.pending-delete {
+  background: #2c0d12;
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.thread-online-dot.dot-pending {
+  background: #fbbf24;
+}
+
+.thread-online-dot.dot-danger {
+  background: #f87171;
+}
+
+.room-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.7rem 1.1rem;
+  background: #291e09;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.28);
+  color: #fef3c7;
+  font-size: 0.82rem;
+}
+
+.room-status-banner.is-danger {
+  background: #2c0d12;
+  border-bottom-color: rgba(248, 113, 113, 0.35);
+  color: #fee2e2;
+}
+
+.room-status-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.room-status-pill {
+  padding: 0.18rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fde68a;
+}
+
+.room-director-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-locked-notice {
+  margin-bottom: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 9px;
+  background: #291e09;
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  color: #fcd34d;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.verified-vendor-badge.badge-pending {
+  background: #291e09;
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.verified-vendor-badge.badge-danger {
+  background: #2c0d12;
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.38);
+}
+
+.field-hint-note {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* Tab 5: Director Admin Console */
+.admin-console-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.15rem;
+}
+
+@media (max-width: 980px) {
+  .admin-console-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-panel {
+  background: #10141e;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 14px;
+  padding: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.admin-panel-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.admin-sub-heading {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.85rem;
+}
+
+.director-approvals-list,
+.director-managers-list,
+.director-audit-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.approval-card,
+.manager-row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  background: #0b0e16;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+}
+
+.approval-card.is-delete {
+  border-color: rgba(248, 113, 113, 0.32);
+}
+
+.approval-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.approval-type-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: 6px;
+}
+
+.approval-type-pill.create {
+  background: #291e09;
+  color: #fcd34d;
+}
+
+.approval-type-pill.delete {
+  background: #2c0d12;
+  color: #fca5a5;
+}
+
+.approval-dept-pill {
+  font-size: 0.72rem;
+  color: #7dd3fc;
+  background: #0b2238;
+  padding: 0.18rem 0.5rem;
+  border-radius: 6px;
+}
+
+.approval-room-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.approval-meta {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+}
+
+.approval-actions,
+.manager-coord-col {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.approval-actions button,
+.manager-coord-col button,
+.manager-coord-select {
+  min-height: 44px;
+}
+
+.manager-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.manager-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #f8fafc;
+}
+
+.manager-name-line code {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: #7dd3fc;
+}
+
+.manager-sub-line {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.participants-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.5rem;
+}
+
+.participant-check-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 9px;
+  background: #0b0e16;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.participant-check-chip input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #38bdf8;
+}
+
+.create-room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.create-room-approval-note {
+  padding: 0.7rem 0.85rem;
+  border-radius: 9px;
+  background: #291e09;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  color: #fde68a;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.audit-entry-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 9px;
+  background: #0b0e16;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  font-size: 0.8rem;
+}
+
+.audit-time {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: #7dd3fc;
+  flex-shrink: 0;
+}
+
+.audit-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: #e2e8f0;
+}
+
+.audit-action-badge {
+  font-size: 0.72rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.audit-detail {
+  color: #94a3b8;
+}
+
+/* Unified Dark Inputs inside Director Admin Console & Create Room Modal */
+body.vault-page.obsidian-studio .admin-form input:not([type="checkbox"]),
+body.vault-page.obsidian-studio .create-room-form input:not([type="checkbox"]),
+body.vault-page.obsidian-studio .admin-form select,
+body.vault-page.obsidian-studio .create-room-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #090b10;
+  color: #f8fafc;
+  font-size: 0.9rem;
+}
+
+body.vault-page.obsidian-studio .admin-form input:not([type="checkbox"])::placeholder,
+body.vault-page.obsidian-studio .create-room-form input:not([type="checkbox"])::placeholder {
+  color: #64748b;
+}
+
+body.vault-page.obsidian-studio .admin-form input:focus-visible,
+body.vault-page.obsidian-studio .create-room-form input:focus-visible,
+body.vault-page.obsidian-studio .admin-form select:focus-visible,
+body.vault-page.obsidian-studio .create-room-form select:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+body.vault-page.obsidian-studio .messenger-new-pill {
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 0.85rem;
+}

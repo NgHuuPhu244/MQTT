@@ -79,6 +79,7 @@ let currentTotalRAMBytes = 0;
 const INITIAL_BAZAAR_PRODUCTS = [
   {
     id: 'auction-chip-07',
+    department: 'devops',
     name: 'Triển Khai Cụm Gateway API & HSM Nội Bộ Q4',
     category: 'hardware',
     badge: 'Phòng DevOps',
@@ -114,6 +115,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'lux-watch-08',
+    department: 'admin_it',
     name: 'Cấp Phát Laptop Workstation & Thẻ Từ Văn Phòng Mới',
     category: 'physical',
     badge: 'Hành Chính & IT',
@@ -147,6 +149,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'dig-domain-09',
+    department: 'admin_it',
     name: 'Tài Khoản Cloud Staging & Bộ Biến Môi Trường (.env)',
     category: 'digital',
     badge: 'Tài Nguyên Số',
@@ -179,6 +182,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'hw-hsm-01',
+    department: 'devops',
     name: 'Khóa Xác Thực YubiKey & Token Ký Code Production',
     category: 'hardware',
     badge: 'Phần Cứng IT',
@@ -211,6 +215,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'net-mesh-02',
+    department: 'network',
     name: 'Cấu Hình VPN WireGuard Truy Cập Server Nội Bộ',
     category: 'network',
     badge: 'Hạ Tầng Mạng',
@@ -241,6 +246,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'sec-ssl-03',
+    department: 'network',
     name: 'Chứng Chỉ SSL Nội Bộ & Quyền Truy Cập GitLab Private',
     category: 'network',
     badge: 'Hệ Thống',
@@ -271,6 +277,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'doc-audit-04',
+    department: 'finance',
     name: 'Báo Cáo Đánh Giá Bảo Mật & Checklist Vá Lỗi Q4',
     category: 'audit',
     badge: 'Kiểm Toán IT',
@@ -301,6 +308,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'os-amnesic-05',
+    department: 'devops',
     name: 'Bộ Cài Đặt Môi Trường Dev & Docker Registry Nội Bộ',
     category: 'crypto',
     badge: 'Kỹ Thuật',
@@ -331,6 +339,7 @@ const INITIAL_BAZAAR_PRODUCTS = [
   },
   {
     id: 'key-pgp-06',
+    department: 'finance',
     name: 'Bộ API Key Thanh Toán & Chứng Thư Ký Hợp Đồng Số',
     category: 'crypto',
     badge: 'Tài Chính / API',
@@ -362,6 +371,10 @@ const INITIAL_BAZAAR_PRODUCTS = [
 ];
 
 let inMemoryBazaarProducts = JSON.parse(JSON.stringify(INITIAL_BAZAAR_PRODUCTS));
+
+export function resetCompanyWorkspaceForTests() {
+  seedCompanyWorkspace();
+}
 
 export function getBazaarItems() {
   return inMemoryBazaarProducts;
@@ -457,6 +470,313 @@ function markProductSoldAndRemoveFromRAM(productId, productName) {
   }
   return null;
 }
+
+// =========================================================================
+// CLOSED-COMPANY RBAC SYSTEM (NHÂN VIÊN • QUẢN LÍ • GIÁM ĐỐC) - RAM ONLY
+// =========================================================================
+export const COMPANY_DEPARTMENTS = [
+  { id: 'devops', name: 'Ban DevOps & Hạ tầng', short: 'DevOps' },
+  { id: 'admin_it', name: 'Ban Hành chính & IT', short: 'Hành chính IT' },
+  { id: 'network', name: 'Ban Mạng & An ninh', short: 'Mạng & An ninh' },
+  { id: 'finance', name: 'Ban Tài chính & Pháp chế', short: 'Tài chính' }
+];
+
+const CATEGORY_TO_DEPT = {
+  hardware: 'devops',
+  physical: 'admin_it',
+  digital: 'admin_it',
+  service: 'admin_it',
+  network: 'network',
+  crypto: 'finance',
+  audit: 'finance'
+};
+
+function inferDepartment(item) {
+  if (item && item.department && COMPANY_DEPARTMENTS.some(d => d.id === item.department)) {
+    return item.department;
+  }
+  return CATEGORY_TO_DEPT[item?.category] || 'devops';
+}
+
+const companyUsers = new Map();
+const companySessions = new Map();
+const companyRooms = new Map();
+const companyAuditLog = [];
+
+function addAuditEntry(actor, action, detail) {
+  companyAuditLog.unshift({
+    id: `audit-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+    actorName: actor ? actor.name : 'Hệ thống',
+    actorRole: actor ? actor.role : 'system',
+    action,
+    detail,
+    time: new Date().toLocaleTimeString('vi-VN', { hour12: false })
+  });
+  if (companyAuditLog.length > 60) companyAuditLog.pop();
+}
+
+function seedCompanyWorkspace() {
+  companyUsers.clear();
+  companySessions.clear();
+  companyRooms.clear();
+  companyAuditLog.length = 0;
+
+  const initialUsers = [
+    // Nhân viên các ban
+    { id: 'u-emp-devops', username: 'nv.devops1', password: '123', name: 'Trần Minh Quân', role: 'employee', title: 'Kỹ sư DevOps', department: 'devops', active: true },
+    { id: 'u-emp-it', username: 'nv.it1', password: '123', name: 'Nguyễn Thảo Vy', role: 'employee', title: 'Chuyên viên IT', department: 'admin_it', active: true },
+    { id: 'u-emp-net', username: 'nv.net1', password: '123', name: 'Phạm Hoàng Nam', role: 'employee', title: 'Kỹ sư Hạ tầng Mạng', department: 'network', active: true },
+    { id: 'u-emp-fin', username: 'nv.fin1', password: '123', name: 'Lê Thu Hà', role: 'employee', title: 'Chuyên viên Tài chính', department: 'finance', active: true },
+
+    // Quản lí các ban
+    { id: 'u-mgr-devops', username: 'ql.devops', password: '123', name: 'Vũ Đức Anh', role: 'manager', title: 'Trưởng ban DevOps', department: 'devops', active: true },
+    { id: 'u-mgr-it', username: 'ql.it', password: '123', name: 'Đặng Bảo Ngọc', role: 'manager', title: 'Trưởng ban Hành chính IT', department: 'admin_it', active: true },
+    { id: 'u-mgr-net', username: 'ql.net', password: '123', name: 'Bùi Quốc Khánh', role: 'manager', title: 'Trưởng ban Mạng & An ninh', department: 'network', active: true },
+    { id: 'u-mgr-fin', username: 'ql.fin', password: '123', name: 'Hoàng Gia Bảo', role: 'manager', title: 'Trưởng ban Tài chính', department: 'finance', active: true },
+
+    // Giám đốc điều hành
+    { id: 'u-director', username: 'giamdoc', password: '123', name: 'Nguyễn Thành Đạt', role: 'director', title: 'Tổng Giám Đốc', department: 'all', active: true }
+  ];
+
+  initialUsers.forEach(u => companyUsers.set(u.id, u));
+
+  const nowStr = '09:00:00';
+  const initialRooms = [
+    {
+      id: 'room-devops-main',
+      name: 'Phòng Ban DevOps & Hạ tầng',
+      scope: 'department',
+      department: 'devops',
+      projectId: '',
+      status: 'active',
+      createdBy: 'u-mgr-devops',
+      createdByName: 'Vũ Đức Anh',
+      createdByRole: 'manager',
+      participantIds: [],
+      includeAllManagers: false,
+      createdAt: Date.now() - 3600000,
+      messages: [
+        { id: 'm-1', senderId: 'u-mgr-devops', senderName: 'Vũ Đức Anh', senderRole: 'manager', time: nowStr, text: 'Chào nhóm DevOps! Mọi thông tin triển khai Gateway API và Docker nội bộ trao đổi tại đây.' },
+        { id: 'm-2', senderId: 'u-emp-devops', senderName: 'Trần Minh Quân', senderRole: 'employee', time: '09:04:12', text: 'Rõ ạ, em đang hoàn thiện cấu hình HSM Token cho môi trường Staging.' }
+      ]
+    },
+    {
+      id: 'room-devops-work',
+      name: 'Công việc: Triển khai Gateway API Q4',
+      scope: 'work',
+      department: 'devops',
+      projectId: 'auction-chip-07',
+      status: 'active',
+      createdBy: 'u-mgr-devops',
+      createdByName: 'Vũ Đức Anh',
+      createdByRole: 'manager',
+      participantIds: [],
+      includeAllManagers: false,
+      createdAt: Date.now() - 2400000,
+      messages: [
+        { id: 'm-3', senderId: 'u-mgr-devops', senderName: 'Vũ Đức Anh', senderRole: 'manager', time: '09:15:00', text: 'Phòng công việc phục vụ Sprint 14 Gateway API. Anh em cập nhật tiến độ cuối ngày nhé.' }
+      ]
+    },
+    {
+      id: 'room-it-main',
+      name: 'Phòng Ban Hành chính & IT',
+      scope: 'department',
+      department: 'admin_it',
+      projectId: '',
+      status: 'active',
+      createdBy: 'u-mgr-it',
+      createdByName: 'Đặng Bảo Ngọc',
+      createdByRole: 'manager',
+      participantIds: [],
+      includeAllManagers: false,
+      createdAt: Date.now() - 3500000,
+      messages: [
+        { id: 'm-4', senderId: 'u-mgr-it', senderName: 'Đặng Bảo Ngọc', senderRole: 'manager', time: nowStr, text: 'Kênh điều phối cấp phát Workstation và tài khoản Staging Cloud.' }
+      ]
+    },
+    {
+      id: 'room-net-main',
+      name: 'Phòng Ban Mạng & An ninh',
+      scope: 'department',
+      department: 'network',
+      projectId: '',
+      status: 'active',
+      createdBy: 'u-mgr-net',
+      createdByName: 'Bùi Quốc Khánh',
+      createdByRole: 'manager',
+      participantIds: [],
+      includeAllManagers: false,
+      createdAt: Date.now() - 3400000,
+      messages: [
+        { id: 'm-5', senderId: 'u-mgr-net', senderName: 'Bùi Quốc Khánh', senderRole: 'manager', time: nowStr, text: 'Kênh hỗ trợ cấu hình VPN WireGuard và chứng chỉ TLS nội bộ.' }
+      ]
+    },
+    {
+      id: 'room-fin-main',
+      name: 'Phòng Ban Tài chính & Pháp chế',
+      scope: 'department',
+      department: 'finance',
+      projectId: '',
+      status: 'active',
+      createdBy: 'u-mgr-fin',
+      createdByName: 'Hoàng Gia Bảo',
+      createdByRole: 'manager',
+      participantIds: [],
+      includeAllManagers: false,
+      createdAt: Date.now() - 3300000,
+      messages: [
+        { id: 'm-6', senderId: 'u-mgr-fin', senderName: 'Hoàng Gia Bảo', senderRole: 'manager', time: nowStr, text: 'Kênh bảo mật trao đổi báo cáo kiểm toán Q4 và chứng thư hợp đồng.' }
+      ]
+    },
+    {
+      id: 'room-exec-board',
+      name: 'Họp Ban Giám Đốc & Toàn Bộ Quản Lí',
+      scope: 'manager_director',
+      department: 'executive',
+      projectId: '',
+      status: 'active',
+      createdBy: 'u-director',
+      createdByName: 'Nguyễn Thành Đạt',
+      createdByRole: 'director',
+      participantIds: ['u-director', 'u-mgr-devops', 'u-mgr-it', 'u-mgr-net', 'u-mgr-fin'],
+      includeAllManagers: true,
+      createdAt: Date.now() - 5000000,
+      messages: [
+        { id: 'm-7', senderId: 'u-director', senderName: 'Nguyễn Thành Đạt', senderRole: 'director', time: '08:30:00', text: 'Chào các Trưởng ban. Mọi đề xuất mở phòng chat mới hoặc xóa đoạn chat của phòng ban sẽ qua phê duyệt tại đây.' }
+      ]
+    },
+    {
+      id: 'room-mgr-coordination',
+      name: 'Điều phối Quản lí: DevOps ↔ Hành chính IT',
+      scope: 'manager_to_manager',
+      department: 'executive',
+      projectId: '',
+      status: 'active',
+      createdBy: 'u-director',
+      createdByName: 'Nguyễn Thành Đạt',
+      createdByRole: 'director',
+      participantIds: ['u-mgr-devops', 'u-mgr-it'],
+      includeAllManagers: false,
+      createdAt: Date.now() - 2800000,
+      messages: [
+        { id: 'm-8', senderId: 'u-director', senderName: 'Nguyễn Thành Đạt', senderRole: 'director', time: '08:45:00', text: 'Anh Đức Anh và chị Bảo Ngọc phối hợp chuẩn bị laptop + token cho nhân sự mới tuần này nhé.' }
+      ]
+    }
+  ];
+
+  initialRooms.forEach(r => companyRooms.set(r.id, r));
+  addAuditEntry(initialUsers[8], 'Khởi tạo hệ thống', 'Kích hoạt cổng điều hành nội bộ khép kín (RAM-Only).');
+}
+
+seedCompanyWorkspace();
+
+function sanitizeUser(u) {
+  if (!u) return null;
+  const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === u.department);
+  return {
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    role: u.role,
+    title: u.title,
+    department: u.department,
+    departmentName: u.department === 'all' ? 'Toàn Công Ty' : (deptObj ? deptObj.name : u.department),
+    active: u.active !== false
+  };
+}
+
+function getAuthSession(req, parsedUrl) {
+  const headerToken = req.headers['x-session-token'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  const queryToken = parsedUrl?.searchParams ? parsedUrl.searchParams.get('token') : '';
+  const token = (headerToken || queryToken || '').trim();
+  if (!token || !companySessions.has(token)) return null;
+  const sess = companySessions.get(token);
+  const user = companyUsers.get(sess.userId);
+  if (!user || user.active === false) return null;
+  return { token, user };
+}
+
+function canViewProject(user, project) {
+  if (!user) return false;
+  if (user.role === 'director') return true;
+  return inferDepartment(project) === user.department;
+}
+
+function canViewRoom(user, room) {
+  if (!user || !room) return false;
+  if (user.role === 'director') return true;
+
+  if (room.scope === 'manager_director' || room.scope === 'manager_to_manager') {
+    if (user.role !== 'manager') return false;
+    if (room.status === 'pending_create') return false;
+    return Boolean(room.includeAllManagers || (Array.isArray(room.participantIds) && room.participantIds.includes(user.id)));
+  }
+
+  // Department or Work room
+  if (user.role === 'manager') {
+    return room.department === user.department;
+  }
+
+  // Employee: strictly ONLY active (or pending_delete not yet approved) rooms in own department
+  if (user.role === 'employee') {
+    if (room.status === 'pending_create') return false;
+    return room.department === user.department;
+  }
+
+  return false;
+}
+
+function canPostInRoom(user, room) {
+  if (!canViewRoom(user, room)) return false;
+  // Unapproved rooms cannot be chatted in until Director approves
+  return room.status === 'active' || room.status === 'pending_delete';
+}
+
+function formatCompanyStateForUser(user) {
+  const safeUser = sanitizeUser(user);
+  const projects = inMemoryBazaarProducts
+    .map(p => ({ ...p, department: inferDepartment(p) }))
+    .filter(p => canViewProject(user, p));
+
+  const rooms = Array.from(companyRooms.values())
+    .filter(r => canViewRoom(user, r))
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  const allPendingApprovals = Array.from(companyRooms.values())
+    .filter(r => r.status === 'pending_create' || r.status === 'pending_delete')
+    .map(r => ({
+      roomId: r.id,
+      roomName: r.name,
+      scope: r.scope,
+      department: r.department,
+      departmentName: COMPANY_DEPARTMENTS.find(d => d.id === r.department)?.name || r.department,
+      status: r.status,
+      pendingAction: r.pendingAction || (r.status === 'pending_create' ? 'create' : 'delete'),
+      requestedBy: r.requestedBy || r.createdBy,
+      requestedByName: r.requestedByName || r.createdByName,
+      requestedAt: r.requestedAt || r.createdAt
+    }));
+
+  const approvals = user.role === 'director'
+    ? allPendingApprovals
+    : (user.role === 'manager' ? allPendingApprovals.filter(a => a.department === user.department) : []);
+
+  const allUsers = Array.from(companyUsers.values()).map(sanitizeUser);
+  const managers = allUsers.filter(u => u.role === 'manager');
+  const employees = allUsers.filter(u => u.role === 'employee');
+
+  return {
+    user: safeUser,
+    departments: COMPANY_DEPARTMENTS,
+    projects,
+    rooms,
+    approvals,
+    managers: (user.role === 'director' || user.role === 'manager') ? managers : [],
+    employees: user.role === 'director' ? employees : [],
+    auditLog: user.role === 'director' ? companyAuditLog.slice(0, 20) : []
+  };
+}
+
 function initDealStub() {
 }
 
@@ -682,8 +1002,8 @@ function applySecurityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Session-Token');
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
   res.setHeader(
     'Content-Security-Policy',
@@ -1087,6 +1407,7 @@ export function createServer() {
           id,
           name: String(body.name).trim(),
           category: body.category || 'physical',
+          department: inferDepartment({ category: body.category || 'physical', department: body.department }),
           badge: body.badge || 'Nội Bộ Công Ty',
           icon: body.icon || '💎',
           securityLevel: body.securityLevel || 'Phối Hợp Nội Bộ',
@@ -1395,7 +1716,611 @@ export function createServer() {
         }
       }
 
-      // 5. STATIC DECOY WEB APP: Multilingual Dictionary UI
+      
+      // -------------------------------------------------------------
+      // 4B. CLOSED-COMPANY RBAC API: Auth, Role Scoping, Approvals, Leadership
+      // -------------------------------------------------------------
+
+      // POST /api/company/login
+      if (pathname === '/api/company/login' && method === 'POST') {
+        const rawBody = await readRequestBody(req, 16 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Dữ liệu đăng nhập không hợp lệ' }));
+          return;
+        }
+
+        const uname = String(body.username || '').trim().toLowerCase();
+        const pwd = String(body.password || '');
+        const matched = Array.from(companyUsers.values()).find(
+          u => u.username.toLowerCase() === uname && u.password === pwd && u.active !== false
+        );
+
+        if (!matched) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Sai tên đăng nhập hoặc mật khẩu nội bộ!' }));
+          return;
+        }
+
+        const token = crypto.randomBytes(24).toString('hex');
+        companySessions.set(token, { userId: matched.id, createdAt: Date.now() });
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'success',
+          token,
+          ...formatCompanyStateForUser(matched)
+        }));
+        return;
+      }
+
+      // POST /api/company/logout
+      if (pathname === '/api/company/logout' && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (auth) {
+          companySessions.delete(auth.token);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success' }));
+        return;
+      }
+
+      // GET /api/company/accounts-directory (Lists public demo usernames & roles without passwords for quick sign-in UI)
+      if (pathname === '/api/company/accounts-directory' && method === 'GET') {
+        const publicList = Array.from(companyUsers.values()).map(sanitizeUser);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', departments: COMPANY_DEPARTMENTS, accounts: publicList }));
+        return;
+      }
+
+      // GET /api/company/state (Authenticated RBAC workspace snapshot)
+      if (pathname === '/api/company/state' && method === 'GET') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập phiên nội bộ' }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'success',
+          ...formatCompanyStateForUser(auth.user),
+          soldOrRevokedIds: Array.from(inMemorySoldOrRevokedIds)
+        }));
+        return;
+      }
+
+      // POST /api/company/projects (Only Manager of own dept or Director can publish company projects)
+      if (pathname === '/api/company/projects' && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền tạo dự án mới' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 64 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+          return;
+        }
+
+        if (!body.name || !String(body.name).trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Thiếu tên dự án' }));
+          return;
+        }
+
+        const assignedDept = auth.user.role === 'director'
+          ? inferDepartment({ category: body.category, department: body.department })
+          : auth.user.department;
+        const randHex = crypto.randomBytes(4).toString('hex').toUpperCase();
+        const deptName = COMPANY_DEPARTMENTS.find(d => d.id === assignedDept)?.short || assignedDept;
+
+        const newProject = {
+          id: body.id || `prj-${assignedDept}-${randHex}`,
+          name: String(body.name).trim(),
+          category: body.category || 'hardware',
+          department: assignedDept,
+          badge: body.badge || `Ban ${deptName}`,
+          icon: body.icon || '📌',
+          securityLevel: body.securityLevel || 'Nội bộ • Ban',
+          currency: body.currency || 'Giờ',
+          isAuction: body.isAuction !== false,
+          allowBid: true,
+          allowBuyNow: true,
+          startingBidXMR: Number(body.startingBidXMR || body.priceXMR || 8),
+          currentBidXMR: Number(body.currentBidXMR || body.startingBidXMR || body.priceXMR || 8),
+          buyNowPrice: Number(body.buyNowPrice || body.priceXMR || 16),
+          minBidIncrement: Number(body.minBidIncrement || 0),
+          bidCount: 0,
+          highestBidder: 'Chưa phân công',
+          bids: [],
+          auctionEndTime: body.auctionEndTime !== undefined ? Number(body.auctionEndTime) : (Date.now() + 21600 * 1000),
+          priceXMR: body.priceXMR || `${Number(body.currentBidXMR || body.startingBidXMR || 8)} ${body.currency || 'Giờ'}`,
+          rawPriceXMR: Number(body.rawPriceXMR || body.currentBidXMR || 8),
+          approxUSD: `Ban ${deptName}`,
+          stock: body.stock || 'Đang mở phối hợp',
+          desc: body.desc || 'Dự án nội bộ được tạo trong phiên làm việc.',
+          specs: typeof body.specs === 'object' && body.specs !== null ? body.specs : {
+            'Phụ trách': auth.user.name,
+            'Phòng ban': `Ban ${deptName}`
+          },
+          vendorKillToken: `KILL-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+          isUserCreated: true,
+          createdBy: auth.user.id,
+          createdAt: Date.now()
+        };
+
+        addBazaarItem(newProject);
+        addAuditEntry(auth.user, 'Tạo dự án', `Tạo "${newProject.name}" thuộc ${deptName}`);
+
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', project: newProject }));
+        return;
+      }
+
+      // POST /api/company/rooms/request-create
+      // Manager -> creates pending_create room for own department / work (needs Director approval!)
+      // Director -> creates manager_to_manager, manager_director, or dept room immediately as active!
+      if (pathname === '/api/company/rooms/request-create' && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền tạo phòng chat' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 32 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid room payload' }));
+          return;
+        }
+
+        const name = String(body.name || '').trim();
+        if (!name) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Tên phòng chat không được để trống' }));
+          return;
+        }
+
+        const scope = String(body.scope || 'department');
+
+        if (auth.user.role === 'manager') {
+          if (scope !== 'department' && scope !== 'work') {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Quản lí chỉ có thể đề xuất tạo phòng chat ban của mình hoặc phòng công việc' }));
+            return;
+          }
+          if (body.department && body.department !== auth.user.department) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Không được tạo phòng chat cho phòng ban khác' }));
+            return;
+          }
+
+          const roomId = `room-${auth.user.department}-${crypto.randomBytes(3).toString('hex')}`;
+          const newRoom = {
+            id: roomId,
+            name,
+            scope,
+            department: auth.user.department,
+            projectId: String(body.projectId || ''),
+            status: 'pending_create',
+            pendingAction: 'create',
+            requestedBy: auth.user.id,
+            requestedByName: auth.user.name,
+            requestedAt: Date.now(),
+            createdBy: auth.user.id,
+            createdByName: auth.user.name,
+            createdByRole: auth.user.role,
+            participantIds: [],
+            includeAllManagers: false,
+            createdAt: Date.now(),
+            messages: [
+              {
+                id: `sys-${Date.now()}`,
+                senderId: 'system',
+                senderName: 'Hệ thống phê duyệt',
+                senderRole: 'system',
+                time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+                text: `Yêu cầu tạo phòng chat "${name}" từ Quản lí ${auth.user.name} đang chờ Giám đốc phê duyệt.`
+              }
+            ]
+          };
+
+          companyRooms.set(roomId, newRoom);
+          addAuditEntry(auth.user, 'Yêu cầu mở phòng chat', `Đề xuất mở "${name}" (${scope}) — Chờ Giám đốc duyệt`);
+
+          res.writeHead(201, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'pending_approval', room: newRoom }));
+          return;
+        }
+
+        // Director creating room directly (active immediately!)
+        const validScopes = ['department', 'work', 'manager_to_manager', 'manager_director'];
+        const chosenScope = validScopes.includes(scope) ? scope : 'manager_director';
+        const isLeadership = chosenScope === 'manager_to_manager' || chosenScope === 'manager_director';
+        const targetDept = isLeadership
+          ? 'executive'
+          : (COMPANY_DEPARTMENTS.some(d => d.id === body.department) ? body.department : 'devops');
+
+        let participantIds = Array.isArray(body.participantIds) ? body.participantIds.filter(Boolean) : [];
+        if (chosenScope === 'manager_director' && !participantIds.includes(auth.user.id)) {
+          participantIds.push(auth.user.id);
+        }
+
+        const roomId = `room-dir-${crypto.randomBytes(3).toString('hex')}`;
+        const newRoom = {
+          id: roomId,
+          name,
+          scope: chosenScope,
+          department: targetDept,
+          projectId: String(body.projectId || ''),
+          status: 'active',
+          pendingAction: null,
+          createdBy: auth.user.id,
+          createdByName: auth.user.name,
+          createdByRole: 'director',
+          participantIds,
+          includeAllManagers: Boolean(body.includeAllManagers || (isLeadership && participantIds.length <= 1)),
+          createdAt: Date.now(),
+          messages: [
+            {
+              id: `sys-${Date.now()}`,
+              senderId: 'system',
+              senderName: 'Ban Giám Đốc',
+              senderRole: 'system',
+              time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+              text: `Giám đốc ${auth.user.name} đã khởi tạo phòng "${name}".`
+            }
+          ]
+        };
+
+        companyRooms.set(roomId, newRoom);
+        addAuditEntry(auth.user, 'Tạo phòng chat trực tiếp', `Mở phòng "${name}" (${chosenScope})`);
+
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'active', room: newRoom }));
+        return;
+      }
+
+      // POST /api/company/rooms/:roomId/request-delete
+      // Manager -> submits pending_delete (MUST be approved by Director before actual deletion)
+      // Director -> deletes immediately from RAM
+      const reqDeleteMatch = pathname.match(/^\/api\/company\/rooms\/([^/]+)\/request-delete$/);
+      if (reqDeleteMatch && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role === 'employee') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nhân viên không có quyền xóa phòng chat' }));
+          return;
+        }
+
+        const roomId = decodeURIComponent(reqDeleteMatch[1]);
+        const room = companyRooms.get(roomId);
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Phòng chat không tồn tại' }));
+          return;
+        }
+
+        if (auth.user.role === 'director') {
+          companyRooms.delete(roomId);
+          addAuditEntry(auth.user, 'Xóa phòng chat', `Giám đốc đã xóa trực tiếp phòng "${room.name}"`);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'deleted', roomId }));
+          return;
+        }
+
+        // Manager requesting delete: must belong to manager's department
+        if (room.department !== auth.user.department) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chỉ được yêu cầu xóa phòng chat thuộc Ban của mình' }));
+          return;
+        }
+
+        room.status = 'pending_delete';
+        room.pendingAction = 'delete';
+        room.requestedBy = auth.user.id;
+        room.requestedByName = auth.user.name;
+        room.requestedAt = Date.now();
+        room.messages.push({
+          id: `sys-del-${Date.now()}`,
+          senderId: 'system',
+          senderName: 'Hệ thống phê duyệt',
+          senderRole: 'system',
+          time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+          text: `Quản lí ${auth.user.name} đã gửi yêu cầu xóa phòng/đoạn chat này. Đang chờ Giám đốc phê duyệt.`
+        });
+
+        addAuditEntry(auth.user, 'Yêu cầu xóa phòng chat', `Đề xuất xóa "${room.name}" — Chờ Giám đốc duyệt`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'pending_delete', room }));
+        return;
+      }
+
+      // POST /api/company/approvals/:roomId/decide (STRICTLY DIRECTOR ONLY)
+      const approveMatch = pathname.match(/^\/api\/company\/approvals\/([^/]+)\/decide$/);
+      if (approveMatch && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role !== 'director') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chỉ Giám đốc mới có quyền phê duyệt phòng chat' }));
+          return;
+        }
+
+        const roomId = decodeURIComponent(approveMatch[1]);
+        const room = companyRooms.get(roomId);
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy yêu cầu phòng chat' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 8 * 1024);
+        let body = {};
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {}
+
+        const decision = body.decision === 'reject' ? 'reject' : 'approve';
+
+        if (room.status === 'pending_create') {
+          if (decision === 'approve') {
+            room.status = 'active';
+            room.pendingAction = null;
+            room.messages.push({
+              id: `sys-app-${Date.now()}`,
+              senderId: 'system',
+              senderName: 'Ban Giám Đốc',
+              senderRole: 'system',
+              time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+              text: `Giám đốc ${auth.user.name} đã PHÊ DUYỆT mở phòng chat này. Nhân viên & Quản lí trong ban có thể tham gia thảo luận.`
+            });
+            addAuditEntry(auth.user, 'Phê duyệt mở phòng chat', `Đã duyệt mở phòng "${room.name}"`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'approved', room }));
+            return;
+          } else {
+            companyRooms.delete(roomId);
+            addAuditEntry(auth.user, 'Từ chối mở phòng chat', `Từ chối mở phòng "${room.name}"`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'rejected_removed', roomId }));
+            return;
+          }
+        }
+
+        if (room.status === 'pending_delete') {
+          if (decision === 'approve') {
+            companyRooms.delete(roomId);
+            addAuditEntry(auth.user, 'Phê duyệt xóa phòng chat', `Đã duyệt xóa vĩnh viễn phòng "${room.name}"`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'deleted', roomId }));
+            return;
+          } else {
+            room.status = 'active';
+            room.pendingAction = null;
+            room.messages.push({
+              id: `sys-rej-${Date.now()}`,
+              senderId: 'system',
+              senderName: 'Ban Giám Đốc',
+              senderRole: 'system',
+              time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+              text: `Giám đốc ${auth.user.name} đã TỪ CHỐI yêu cầu xóa. Phòng chat tiếp tục hoạt động bình thường.`
+            });
+            addAuditEntry(auth.user, 'Từ chối xóa phòng chat', `Giữ lại phòng "${room.name}"`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'restored', room }));
+            return;
+          }
+        }
+
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Phòng chat không ở trạng thái chờ phê duyệt' }));
+        return;
+      }
+
+      // POST /api/company/rooms/:roomId/messages (Send message into RBAC-verified room)
+      const msgRoomMatch = pathname.match(/^\/api\/company\/rooms\/([^/]+)\/messages$/);
+      if (msgRoomMatch && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+
+        const roomId = decodeURIComponent(msgRoomMatch[1]);
+        const room = companyRooms.get(roomId);
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Phòng chat không tồn tại' }));
+          return;
+        }
+
+        if (!canPostInRoom(auth.user, room)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Bạn không có quyền gửi tin nhắn trong phòng chat này hoặc phòng chưa được Giám đốc phê duyệt' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 16 * 1024);
+        let body = {};
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid message payload' }));
+          return;
+        }
+
+        const text = String(body.text || '').trim().slice(0, 2000);
+        if (!text) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nội dung tin nhắn trống' }));
+          return;
+        }
+
+        const newMsg = {
+          id: `msg-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+          senderId: auth.user.id,
+          senderName: auth.user.name,
+          senderRole: auth.user.role,
+          senderDept: auth.user.department,
+          time: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+          text
+        };
+
+        room.messages.push(newMsg);
+        if (room.messages.length > 200) room.messages.shift();
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', message: newMsg, room }));
+        return;
+      }
+
+      // POST /api/company/managers (Director adds a new Manager to the company)
+      if (pathname === '/api/company/managers' && method === 'POST') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role !== 'director') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chỉ Giám đốc mới có quyền thêm Quản lí mới' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 16 * 1024);
+        let body;
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Dữ liệu không hợp lệ' }));
+          return;
+        }
+
+        const name = String(body.name || '').trim();
+        const username = String(body.username || '').trim().toLowerCase();
+        const password = String(body.password || '123');
+        const department = COMPANY_DEPARTMENTS.some(d => d.id === body.department) ? body.department : 'devops';
+
+        if (!name || !username) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Vui lòng nhập đầy đủ họ tên và tên đăng nhập cho Quản lí' }));
+          return;
+        }
+
+        const duplicate = Array.from(companyUsers.values()).some(u => u.username.toLowerCase() === username);
+        if (duplicate) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Tên đăng nhập "${username}" đã tồn tại trong công ty` }));
+          return;
+        }
+
+        const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === department);
+        const newMgr = {
+          id: `u-mgr-${crypto.randomBytes(3).toString('hex')}`,
+          username,
+          password,
+          name,
+          role: 'manager',
+          title: String(body.title || `Trưởng nhóm ${deptObj?.short || department}`).trim(),
+          department,
+          active: true
+        };
+
+        companyUsers.set(newMgr.id, newMgr);
+        addAuditEntry(auth.user, 'Thêm Quản lí mới', `Bổ nhiệm ${newMgr.name} (${newMgr.username}) phụ trách ${deptObj?.name || department}`);
+
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', manager: sanitizeUser(newMgr) }));
+        return;
+      }
+
+      // PATCH /api/company/managers/:userId (Director coordinates/reassigns a Manager to another department)
+      const mgrPatchMatch = pathname.match(/^\/api\/company\/managers\/([^/]+)$/);
+      if (mgrPatchMatch && method === 'PATCH') {
+        const auth = getAuthSession(req, parsedUrl);
+        if (!auth) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chưa đăng nhập' }));
+          return;
+        }
+        if (auth.user.role !== 'director') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chỉ Giám đốc mới có quyền điều phối Quản lí' }));
+          return;
+        }
+
+        const targetId = decodeURIComponent(mgrPatchMatch[1]);
+        const target = companyUsers.get(targetId);
+        if (!target || target.role !== 'manager') {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy tài khoản Quản lí' }));
+          return;
+        }
+
+        const rawBody = await readRequestBody(req, 8 * 1024);
+        let body = {};
+        try {
+          body = JSON.parse(rawBody.toString('utf8'));
+        } catch {}
+
+        if (body.department && COMPANY_DEPARTMENTS.some(d => d.id === body.department)) {
+          target.department = body.department;
+        }
+        if (body.title) {
+          target.title = String(body.title).trim();
+        }
+        if (typeof body.active === 'boolean') {
+          target.active = body.active;
+        }
+
+        const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === target.department);
+        addAuditEntry(auth.user, 'Điều phối Quản lí', `Chuyển ${target.name} phụ trách ${deptObj?.name || target.department}`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success', manager: sanitizeUser(target) }));
+        return;
+      }
+
+// 5. STATIC DECOY WEB APP: Multilingual Dictionary UI
       // -------------------------------------------------------------
       if (method === 'GET' || method === 'HEAD') {
         serveStaticFile(pathname, res);

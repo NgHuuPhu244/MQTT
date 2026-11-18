@@ -442,6 +442,34 @@ let lastBurnedDealId = null;
  * Tries current origin first, then automatically falls back to localhost:3000 / 127.0.0.1:3000
  * so multi-browser tests (e.g. Chrome + Opera GX or Live Server port) always reach the RAM server.
  */
+const COMPANY_TOKEN_KEY = 'nexus_company_token_v1';
+let companyAuthToken = null;
+let currentCompanyState = null;
+let companyPollTimer = null;
+let workspaceModulesReady = false;
+let lastProjectsSig = '';
+let lastRoomsSig = '';
+let lastApprovalsSig = '';
+let lastManagersSig = '';
+let lastAuditSig = '';
+
+const ROLE_LABELS_VI = {
+  employee: 'Nhân viên',
+  manager: 'Quản lí',
+  director: 'Giám đốc'
+};
+
+const SCOPE_LABELS_VI = {
+  department: 'Phòng ban',
+  work: 'Công việc',
+  manager_to_manager: 'Quản lí ↔ Quản lí',
+  manager_director: 'Quản lí ↔ Giám đốc'
+};
+
+function isCompanyAuthActive() {
+  return Boolean(companyAuthToken && currentCompanyState && currentCompanyState.user);
+}
+
 async function bazaarApiFetch(path, options = {}) {
   const candidates = [path];
   if (typeof window !== 'undefined' && window.location) {
@@ -457,14 +485,20 @@ async function bazaarApiFetch(path, options = {}) {
     }
   }
 
+  const mergedHeaders = { ...(options.headers || {}) };
+  if (companyAuthToken && !mergedHeaders['X-Session-Token']) {
+    mergedHeaders['X-Session-Token'] = companyAuthToken;
+  }
+
   let lastErr = null;
   for (const url of candidates) {
     try {
       const res = await fetch(url, {
         ...options,
+        headers: mergedHeaders,
         cache: 'no-store'
       });
-      if (res.ok || res.status === 400 || res.status === 403) {
+      if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404 || res.status === 409) {
         return res;
       }
       lastErr = new Error(`HTTP ${res.status}`);
@@ -645,9 +679,9 @@ function saveActiveOrderToStorage() {
   } catch {}
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadMarketProductsFromStorage();
-  generateEphemeralIdentity();
+function initWorkspaceModulesOnce() {
+  if (workspaceModulesReady) return;
+  workspaceModulesReady = true;
   initPanicAndPurgeHooks();
   initTelemetryAndMask();
   initTabs();
@@ -656,8 +690,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initEncryptedChat();
   initOrderSystem();
   initAuctionBidding();
+  initClosedCompanyModalsAndAdmin();
   updateRamMonitor();
   checkUrlForP2PRoom();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCompanyBootFlow();
 });
 
 /* ==========================================================================
@@ -818,10 +857,8 @@ function initPanicAndPurgeHooks() {
     });
   });
 
-  const executeSessionReset = () => {
-    purgeAllVolatileData();
-    // Cleanly reload the company workspace with a fresh RAM session
-    window.location.replace(window.location.pathname || './index.html');
+  const executeSessionReset = async () => {
+    await logoutCompanySession('Đã xóa dữ liệu tạm trên trình duyệt và kết thúc phiên.');
   };
 
   if (panicBtn) {
@@ -832,9 +869,15 @@ function initPanicAndPurgeHooks() {
   window.addEventListener('keydown', (e) => {
     const bidModal = document.getElementById('bid-modal-overlay');
     const qrModal = document.getElementById('qr-modal-overlay');
-    const openModal = (bidModal && bidModal.style.display !== 'none')
-      ? bidModal
-      : ((qrModal && qrModal.style.display !== 'none') ? qrModal : null);
+    const createRoomModal = document.getElementById('create-room-modal-overlay');
+    let openModal = null;
+    if (createRoomModal && createRoomModal.style.display !== 'none') {
+      openModal = createRoomModal;
+    } else if (bidModal && bidModal.style.display !== 'none') {
+      openModal = bidModal;
+    } else if (qrModal && qrModal.style.display !== 'none') {
+      openModal = qrModal;
+    }
 
     if (!openModal) return;
 
@@ -952,6 +995,17 @@ function initTabs() {
 }
 
 function switchTab(tabId) {
+  if (isCompanyAuthActive()) {
+    const role = currentCompanyState.user.role;
+    if (tabId === 'tab-vendor' && role === 'employee') {
+      showToast('Nhân viên chỉ có quyền xem dự án của phòng ban mình.', 'warning');
+      tabId = 'tab-market';
+    }
+    if (tabId === 'tab-admin' && role !== 'director') {
+      showToast('Chỉ Giám đốc mới có quyền truy cập Bảng Điều Hành Giám Đốc.', 'warning');
+      tabId = 'tab-market';
+    }
+  }
   const navTabs = document.querySelectorAll('.covert-nav-tabs .nav-tab');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
@@ -1010,6 +1064,9 @@ const bazaarSyncChannel = (typeof window !== 'undefined' && 'BroadcastChannel' i
  * Fetch synchronized product catalog from volatile server RAM and merge with local state
  */
 async function fetchBazaarProducts(silent = true) {
+  if (companyAuthToken) {
+    return fetchCompanyState(silent);
+  }
   loadMarketProductsFromStorage();
   try {
     const res = await bazaarApiFetch('/api/lexicon/bazaar-items', {
@@ -1182,27 +1239,25 @@ function initMarketCatalog() {
     };
   }
 
-  // Load latest live listings from server RAM
-  fetchBazaarProducts(true);
-
-  // Background auto-sync interval every 2.5 seconds (fast real-time poll)
-  setInterval(() => {
-    fetchBazaarProducts(true);
-  }, 2500);
-
   // Auto-sync when user switches back to this desk or window
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      fetchBazaarProducts(true);
+    if (document.visibilityState === 'visible' && companyAuthToken) {
+      fetchCompanyState(true);
     }
   });
   window.addEventListener('focus', () => {
-    fetchBazaarProducts(true);
+    if (companyAuthToken) {
+      fetchCompanyState(true);
+    }
   });
 
   if (refreshMarketBtn) {
     refreshMarketBtn.addEventListener('click', () => {
-      fetchBazaarProducts(false);
+      if (companyAuthToken) {
+        fetchCompanyState(false);
+      } else {
+        fetchBazaarProducts(false);
+      }
     });
   }
 
@@ -1529,6 +1584,26 @@ function initiateOrderForProduct(productId) {
 }
 
 function initiateChatForProduct(productName, productId = '') {
+  if (isCompanyAuthActive()) {
+    switchTab('tab-chat');
+    const prod = MARKET_PRODUCTS.find(p => p.id === productId);
+    const matchingRoom = chatThreads.find(t => t.projectId && t.projectId === productId)
+      || chatThreads.find(t => prod && t.department === prod.department && t.status === 'active')
+      || chatThreads.find(t => t.status === 'active')
+      || chatThreads[0];
+    if (matchingRoom) {
+      selectMessengerThread(matchingRoom.id);
+      const input = document.getElementById('chat-input-field');
+      if (input && !input.disabled) {
+        input.value = `Trao đổi về dự án "${productName}": `;
+        input.focus();
+      }
+    } else {
+      showToast('Ban của bạn chưa có phòng chat hoạt động nào.', 'info');
+    }
+    return;
+  }
+
   currentChatInquiry = productName;
   const tag = document.getElementById('active-product-tag');
   if (tag) tag.textContent = `Về: ${productName}`;
@@ -2072,23 +2147,36 @@ function renderMessengerThreads() {
     const initial = (t.avatarText || t.peerAlias || 'M').charAt(0).toUpperCase();
     const unreadHtml = t.unreadCount > 0 ? `<span class="thread-unread-pill">${t.unreadCount}</span>` : '';
     const dealBadge = t.dealId ? `<span style="color: #34d399; font-size: 0.65rem; font-family: var(--font-mono); margin-left: 4px;">[${t.dealId}]</span>` : '';
+
+    let statusPillHtml = '';
+    if (t.status === 'pending_create') {
+      statusPillHtml = '<span class="thread-status-tag pending-create">Chờ GĐ duyệt tạo</span>';
+    } else if (t.status === 'pending_delete') {
+      statusPillHtml = '<span class="thread-status-tag pending-delete">Chờ GĐ duyệt xóa</span>';
+    }
+
     const subBadgeText = t.dealId
       ? `${formatColleagueAlias(t.buyerBlindId)} ↔ ${formatColleagueAlias(t.sellerBlindId)}`
       : (t.productName || 'Kênh chung');
+
+    const dotClass = t.status === 'pending_create'
+      ? 'thread-online-dot dot-pending'
+      : (t.status === 'pending_delete' ? 'thread-online-dot dot-danger' : 'thread-online-dot');
 
     return `
       <div class="messenger-thread-item ${isActive ? 'active' : ''}" role="button" tabindex="0" aria-current="${isActive ? 'true' : 'false'}" data-thread-id="${escapeHtml(t.id)}">
         <div class="thread-avatar-wrap">
           <span>${escapeHtml(initial)}</span>
-          <span class="thread-online-dot"></span>
+          <span class="${dotClass}"></span>
         </div>
         <div class="thread-content">
           <div class="thread-top-row">
-            <span class="thread-peer-name">${escapeHtml(formatColleagueAlias(t.peerAlias) || 'Đồng nghiệp')}${dealBadge}</span>
+            <span class="thread-peer-name">${escapeHtml(t.isCompanyRoom ? (t.peerAlias || 'Phòng chat') : (formatColleagueAlias(t.peerAlias) || 'Đồng nghiệp'))}${dealBadge}</span>
             <span class="thread-time">${escapeHtml(t.lastTime || '')}</span>
           </div>
-          <div>
+          <div class="thread-badges-row">
             <span class="thread-product-badge">${escapeHtml(subBadgeText)}</span>
+            ${statusPillHtml}
           </div>
           <div class="thread-snippet">${escapeHtml(t.lastMessage || 'Chưa có tin nhắn')}</div>
         </div>
@@ -2131,7 +2219,23 @@ function selectMessengerThread(threadId) {
 
 function updateActiveThreadHeader() {
   const thread = getActiveThread();
-  if (!thread) return;
+  const roomStatusBanner = document.getElementById('room-status-banner');
+  const roomStatusBadge = document.getElementById('room-status-badge');
+  const roomStatusText = document.getElementById('room-status-text');
+  const roomDirActions = document.getElementById('room-director-actions');
+  const reqDeleteBtn = document.getElementById('room-request-delete-btn');
+  const reqDeleteLabel = document.getElementById('room-request-delete-label');
+  const purgeBtn = document.getElementById('purge-chat-btn');
+  const p2pSetupRow = document.getElementById('p2p-setup-row');
+  const chatInput = document.getElementById('chat-input-field');
+  const sendBtn = document.getElementById('send-chat-btn');
+  const lockedNotice = document.getElementById('chat-locked-notice');
+
+  if (!thread) {
+    if (roomStatusBanner) roomStatusBanner.style.display = 'none';
+    if (reqDeleteBtn) reqDeleteBtn.style.display = 'none';
+    return;
+  }
 
   const avatarText = document.getElementById('chat-peer-avatar-text');
   const peerName = document.getElementById('chat-peer-name');
@@ -2141,7 +2245,97 @@ function updateActiveThreadHeader() {
   const pulseDot = document.getElementById('p2p-pulse-dot');
 
   if (avatarText) avatarText.textContent = (thread.avatarText || thread.peerAlias || 'M').charAt(0).toUpperCase();
-  if (peerName) peerName.textContent = formatColleagueAlias(thread.peerAlias) || 'Trợ Lý Điều Phối';
+  if (peerName) peerName.textContent = thread.isCompanyRoom ? (thread.peerAlias || 'Phòng chat nội bộ') : (formatColleagueAlias(thread.peerAlias) || 'Trợ Lý Điều Phối');
+
+  if (thread.isCompanyRoom && isCompanyAuthActive()) {
+    const user = currentCompanyState.user;
+    if (p2pSetupRow) p2pSetupRow.style.display = 'none';
+    if (purgeBtn) purgeBtn.style.display = 'none';
+
+    const scopeLabel = SCOPE_LABELS_VI[thread.scope] || thread.scope;
+    const deptLabel = thread.department === 'executive' ? 'Ban Điều Hành' : (thread.departmentName || thread.department);
+    if (prodTag) prodTag.textContent = `${scopeLabel} · ${deptLabel}`;
+
+    const isPendingCreate = thread.status === 'pending_create';
+    const isPendingDelete = thread.status === 'pending_delete';
+
+    if (peerBadge) {
+      if (isPendingCreate) {
+        peerBadge.textContent = 'Chờ GĐ duyệt tạo';
+        peerBadge.className = 'verified-vendor-badge badge-pending';
+      } else if (isPendingDelete) {
+        peerBadge.textContent = 'Chờ GĐ duyệt xóa';
+        peerBadge.className = 'verified-vendor-badge badge-danger';
+      } else {
+        peerBadge.textContent = 'Đang hoạt động';
+        peerBadge.className = 'verified-vendor-badge';
+      }
+    }
+
+    if (statusText) statusText.textContent = `Hệ thống khép kín · ${(thread.messages || []).length} tin nhắn`;
+    if (pulseDot) pulseDot.className = isPendingCreate ? 'p2p-pulse-dot' : 'p2p-pulse-dot connected';
+
+    // Banner & Composer lock
+    if (isPendingCreate || isPendingDelete) {
+      if (roomStatusBanner) {
+        roomStatusBanner.style.display = 'flex';
+        roomStatusBanner.className = `room-status-banner ${isPendingDelete ? 'is-danger' : 'is-pending'}`;
+      }
+      if (roomStatusBadge) {
+        roomStatusBadge.textContent = isPendingCreate ? 'Chờ duyệt mở phòng' : 'Chờ duyệt xóa phòng';
+      }
+      if (roomStatusText) {
+        roomStatusText.textContent = isPendingCreate
+          ? `Yêu cầu tạo phòng từ Quản lí ${thread.requestedByName || ''} đang chờ Giám đốc phê duyệt.`
+          : `Quản lí ${thread.requestedByName || ''} đã đề xuất xóa phòng/đoạn chat này — Chờ Giám đốc phê duyệt.`;
+      }
+      if (roomDirActions) {
+        roomDirActions.style.display = user.role === 'director' ? 'flex' : 'none';
+      }
+    } else {
+      if (roomStatusBanner) roomStatusBanner.style.display = 'none';
+      if (roomDirActions) roomDirActions.style.display = 'none';
+    }
+
+    // Lock composer when pending_create
+    if (chatInput) chatInput.disabled = isPendingCreate;
+    if (sendBtn) sendBtn.disabled = isPendingCreate;
+    if (lockedNotice) lockedNotice.style.display = isPendingCreate ? 'block' : 'none';
+
+    // Request Delete button rules
+    if (reqDeleteBtn && reqDeleteLabel) {
+      if (user.role === 'director') {
+        reqDeleteBtn.style.display = 'inline-flex';
+        reqDeleteBtn.disabled = false;
+        reqDeleteLabel.textContent = 'Xóa phòng ngay';
+      } else if (
+        user.role === 'manager' &&
+        (thread.scope === 'department' || thread.scope === 'work') &&
+        thread.department === user.department
+      ) {
+        reqDeleteBtn.style.display = 'inline-flex';
+        if (isPendingDelete) {
+          reqDeleteBtn.disabled = true;
+          reqDeleteLabel.textContent = 'Đã gửi yêu cầu xóa (Chờ GĐ)';
+        } else {
+          reqDeleteBtn.disabled = false;
+          reqDeleteLabel.textContent = 'Yêu cầu xóa phòng';
+        }
+      } else {
+        reqDeleteBtn.style.display = 'none';
+      }
+    }
+
+    const banner = document.getElementById('auto-deal-banner');
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+
+  if (roomStatusBanner) roomStatusBanner.style.display = 'none';
+  if (reqDeleteBtn) reqDeleteBtn.style.display = 'none';
+  if (lockedNotice) lockedNotice.style.display = 'none';
+  if (chatInput) chatInput.disabled = false;
+  if (sendBtn) sendBtn.disabled = false;
 
   if (thread.dealId) {
     const myId = formatColleagueAlias(thread.myBlindId || (getMyDealRole(thread) === 'buyer' ? thread.buyerBlindId : thread.sellerBlindId) || 'Thành viên');
@@ -2723,9 +2917,13 @@ function initEncryptedChat() {
     });
   }
 
-  // New Thread CTA
+  // New Room / Thread CTA
   if (newThreadBtn) {
     newThreadBtn.addEventListener('click', () => {
+      if (isCompanyAuthActive()) {
+        openCreateRoomModal();
+        return;
+      }
       const topic = prompt('Nhập tên đầu việc hoặc chủ đề cần thảo luận:', 'Họp nhóm dự án');
       if (topic && topic.trim()) {
         startAutoBlindDeal(topic.trim(), 'custom');
@@ -2818,14 +3016,21 @@ function initEncryptedChat() {
   }
 
   // Send message
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!chatInput) return;
     const text = chatInput.value.trim();
     if (!text) return;
 
-    chatInput.value = '';
     const thread = getActiveThread();
     if (!thread) return;
+
+    if (thread.isCompanyRoom && isCompanyAuthActive()) {
+      chatInput.value = '';
+      await sendCompanyRoomMessage(thread.id, text);
+      return;
+    }
+
+    chatInput.value = '';
 
     if (thread.dealId) {
       sendBlindDealMessage(text);
@@ -2923,9 +3128,12 @@ function initEncryptedChat() {
   renderChatMessages();
   updateFloatingMessengerBadge();
 
-  // Initial poll and near real-time background sync (every 1.2s)
-  pollBlindDealRelay();
-  setInterval(pollBlindDealRelay, 1200);
+  // Background relay poll only outside closed-company RBAC mode
+  setInterval(() => {
+    if (!companyAuthToken) {
+      pollBlindDealRelay();
+    }
+  }, 2000);
 }
 
 function renderChatMessages() {
@@ -2954,7 +3162,9 @@ function renderChatMessages() {
     }
 
     if (msg.role === 'buyer') {
-      const myAuthor = formatColleagueAlias(msg.author || thread?.myBlindId || 'Thành viên');
+      const myAuthor = thread?.isCompanyRoom
+        ? (msg.author || 'Bạn')
+        : formatColleagueAlias(msg.author || thread?.myBlindId || 'Thành viên');
       return `
         <div class="chat-msg buyer">
           <div class="msg-bubble">
@@ -2966,10 +3176,13 @@ function renderChatMessages() {
       `;
     }
 
+    const peerAuthor = thread?.isCompanyRoom
+      ? (msg.author || 'Đồng nghiệp')
+      : formatColleagueAlias(msg.author || thread?.peerAlias || 'Phụ trách');
     return `
       <div class="chat-msg merchant">
         <div class="msg-bubble">
-          <div class="msg-author-tag">${escapeHtml(formatColleagueAlias(msg.author || thread?.peerAlias || 'Phụ trách'))}</div>
+          <div class="msg-author-tag">${escapeHtml(peerAuthor)}</div>
           <div class="msg-text">${escapeHtml(msg.text)}</div>
           <span class="msg-meta-time">${escapeHtml(msg.time)}</span>
         </div>
@@ -3816,21 +4029,48 @@ async function handlePublishListing() {
     createdAt: Date.now()
   };
 
-  // Synchronize new item with volatile RAM server
-  try {
-    const res = await bazaarApiFetch('/api/lexicon/bazaar-items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProduct)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.product) {
-        newProduct = data.product;
+  // Synchronize new item with volatile RAM server (RBAC enforced when logged in)
+  if (isCompanyAuthActive()) {
+    const deptSelect = document.getElementById('listing-department');
+    const chosenDept = currentCompanyState.user.role === 'director'
+      ? (deptSelect?.value || 'devops')
+      : currentCompanyState.user.department;
+    newProduct.department = chosenDept;
+    try {
+      const res = await bazaarApiFetch('/api/company/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Bạn không có quyền tạo dự án mới.', 'error');
+        return;
       }
+      if (data && data.project) {
+        newProduct = data.project;
+      }
+      await fetchCompanyState(true);
+    } catch (err) {
+      showToast('Không thể kết nối máy chủ để đăng dự án.', 'error');
+      return;
     }
-  } catch (err) {
-    console.warn('Bazaar sync offline, saving to volatile memory:', err);
+  } else {
+    try {
+      const res = await bazaarApiFetch('/api/lexicon/bazaar-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.product) {
+          newProduct = data.product;
+        }
+      }
+    } catch (err) {
+      console.warn('Bazaar sync offline, saving to volatile memory:', err);
+    }
   }
 
   // Prepend to catalog inventory
@@ -3992,4 +4232,874 @@ async function revokeUserListing(productId) {
   updateRamMonitor();
 
   showToast(`Đã thu hồi và gỡ bỏ thông báo "${prodName}" khỏi RAM!`, 'info');
+}
+
+
+/* ==========================================================================
+   10. CLOSED-COMPANY 3-ROLE RBAC CONTROLLER (EMPLOYEE • MANAGER • DIRECTOR)
+   ========================================================================== */
+
+async function initCompanyBootFlow() {
+  bindAuthGateEvents();
+  await loadQuickLoginDirectory();
+
+  let savedToken = null;
+  try {
+    savedToken = sessionStorage.getItem(COMPANY_TOKEN_KEY);
+  } catch {}
+
+  if (savedToken) {
+    companyAuthToken = savedToken;
+    const restored = await fetchCompanyState(true);
+    if (restored) {
+      enterAuthenticatedWorkspace();
+      return;
+    }
+  }
+
+  showAuthGate();
+}
+
+function bindAuthGateEvents() {
+  const loginForm = document.getElementById('company-login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = (document.getElementById('login-username')?.value || '').trim();
+      const password = document.getElementById('login-password')?.value || '';
+      await performCompanyLogin(username, password);
+    });
+  }
+
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      logoutCompanySession('Đã đăng xuất phiên hiện tại.');
+    });
+  }
+}
+
+async function loadQuickLoginDirectory() {
+  const container = document.getElementById('quick-login-directory');
+  if (!container) return;
+
+  try {
+    const res = await bazaarApiFetch('/api/company/accounts-directory', {
+      headers: { Accept: 'application/json' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+    renderQuickLoginDirectory(accounts);
+  } catch {
+    container.innerHTML = '<p class="auth-loading-note">Không thể tải danh bạ tài khoản từ máy chủ.</p>';
+  }
+}
+
+function renderQuickLoginDirectory(accounts) {
+  const container = document.getElementById('quick-login-directory');
+  if (!container) return;
+
+  const groups = [
+    { role: 'director', label: 'Cấp 1 · Giám Đốc Điều Hành' },
+    { role: 'manager', label: 'Cấp 2 · Quản Lí Phòng Ban' },
+    { role: 'employee', label: 'Cấp 3 · Nhân Viên Các Ban' }
+  ];
+
+  container.innerHTML = groups.map(group => {
+    const items = accounts.filter(a => a.role === group.role);
+    if (items.length === 0) return '';
+    return `
+      <div class="quick-role-group">
+        <div class="quick-role-group-title">${escapeHtml(group.label)}</div>
+        <div class="quick-role-cards">
+          ${items.map(acc => `
+            <button type="button" class="quick-account-btn role-${escapeHtml(acc.role)}" data-username="${escapeHtml(acc.username)}">
+              <span class="qa-main">
+                <strong class="qa-name">${escapeHtml(acc.name)}</strong>
+                <span class="qa-meta">${escapeHtml(acc.title)} · ${escapeHtml(acc.departmentName)}</span>
+              </span>
+              <code class="qa-user">${escapeHtml(acc.username)}</code>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.quick-account-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uname = btn.getAttribute('data-username') || '';
+      const uInput = document.getElementById('login-username');
+      const pInput = document.getElementById('login-password');
+      if (uInput) uInput.value = uname;
+      if (pInput && !pInput.value) pInput.value = '123';
+      await performCompanyLogin(uname, pInput?.value || '123');
+    });
+  });
+}
+
+async function performCompanyLogin(username, password) {
+  const errBox = document.getElementById('login-error-msg');
+  const submitBtn = document.getElementById('login-submit-btn');
+  if (errBox) {
+    errBox.style.display = 'none';
+    errBox.textContent = '';
+  }
+  if (!username) {
+    if (errBox) {
+      errBox.textContent = 'Vui lòng nhập tên đăng nhập nội bộ.';
+      errBox.style.display = 'block';
+    }
+    return;
+  }
+
+  if (submitBtn) submitBtn.disabled = true;
+  try {
+    const res = await bazaarApiFetch('/api/company/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) {
+      if (errBox) {
+        errBox.textContent = data.error || 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản.';
+        errBox.style.display = 'block';
+      }
+      return;
+    }
+
+    companyAuthToken = data.token;
+    try {
+      sessionStorage.setItem(COMPANY_TOKEN_KEY, companyAuthToken);
+      sessionStorage.removeItem(STORAGE_KEYS.MARKET_PRODUCTS);
+      sessionStorage.removeItem(STORAGE_KEYS.MY_LISTINGS);
+      sessionStorage.removeItem('nexus_threads_v3');
+      sessionStorage.removeItem('nexus_active_thread_v3');
+    } catch {}
+
+    lastProjectsSig = '';
+    lastRoomsSig = '';
+    lastApprovalsSig = '';
+    lastManagersSig = '';
+    lastAuditSig = '';
+
+    enterAuthenticatedWorkspace(data);
+    showToast(`Xin chào ${data.user.name} (${ROLE_LABELS_VI[data.user.role] || data.user.role})!`, 'success');
+  } catch {
+    if (errBox) {
+      errBox.textContent = 'Không thể kết nối đến máy chủ nội bộ.';
+      errBox.style.display = 'block';
+    }
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+function showAuthGate(noticeMessage = '') {
+  if (companyPollTimer) {
+    clearInterval(companyPollTimer);
+    companyPollTimer = null;
+  }
+  companyAuthToken = null;
+  currentCompanyState = null;
+
+  const authGate = document.getElementById('auth-gate');
+  const vaultShell = document.getElementById('vault-shell');
+  if (vaultShell) {
+    vaultShell.hidden = true;
+    vaultShell.style.display = 'none';
+  }
+  if (authGate) {
+    authGate.hidden = false;
+    authGate.style.display = '';
+  }
+
+  const errBox = document.getElementById('login-error-msg');
+  if (errBox) {
+    if (noticeMessage) {
+      errBox.textContent = noticeMessage;
+      errBox.style.display = 'block';
+    } else {
+      errBox.style.display = 'none';
+      errBox.textContent = '';
+    }
+  }
+  loadQuickLoginDirectory();
+  setTimeout(() => {
+    document.getElementById('login-username')?.focus();
+  }, 30);
+}
+
+function enterAuthenticatedWorkspace(initialState = null) {
+  const authGate = document.getElementById('auth-gate');
+  const vaultShell = document.getElementById('vault-shell');
+  if (authGate) {
+    authGate.hidden = true;
+    authGate.style.display = 'none';
+  }
+  if (vaultShell) {
+    vaultShell.hidden = false;
+    vaultShell.style.display = '';
+  }
+
+  initWorkspaceModulesOnce();
+  if (initialState) {
+    applyCompanyState(initialState);
+  }
+  switchTab('tab-market');
+
+  if (companyPollTimer) clearInterval(companyPollTimer);
+  companyPollTimer = setInterval(() => {
+    if (companyAuthToken) {
+      fetchCompanyState(true);
+    }
+  }, 1500);
+}
+
+async function logoutCompanySession(toastText = '') {
+  const tokenToRevoke = companyAuthToken;
+  if (tokenToRevoke) {
+    try {
+      await bazaarApiFetch('/api/company/logout', { method: 'POST' });
+    } catch {}
+  }
+
+  if (companyPollTimer) {
+    clearInterval(companyPollTimer);
+    companyPollTimer = null;
+  }
+
+  companyAuthToken = null;
+  currentCompanyState = null;
+  MARKET_PRODUCTS = [];
+  chatThreads = [];
+  inMemoryChatMessages = [];
+  myVendorListings = [];
+  lastProjectsSig = '';
+  lastRoomsSig = '';
+  lastApprovalsSig = '';
+  lastManagersSig = '';
+  lastAuditSig = '';
+
+  try {
+    sessionStorage.removeItem(COMPANY_TOKEN_KEY);
+    sessionStorage.removeItem(STORAGE_KEYS.MARKET_PRODUCTS);
+    sessionStorage.removeItem(STORAGE_KEYS.MY_LISTINGS);
+    sessionStorage.removeItem('nexus_threads_v3');
+    sessionStorage.removeItem('nexus_active_thread_v3');
+    sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_TAB);
+  } catch {}
+
+  showAuthGate();
+  if (toastText) showToast(toastText, 'info');
+}
+
+async function fetchCompanyState(silent = true) {
+  if (!companyAuthToken) return false;
+  try {
+    const res = await bazaarApiFetch('/api/company/state', {
+      headers: { Accept: 'application/json' }
+    });
+    if (res.status === 401) {
+      companyAuthToken = null;
+      try { sessionStorage.removeItem(COMPANY_TOKEN_KEY); } catch {}
+      showAuthGate('Phiên đăng nhập đã hết hạn hoặc máy chủ vừa khởi động lại. Vui lòng đăng nhập lại.');
+      return false;
+    }
+    if (!res.ok) return false;
+    const data = await res.json();
+    applyCompanyState(data);
+    if (!silent) {
+      showToast('Đã đồng bộ dữ liệu phân quyền mới nhất từ máy chủ!', 'success');
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function applyCompanyState(state) {
+  if (!state || !state.user) return;
+  currentCompanyState = state;
+  const user = state.user;
+  anonymousAlias = user.name;
+
+  // Header Identity Cluster
+  const aliasEl = document.getElementById('anon-alias');
+  const roleBadgeEl = document.getElementById('user-role-badge');
+  const deptLabelEl = document.getElementById('user-dept-label');
+  const bidClientAliasEl = document.getElementById('bid-client-alias');
+  if (aliasEl) aliasEl.textContent = `${user.name} (@${user.username})`;
+  if (bidClientAliasEl) bidClientAliasEl.textContent = `${user.name} · ${user.departmentName}`;
+  if (roleBadgeEl) {
+    roleBadgeEl.textContent = ROLE_LABELS_VI[user.role] || user.role;
+    roleBadgeEl.className = `user-role-pill role-${user.role}`;
+  }
+  if (deptLabelEl) {
+    deptLabelEl.textContent = user.department === 'all' ? 'Toàn Công Ty' : (user.departmentName || user.department);
+  }
+
+  // Scope Banner & Nav Visibility
+  const navVendor = document.getElementById('nav-tab-vendor');
+  const navAdmin = document.getElementById('nav-tab-admin');
+  const quickOpenVendorBtn = document.getElementById('quick-open-vendor-btn');
+  const newThreadBtn = document.getElementById('btn-new-thread');
+  const scopeBannerText = document.getElementById('role-scope-text');
+  const oversightStrip = document.getElementById('director-oversight-strip');
+  const adminPendingBadge = document.getElementById('admin-pending-badge');
+  const vendorDeptSelect = document.getElementById('listing-department');
+  const vendorDeptLockNote = document.getElementById('vendor-dept-lock-note');
+
+  const pendingApprovals = Array.isArray(state.approvals) ? state.approvals : [];
+
+  if (user.role === 'employee') {
+    if (navVendor) navVendor.style.display = 'none';
+    if (navAdmin) navAdmin.style.display = 'none';
+    if (quickOpenVendorBtn) quickOpenVendorBtn.style.display = 'none';
+    if (newThreadBtn) newThreadBtn.style.display = 'none';
+    if (oversightStrip) oversightStrip.style.display = 'none';
+    if (scopeBannerText) {
+      scopeBannerText.textContent = `Phạm vi Nhân viên (${user.departmentName}): Chỉ được xem các dự án và tham gia phòng chat đã duyệt của ban mình.`;
+    }
+  } else if (user.role === 'manager') {
+    if (navVendor) navVendor.style.display = '';
+    if (navAdmin) navAdmin.style.display = 'none';
+    if (quickOpenVendorBtn) quickOpenVendorBtn.style.display = '';
+    if (newThreadBtn) newThreadBtn.style.display = '';
+    if (oversightStrip) oversightStrip.style.display = 'none';
+    if (vendorDeptSelect) {
+      vendorDeptSelect.value = user.department;
+      vendorDeptSelect.disabled = true;
+    }
+    if (vendorDeptLockNote) {
+      vendorDeptLockNote.textContent = `Dự án mới sẽ được gắn cố định vào ${user.departmentName} do bạn quản lí.`;
+    }
+    if (scopeBannerText) {
+      scopeBannerText.textContent = `Phạm vi Quản lí (${user.departmentName}): Quản lí dự án trong ban & tạo/yêu cầu xóa phòng chat ban hoặc công việc (Chờ Giám đốc duyệt).`;
+    }
+  } else if (user.role === 'director') {
+    if (navVendor) navVendor.style.display = '';
+    if (navAdmin) navAdmin.style.display = '';
+    if (quickOpenVendorBtn) quickOpenVendorBtn.style.display = '';
+    if (newThreadBtn) newThreadBtn.style.display = '';
+    if (oversightStrip) oversightStrip.style.display = 'grid';
+    if (vendorDeptSelect) vendorDeptSelect.disabled = false;
+    if (vendorDeptLockNote) {
+      vendorDeptLockNote.textContent = 'Giám đốc có quyền chỉ định bất kỳ phòng ban nào cho dự án mới.';
+    }
+    if (scopeBannerText) {
+      scopeBannerText.textContent = 'Toàn quyền Giám đốc Điều Hành: Giám sát toàn công ty, thêm & điều phối Quản lí, mở phòng QL ↔ QL / QL ↔ GĐ và phê duyệt tạo/xóa phòng chat.';
+    }
+
+    const kpiProj = document.getElementById('kpi-projects-count');
+    const kpiRooms = document.getElementById('kpi-active-rooms-count');
+    const kpiPending = document.getElementById('kpi-pending-approvals-count');
+    const kpiMgrs = document.getElementById('kpi-managers-count');
+    if (kpiProj) kpiProj.textContent = String((state.projects || []).length);
+    if (kpiRooms) kpiRooms.textContent = String((state.rooms || []).filter(r => r.status === 'active').length);
+    if (kpiPending) kpiPending.textContent = String(pendingApprovals.length);
+    if (kpiMgrs) kpiMgrs.textContent = String((state.managers || []).length);
+  }
+
+  if (adminPendingBadge) {
+    if (user.role === 'director' && pendingApprovals.length > 0) {
+      adminPendingBadge.textContent = String(pendingApprovals.length);
+      adminPendingBadge.style.display = 'inline-block';
+    } else {
+      adminPendingBadge.style.display = 'none';
+    }
+  }
+
+  // Projects list (strictly RBAC-filtered by server)
+  const incomingProjects = Array.isArray(state.projects) ? state.projects : [];
+  const nextProjectsSig = JSON.stringify(incomingProjects.map(p => ({ id: p.id, bidCount: p.bidCount, currentBidXMR: p.currentBidXMR, name: p.name, department: p.department })));
+  if (nextProjectsSig !== lastProjectsSig) {
+    lastProjectsSig = nextProjectsSig;
+    MARKET_PRODUCTS = incomingProjects;
+    myVendorListings = incomingProjects.filter(p => p.createdBy === user.id || (p.isUserCreated && p.department === user.department));
+    populateOrderProductSelect(MARKET_PRODUCTS);
+    updateOrderPreviewCard();
+    filterAndRenderProducts();
+    renderMyListings();
+  }
+
+  // Rooms list (strictly RBAC-filtered by server)
+  const incomingRooms = Array.isArray(state.rooms) ? state.rooms : [];
+  const nextRoomsSig = JSON.stringify(incomingRooms.map(r => ({
+    id: r.id,
+    name: r.name,
+    scope: r.scope,
+    status: r.status,
+    msgLen: (r.messages || []).length,
+    lastMsgId: r.messages && r.messages.length ? r.messages[r.messages.length - 1].id : ''
+  })));
+
+  if (nextRoomsSig !== lastRoomsSig) {
+    lastRoomsSig = nextRoomsSig;
+    chatThreads = incomingRooms.map(r => {
+      const msgs = Array.isArray(r.messages) ? r.messages : [];
+      const mappedMsgs = msgs.map(m => {
+        if (m.senderRole === 'system') {
+          return { author: m.senderName || 'Hệ thống', role: 'system', time: m.time || '', text: m.text };
+        }
+        const roleTag = ROLE_LABELS_VI[m.senderRole] || '';
+        const displayName = roleTag ? `${m.senderName} (${roleTag})` : m.senderName;
+        return {
+          author: displayName,
+          role: m.senderId === user.id ? 'buyer' : 'merchant',
+          time: m.time || '',
+          text: m.text
+        };
+      });
+      const lastM = msgs[msgs.length - 1];
+      const deptObj = (state.departments || []).find(d => d.id === r.department);
+      const deptName = r.department === 'executive' ? 'Ban Điều Hành' : (deptObj ? deptObj.short : r.department);
+      return {
+        id: r.id,
+        roomId: r.id,
+        isCompanyRoom: true,
+        scope: r.scope,
+        department: r.department,
+        departmentName: deptName,
+        projectId: r.projectId || '',
+        status: r.status,
+        pendingAction: r.pendingAction || null,
+        requestedByName: r.requestedByName || r.createdByName || '',
+        peerAlias: r.name,
+        productName: `${SCOPE_LABELS_VI[r.scope] || r.scope} · ${deptName}`,
+        avatarText: (deptName || r.name || 'P').charAt(0).toUpperCase(),
+        lastMessage: lastM ? lastM.text : 'Chưa có tin nhắn',
+        lastTime: lastM ? lastM.time : '',
+        unreadCount: 0,
+        messages: mappedMsgs
+      };
+    });
+
+    if (!chatThreads.some(t => t.id === activeThreadId)) {
+      activeThreadId = chatThreads[0]?.id || '';
+    }
+
+    renderMessengerThreads();
+    updateActiveThreadHeader();
+    renderChatMessages();
+  }
+
+  if (user.role === 'director') {
+    renderDirectorConsole(state);
+  }
+  updateRamMonitor();
+}
+
+async function sendCompanyRoomMessage(roomId, text) {
+  try {
+    const res = await bazaarApiFetch(`/api/company/rooms/${encodeURIComponent(roomId)}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showToast(data.error || 'Không thể gửi tin nhắn vào phòng chat này.', 'error');
+      return;
+    }
+    await fetchCompanyState(true);
+  } catch {
+    showToast('Lỗi kết nối khi gửi tin nhắn.', 'error');
+  }
+}
+
+function initClosedCompanyModalsAndAdmin() {
+  const closeCreateBtn = document.getElementById('close-create-room-modal-btn');
+  const cancelCreateBtn = document.getElementById('cancel-create-room-btn');
+  const createOverlay = document.getElementById('create-room-modal-overlay');
+  const createForm = document.getElementById('create-room-form');
+  const newScopeSelect = document.getElementById('new-room-scope');
+
+  if (closeCreateBtn) closeCreateBtn.addEventListener('click', () => closeAccessibleModal(createOverlay));
+  if (cancelCreateBtn) cancelCreateBtn.addEventListener('click', () => closeAccessibleModal(createOverlay));
+  if (createOverlay) {
+    createOverlay.addEventListener('click', (e) => {
+      if (e.target === createOverlay) closeAccessibleModal(createOverlay);
+    });
+  }
+
+  if (newScopeSelect) {
+    newScopeSelect.addEventListener('change', syncCreateRoomModalFields);
+  }
+
+  if (createForm) {
+    createForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!isCompanyAuthActive()) return;
+      const user = currentCompanyState.user;
+      const name = (document.getElementById('new-room-name')?.value || '').trim();
+      const scope = document.getElementById('new-room-scope')?.value || 'department';
+      const department = user.role === 'director'
+        ? (document.getElementById('new-room-dept')?.value || 'devops')
+        : user.department;
+      const projectId = document.getElementById('new-room-project')?.value || '';
+      const participantIds = Array.from(document.querySelectorAll('#modal-room-participants input[type="checkbox"]:checked')).map(cb => cb.value);
+
+      const res = await bazaarApiFetch('/api/company/rooms/request-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          scope,
+          department,
+          projectId,
+          participantIds,
+          includeAllManagers: participantIds.length === 0 && (scope === 'manager_to_manager' || scope === 'manager_director')
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không thể tạo phòng chat.', 'error');
+        return;
+      }
+
+      closeAccessibleModal(createOverlay);
+      if (document.getElementById('new-room-name')) document.getElementById('new-room-name').value = '';
+      if (data.status === 'pending_approval') {
+        showToast('Đã gửi yêu cầu tạo phòng chat! Đang chờ Giám đốc phê duyệt.', 'info');
+      } else {
+        showToast(`Đã mở phòng chat "${name}" hoạt động ngay!`, 'success');
+      }
+      await fetchCompanyState(true);
+      if (data.room && data.room.id) {
+        selectMessengerThread(data.room.id);
+      }
+    });
+  }
+
+  // Delete request / direct delete button in active chat header
+  const reqDeleteBtn = document.getElementById('room-request-delete-btn');
+  if (reqDeleteBtn) {
+    reqDeleteBtn.addEventListener('click', async () => {
+      if (!isCompanyAuthActive()) return;
+      const thread = getActiveThread();
+      if (!thread) return;
+      const isDir = currentCompanyState.user.role === 'director';
+      const msg = isDir
+        ? `Xóa vĩnh viễn phòng chat "${thread.peerAlias}"?`
+        : `Gửi yêu cầu tới Giám đốc để phê duyệt xóa phòng/đoạn chat "${thread.peerAlias}"?`;
+      if (!window.confirm(msg)) return;
+
+      const res = await bazaarApiFetch(`/api/company/rooms/${encodeURIComponent(thread.id)}/request-delete`, {
+        method: 'POST'
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Thao tác không được phép.', 'error');
+        return;
+      }
+      if (data.status === 'deleted') {
+        showToast('Giám đốc đã xóa vĩnh viễn phòng chat.', 'success');
+      } else {
+        showToast('Đã gửi yêu cầu xóa phòng chat! Đang chờ Giám đốc phê duyệt.', 'info');
+      }
+      await fetchCompanyState(true);
+    });
+  }
+
+  // Inline Director Approve / Reject inside chat header banner
+  const inlineApproveBtn = document.getElementById('room-inline-approve-btn');
+  const inlineRejectBtn = document.getElementById('room-inline-reject-btn');
+  if (inlineApproveBtn) {
+    inlineApproveBtn.addEventListener('click', () => {
+      const thread = getActiveThread();
+      if (thread) decideRoomApproval(thread.id, 'approve');
+    });
+  }
+  if (inlineRejectBtn) {
+    inlineRejectBtn.addEventListener('click', () => {
+      const thread = getActiveThread();
+      if (thread) decideRoomApproval(thread.id, 'reject');
+    });
+  }
+
+  // Tab 5 Director Admin Console bindings
+  const adminRefreshBtn = document.getElementById('admin-refresh-btn');
+  if (adminRefreshBtn) adminRefreshBtn.addEventListener('click', () => fetchCompanyState(false));
+
+  const execScopeSelect = document.getElementById('exec-room-scope');
+  if (execScopeSelect) {
+    execScopeSelect.addEventListener('change', () => {
+      const s = execScopeSelect.value;
+      const deptWrap = document.getElementById('exec-room-dept-wrap');
+      const partWrap = document.getElementById('exec-room-participants-wrap');
+      const isExec = s === 'manager_director' || s === 'manager_to_manager';
+      if (deptWrap) deptWrap.style.display = isExec ? 'none' : 'block';
+      if (partWrap) partWrap.style.display = isExec ? 'block' : 'none';
+    });
+  }
+
+  const execForm = document.getElementById('director-exec-room-form');
+  if (execForm) {
+    execForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = (document.getElementById('exec-room-name')?.value || '').trim();
+      const scope = document.getElementById('exec-room-scope')?.value || 'manager_director';
+      const department = document.getElementById('exec-room-dept')?.value || 'devops';
+      const participantIds = Array.from(document.querySelectorAll('#exec-room-participants input[type="checkbox"]:checked')).map(cb => cb.value);
+
+      const res = await bazaarApiFetch('/api/company/rooms/request-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          scope,
+          department,
+          participantIds,
+          includeAllManagers: participantIds.length === 0 && (scope === 'manager_to_manager' || scope === 'manager_director')
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không thể khởi tạo phòng điều hành.', 'error');
+        return;
+      }
+      if (document.getElementById('exec-room-name')) document.getElementById('exec-room-name').value = '';
+      showToast(`Đã tạo phòng chat "${name}"!`, 'success');
+      await fetchCompanyState(true);
+      if (data.room && data.room.id) {
+        switchTab('tab-chat');
+        selectMessengerThread(data.room.id);
+      }
+    });
+  }
+
+  const addMgrForm = document.getElementById('director-add-manager-form');
+  if (addMgrForm) {
+    addMgrForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = (document.getElementById('mgr-name')?.value || '').trim();
+      const username = (document.getElementById('mgr-username')?.value || '').trim();
+      const password = document.getElementById('mgr-password')?.value || '123';
+      const department = document.getElementById('mgr-dept')?.value || 'devops';
+      const title = (document.getElementById('mgr-title')?.value || '').trim();
+
+      const res = await bazaarApiFetch('/api/company/managers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, password, department, title })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Không thể thêm Quản lí mới.', 'error');
+        return;
+      }
+      addMgrForm.reset();
+      if (document.getElementById('mgr-password')) document.getElementById('mgr-password').value = '123';
+      showToast(`Đã thêm Quản lí ${data.manager?.name || name}!`, 'success');
+      await fetchCompanyState(true);
+    });
+  }
+}
+
+function openCreateRoomModal() {
+  if (!isCompanyAuthActive()) return;
+  const user = currentCompanyState.user;
+  const overlay = document.getElementById('create-room-modal-overlay');
+  const scopeSelect = document.getElementById('new-room-scope');
+  const projSelect = document.getElementById('new-room-project');
+  const partGrid = document.getElementById('modal-room-participants');
+  const approvalNote = document.getElementById('create-room-approval-note');
+  const submitBtn = document.getElementById('submit-create-room-btn');
+
+  if (scopeSelect) {
+    if (user.role === 'director') {
+      scopeSelect.innerHTML = `
+        <option value="manager_director">Quản lí ↔ Giám đốc</option>
+        <option value="manager_to_manager">Quản lí ↔ Quản lí</option>
+        <option value="department">Phòng chat theo Ban</option>
+        <option value="work">Phòng chat Công việc</option>
+      `;
+    } else {
+      scopeSelect.innerHTML = `
+        <option value="department">Phòng chat Ban (${escapeHtml(user.departmentName)})</option>
+        <option value="work">Phòng chat Công việc (theo đầu việc)</option>
+      `;
+    }
+  }
+
+  if (projSelect) {
+    const projs = currentCompanyState.projects || [];
+    projSelect.innerHTML = '<option value="">-- Không gắn dự án cụ thể --</option>' +
+      projs.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+  }
+
+  if (partGrid && user.role === 'director') {
+    const mgrs = currentCompanyState.managers || [];
+    partGrid.innerHTML = mgrs.map(m => `
+      <label class="participant-check-chip">
+        <input type="checkbox" value="${escapeHtml(m.id)}">
+        <span>${escapeHtml(m.name)} (${escapeHtml(m.departmentName)})</span>
+      </label>
+    `).join('');
+  }
+
+  if (approvalNote) {
+    approvalNote.innerHTML = user.role === 'director'
+      ? '<strong>Quyền Giám đốc:</strong> Phòng chat sẽ được kích hoạt hoạt động ngay sau khi tạo.'
+      : 'Lưu ý: Phòng chat do <strong>Quản lí</strong> tạo sẽ vào hàng đợi <strong>Chờ Giám đốc phê duyệt</strong> trước khi Nhân viên sử dụng.';
+  }
+  if (submitBtn) {
+    submitBtn.textContent = user.role === 'director' ? 'Mở phòng chat ngay' : 'Gửi yêu cầu tạo phòng';
+  }
+
+  syncCreateRoomModalFields();
+  openAccessibleModal(overlay, '#new-room-name');
+}
+
+function syncCreateRoomModalFields() {
+  if (!isCompanyAuthActive()) return;
+  const user = currentCompanyState.user;
+  const scope = document.getElementById('new-room-scope')?.value || 'department';
+  const deptGroup = document.getElementById('new-room-dept-group');
+  const projGroup = document.getElementById('new-room-project-group');
+  const partGroup = document.getElementById('new-room-participants-group');
+
+  const isExec = scope === 'manager_to_manager' || scope === 'manager_director';
+  if (deptGroup) deptGroup.style.display = (user.role === 'director' && !isExec) ? 'block' : 'none';
+  if (projGroup) projGroup.style.display = scope === 'work' ? 'block' : 'none';
+  if (partGroup) partGroup.style.display = (user.role === 'director' && isExec) ? 'block' : 'none';
+}
+
+async function decideRoomApproval(roomId, decision) {
+  const res = await bazaarApiFetch(`/api/company/approvals/${encodeURIComponent(roomId)}/decide`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showToast(data.error || 'Không thể xử lý phê duyệt.', 'error');
+    return;
+  }
+  showToast(decision === 'approve' ? 'Giám đốc đã PHÊ DUYỆT yêu cầu!' : 'Giám đốc đã TỪ CHỐI yêu cầu.', decision === 'approve' ? 'success' : 'info');
+  await fetchCompanyState(true);
+}
+
+function renderDirectorConsole(state) {
+  const approvals = Array.isArray(state.approvals) ? state.approvals : [];
+  const managers = Array.isArray(state.managers) ? state.managers : [];
+  const departments = Array.isArray(state.departments) ? state.departments : [];
+  const auditLog = Array.isArray(state.auditLog) ? state.auditLog : [];
+
+  // 1. Approvals Queue
+  const appSig = JSON.stringify(approvals);
+  if (appSig !== lastApprovalsSig) {
+    lastApprovalsSig = appSig;
+    const appBox = document.getElementById('director-approvals-list');
+    if (appBox) {
+      if (approvals.length === 0) {
+        appBox.innerHTML = '<p class="empty-listings-note">Không có yêu cầu tạo hoặc xóa phòng chat nào đang chờ phê duyệt.</p>';
+      } else {
+        appBox.innerHTML = approvals.map(a => `
+          <div class="approval-card ${a.pendingAction === 'delete' ? 'is-delete' : 'is-create'}">
+            <div class="approval-card-body">
+              <div class="approval-badges">
+                <span class="approval-type-pill ${a.pendingAction === 'delete' ? 'delete' : 'create'}">
+                  ${a.pendingAction === 'delete' ? 'Đề xuất XÓA phòng chat' : 'Đề xuất TẠO phòng mới'}
+                </span>
+                <span class="approval-dept-pill">${escapeHtml(a.departmentName)}</span>
+              </div>
+              <div class="approval-room-name">${escapeHtml(a.roomName)}</div>
+              <div class="approval-meta">Quản lí đề xuất: <strong>${escapeHtml(a.requestedByName)}</strong> · Loại: ${escapeHtml(SCOPE_LABELS_VI[a.scope] || a.scope)}</div>
+            </div>
+            <div class="approval-actions">
+              <button type="button" class="primary-btn approval-decide-btn" data-room-id="${escapeHtml(a.roomId)}" data-decision="approve">Phê duyệt</button>
+              <button type="button" class="secondary-btn approval-decide-btn" data-room-id="${escapeHtml(a.roomId)}" data-decision="reject">Từ chối</button>
+            </div>
+          </div>
+        `).join('');
+
+        appBox.querySelectorAll('.approval-decide-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            decideRoomApproval(btn.getAttribute('data-room-id'), btn.getAttribute('data-decision'));
+          });
+        });
+      }
+    }
+  }
+
+  // 2. Managers coordination list + Participant checkboxes
+  const mgrSig = JSON.stringify(managers);
+  if (mgrSig !== lastManagersSig) {
+    lastManagersSig = mgrSig;
+    const partWrap = document.getElementById('exec-room-participants');
+    if (partWrap) {
+      partWrap.innerHTML = managers.map(m => `
+        <label class="participant-check-chip">
+          <input type="checkbox" value="${escapeHtml(m.id)}">
+          <span>${escapeHtml(m.name)} (${escapeHtml(m.departmentName)})</span>
+        </label>
+      `).join('');
+    }
+
+    const mgrListBox = document.getElementById('director-managers-list');
+    if (mgrListBox) {
+      mgrListBox.innerHTML = managers.map(m => `
+        <div class="manager-row-card">
+          <div class="manager-info-col">
+            <div class="manager-name-line">
+              <strong>${escapeHtml(m.name)}</strong>
+              <code>@${escapeHtml(m.username)}</code>
+            </div>
+            <div class="manager-sub-line">${escapeHtml(m.title)} · Hiện tại: <strong>${escapeHtml(m.departmentName)}</strong></div>
+          </div>
+          <div class="manager-coord-col">
+            <label class="sr-only" for="coord-dept-${escapeHtml(m.id)}">Điều phối ban cho ${escapeHtml(m.name)}</label>
+            <select id="coord-dept-${escapeHtml(m.id)}" class="custom-select mini-select mgr-coord-select" data-user-id="${escapeHtml(m.id)}">
+              ${departments.map(d => `<option value="${escapeHtml(d.id)}" ${d.id === m.department ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('')}
+            </select>
+            <button type="button" class="secondary-btn mgr-coord-btn" data-user-id="${escapeHtml(m.id)}">Điều phối Ban</button>
+          </div>
+        </div>
+      `).join('');
+
+      mgrListBox.querySelectorAll('.mgr-coord-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const userId = btn.getAttribute('data-user-id');
+          const selectEl = document.getElementById(`coord-dept-${userId}`);
+          const newDept = selectEl?.value;
+          if (!userId || !newDept) return;
+          const res = await bazaarApiFetch(`/api/company/managers/${encodeURIComponent(userId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ department: newDept })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showToast(data.error || 'Không thể điều phối Quản lí.', 'error');
+            return;
+          }
+          showToast(`Đã điều phối ${data.manager?.name || ''} sang ${data.manager?.departmentName || newDept}!`, 'success');
+          await fetchCompanyState(true);
+        });
+      });
+    }
+  }
+
+  // 3. Audit Log
+  const auditSig = JSON.stringify(auditLog.map(a => a.id));
+  if (auditSig !== lastAuditSig) {
+    lastAuditSig = auditSig;
+    const auditBox = document.getElementById('director-audit-log');
+    if (auditBox) {
+      auditBox.innerHTML = auditLog.map(entry => `
+        <div class="audit-entry-row">
+          <span class="audit-time">${escapeHtml(entry.time)}</span>
+          <div class="audit-content">
+            <strong>${escapeHtml(entry.actorName)}</strong>
+            <span class="audit-action-badge">${escapeHtml(entry.action)}</span>
+            <span class="audit-detail">${escapeHtml(entry.detail)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 }

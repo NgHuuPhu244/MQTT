@@ -8,16 +8,80 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css?v=6.0">
+  <link rel="stylesheet" href="./css/style.css?v=7.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%222%22><rect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%224%22/><path d=%22M8 16V8l8 8V8%22/></svg>">
 </head>
 <body class="vault-page flat-workspace obsidian-studio">
-  <a href="#vault-main-content" class="skip-link">Chuyển đến nội dung chính</a>
+  <a href="#vault-main-content" id="skip-to-main-link" class="skip-link">Chuyển đến nội dung chính</a>
+
+  <!-- ================================================================= -->
+  <!-- CLOSED-COMPANY AUTH GATE (3-ROLE SESSION ENTRY)                   -->
+  <!-- ================================================================= -->
+  <main id="auth-gate" class="auth-gate" tabindex="-1" aria-label="Cổng đăng nhập hệ thống khép kín công ty">
+    <div class="auth-gate-shell">
+      <div class="auth-brand-bar">
+        <div class="vault-brand-icon-wrap" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+            <path d="M8.5 15.5V8.5l7 7v-7"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="auth-brand-title">Nexus Workspace</h1>
+          <p class="auth-brand-sub">Hệ Thống Giao Tiếp &amp; Điều Hành Khép Kín Nội Bộ · ZERO-KNOWLEDGE EPHEMERAL VAULT</p>
+        </div>
+      </div>
+
+      <div class="auth-card-grid">
+        <section class="auth-form-col" aria-labelledby="auth-form-heading">
+          <h2 id="auth-form-heading" class="auth-col-title">Đăng nhập phiên làm việc nội bộ</h2>
+          <p class="auth-col-desc">Mỗi phiên trình duyệt xác thực độc lập theo phân quyền Nhân viên, Quản lí phòng ban hoặc Giám đốc điều hành.</p>
+
+          <form id="company-login-form" class="company-login-form" novalidate>
+            <div class="form-group">
+              <label for="login-username"><strong>Tên đăng nhập nội bộ</strong></label>
+              <input type="text" id="login-username" name="username" required autocomplete="username" placeholder="VD: nv.devops1, ql.devops, giamdoc">
+            </div>
+
+            <div class="form-group">
+              <label for="login-password"><strong>Mật khẩu xác thực</strong></label>
+              <input type="password" id="login-password" name="password" required autocomplete="current-password" value="123" placeholder="Nhập mật khẩu nội bộ...">
+            </div>
+
+            <div id="login-error-msg" class="auth-error-msg" role="alert" style="display: none;"></div>
+
+            <button type="submit" id="login-submit-btn" class="primary-btn auth-submit-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              <span>Đăng nhập hệ thống công ty</span>
+            </button>
+          </form>
+
+          <div class="auth-security-note">
+            <span>Mật khẩu mặc định: <code>123</code> · Phiên chạy cô lập theo từng Tab (<code>sessionStorage</code>) để bạn mở song song 3 vai trò kiểm thử trực tiếp.</span>
+          </div>
+        </section>
+
+        <section class="auth-directory-col" aria-labelledby="auth-dir-heading">
+          <div class="auth-dir-head">
+            <h2 id="auth-dir-heading" class="auth-col-title">Truy cập nhanh 3 cấp vai trò</h2>
+            <span class="auth-dir-hint">Bấm chọn tài khoản để đăng nhập ngay</span>
+          </div>
+          <div id="quick-login-directory" class="quick-login-directory">
+            <p class="auth-loading-note">Đang tải danh bạ phòng ban từ máy chủ...</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
 
   <!-- ================================================================= -->
   <!-- ENTERPRISE WORKSPACE CONSOLE (ZERO-KNOWLEDGE EPHEMERAL VAULT)     -->
   <!-- ================================================================= -->
-  <div class="vault-shell">
+  <div class="vault-shell" id="vault-shell" hidden style="display: none;">
     <!-- Unified Single-Bar Workspace Header -->
     <header class="vault-header">
       <div class="vault-header-inner">
@@ -47,9 +111,10 @@
           </div>
 
           <div class="member-id-cluster">
-            <span class="member-id-prefix">Mã NV:</span>
+            <span id="user-role-badge" class="user-role-pill">Thành viên</span>
             <span id="anon-alias" class="member-id-code">NV-Loading...</span>
-            <button type="button" id="regen-alias-btn" class="regen-alias-btn" aria-label="Đổi mã định danh phiên mới" title="Đổi mã định danh phiên mới">
+            <span id="user-dept-label" class="user-dept-pill">Phòng ban</span>
+            <button type="button" id="regen-alias-btn" class="regen-alias-btn" style="display: none;" aria-label="Đổi mã định danh phiên mới" title="Đổi mã định danh phiên mới">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                 <path d="M3 3v5h5"></path>
@@ -59,7 +124,16 @@
             </button>
           </div>
 
-          <button type="button" id="panic-btn" class="panic-btn" title="Xóa dữ liệu tạm trên trình duyệt và khởi tạo phiên làm việc mới">
+          <button type="button" id="logout-btn" class="logout-btn" title="Đăng xuất khỏi phiên hiện tại để chuyển vai trò">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Đăng xuất</span>
+          </button>
+
+          <button type="button" id="panic-btn" class="panic-btn" title="Xóa dữ liệu tạm trên trình duyệt và quay về màn hình đăng nhập">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
               <path d="M3 3v5h5"></path>
@@ -103,7 +177,15 @@
               <circle cx="12" cy="12" r="9"></circle>
               <path d="M12 8v8M8 12h8"></path>
             </svg>
-            <span>Đăng Thông Báo / Tài Liệu</span>
+            <span>Đăng Dự Án / Thông Báo</span>
+          </button>
+          <button type="button" class="nav-tab" id="nav-tab-admin" role="tab" aria-selected="false" aria-controls="tab-admin" data-tab="tab-admin" style="display: none;">
+            <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2l7 4v6c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V6l7-4z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+            <span>Điều Hành Giám Đốc</span>
+            <span id="admin-pending-badge" class="chat-unread-badge" style="display: none;" aria-label="Yêu cầu chờ phê duyệt">0</span>
           </button>
         </div>
       </nav>
@@ -112,10 +194,33 @@
       <!-- TAB 1: BẢNG TIN & TÀI NGUYÊN NỘI BỘ                           -->
       <!-- ============================================================= -->
       <div id="tab-market" class="tab-pane active" role="tabpanel" aria-labelledby="nav-tab-market">
+        <div id="role-scope-banner" class="role-scope-banner" role="status">
+          <span id="role-scope-text">Đang tải phạm vi phân quyền phòng ban...</span>
+        </div>
+
+        <div id="director-oversight-strip" class="director-oversight-strip" style="display: none;" aria-label="Tổng quan giám sát công ty">
+          <div class="kpi-tile">
+            <span class="kpi-label">Dự án đang chạy</span>
+            <strong id="kpi-projects-count" class="kpi-val">0</strong>
+          </div>
+          <div class="kpi-tile">
+            <span class="kpi-label">Phòng chat hoạt động</span>
+            <strong id="kpi-active-rooms-count" class="kpi-val">0</strong>
+          </div>
+          <div class="kpi-tile kpi-highlight">
+            <span class="kpi-label">Yêu cầu chờ duyệt</span>
+            <strong id="kpi-pending-approvals-count" class="kpi-val">0</strong>
+          </div>
+          <div class="kpi-tile">
+            <span class="kpi-label">Quản lí các ban</span>
+            <strong id="kpi-managers-count" class="kpi-val">0</strong>
+          </div>
+        </div>
+
         <div class="tab-page-head">
           <div>
-            <h2 class="tab-page-title">Bảng tin & Tài nguyên nội bộ</h2>
-            <p class="tab-page-subtitle">Điều phối tài nguyên, cấu hình kỹ thuật và đầu việc liên phòng ban qua bộ đệm RAM tạm thời.</p>
+            <h2 class="tab-page-title">Dự án &amp; Tài nguyên phòng ban</h2>
+            <p class="tab-page-subtitle" id="market-scope-subtitle">Điều phối dự án, tài liệu kỹ thuật và đầu việc theo phân quyền phòng ban khép kín.</p>
           </div>
           <div class="tab-page-actions">
             <div class="view-mode-switch" role="group" aria-label="Chế độ hiển thị danh sách">
@@ -219,9 +324,9 @@
                   <span class="messenger-threads-count" id="messenger-threads-count">1 cuộc trò chuyện</span>
                 </div>
               </div>
-              <button type="button" id="btn-new-thread" class="messenger-new-pill" title="Tạo kênh thảo luận công việc mới">
+              <button type="button" id="btn-new-thread" class="messenger-new-pill" title="Tạo phòng chat ban hoặc phòng chat công việc">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>Kênh Mới</span>
+                <span>Tạo phòng chat</span>
               </button>
             </div>
 
@@ -286,10 +391,27 @@
                   <button type="button" id="btn-p2p-disconnect" class="p2p-pill-btn disconnect" title="Rời phòng họp P2P">Ngắt P2P</button>
                 </div>
 
+                <button type="button" id="room-request-delete-btn" class="p2p-pill-btn purge" style="display: none;" title="Yêu cầu Giám đốc phê duyệt xóa phòng chat hoặc đoạn chat này">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  <span id="room-request-delete-label">Yêu cầu xóa phòng</span>
+                </button>
+
                 <button type="button" id="purge-chat-btn" class="p2p-pill-btn purge" title="Xóa sạch lịch sử hội thoại của kênh này trong RAM">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                   <span>Xóa lịch sử</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- Closed-Company Room Approval Status Strip -->
+            <div id="room-status-banner" class="room-status-banner" style="display: none;">
+              <div class="room-status-info">
+                <span id="room-status-badge" class="room-status-pill">Chờ duyệt</span>
+                <span id="room-status-text" class="room-status-text">Đang chờ Giám đốc phê duyệt...</span>
+              </div>
+              <div id="room-director-actions" class="room-director-actions" style="display: none;">
+                <button type="button" id="room-inline-approve-btn" class="p2p-pill-btn join">Phê duyệt ngay</button>
+                <button type="button" id="room-inline-reject-btn" class="p2p-pill-btn purge">Từ chối</button>
               </div>
             </div>
 
@@ -330,6 +452,9 @@
 
             <!-- Flat Bottom Composer Strip -->
             <div class="chat-composer-wrap">
+              <div id="chat-locked-notice" class="chat-locked-notice" style="display: none;" role="status">
+                Phòng chat này đang ở trạng thái <strong>Chờ Giám đốc phê duyệt</strong> — tính năng gửi tin nhắn sẽ mở ngay sau khi được duyệt.
+              </div>
               <div class="chat-composer-pill">
                 <input type="text" id="chat-input-field" aria-label="Nhập nội dung tin nhắn trao đổi nội bộ" placeholder="Nhập tin nhắn trao đổi công việc (Mã hóa E2EE, tự hủy khỏi RAM khi rời trang)..." autocomplete="off">
                 <button type="button" id="send-chat-btn" class="chat-send-pill-btn" title="Gửi tin nhắn">
@@ -486,8 +611,19 @@
               <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="fixed" id="mode-fixed-btn">Cấp phát cố định</button>
             </div>
 
+            <div class="form-group" id="vendor-dept-group">
+              <label for="listing-department"><strong>Phòng ban áp dụng dự án:</strong></label>
+              <select id="listing-department" class="custom-select">
+                <option value="devops">Ban DevOps &amp; Hạ tầng</option>
+                <option value="admin_it">Ban Hành chính &amp; IT</option>
+                <option value="network">Ban Mạng &amp; An ninh</option>
+                <option value="finance">Ban Tài chính &amp; Pháp chế</option>
+              </select>
+              <span id="vendor-dept-lock-note" class="field-hint-note">Dự án mới sẽ tự động gắn vào đúng phòng ban bạn quản lí.</span>
+            </div>
+
             <div class="form-group">
-              <label for="listing-name"><strong>Tiêu đề thông báo / Tên tài nguyên công việc:</strong></label>
+              <label for="listing-name"><strong>Tiêu đề dự án / Tên tài nguyên công việc:</strong></label>
               <input type="text" id="listing-name" placeholder="VD: Tài liệu API thanh toán v3, Cấp phát 3 màn hình Dell, Lịch bảo trì Server..." autocomplete="off">
             </div>
 
@@ -650,6 +786,137 @@
         </div>
       </div>
 
+      <!-- ============================================================= -->
+      <!-- TAB 5: ĐIỀU HÀNH GIÁM ĐỐC (PHÊ DUYỆT, QUẢN LÍ & PHÒNG LÃNH ĐẠO) -->
+      <!-- ============================================================= -->
+      <div id="tab-admin" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-admin">
+        <div class="tab-page-head">
+          <div>
+            <h2 class="tab-page-title">Bảng Điều Hành Giám Đốc</h2>
+            <p class="tab-page-subtitle">Giám sát toàn bộ phòng ban, phê duyệt yêu cầu tạo/xóa phòng chat từ Quản lí, bổ nhiệm và điều phối Quản lí giữa các ban.</p>
+          </div>
+          <div class="tab-page-actions">
+            <button type="button" id="admin-refresh-btn" class="secondary-btn quick-list-cta">Làm mới dữ liệu</button>
+          </div>
+        </div>
+
+        <div class="admin-console-grid">
+          <!-- Panel 1: Approvals Queue -->
+          <section class="admin-panel" aria-labelledby="admin-approvals-title">
+            <div class="admin-panel-head">
+              <div>
+                <h3 id="admin-approvals-title" class="admin-panel-title">Hàng đợi phê duyệt phòng chat</h3>
+                <p class="admin-panel-desc">Mọi yêu cầu mở phòng mới hoặc xóa đoạn chat/phòng chat của Quản lí phải qua Giám đốc duyệt.</p>
+              </div>
+            </div>
+            <div id="director-approvals-list" class="director-approvals-list">
+              <p class="empty-listings-note">Không có yêu cầu tạo hoặc xóa phòng chat nào đang chờ phê duyệt.</p>
+            </div>
+          </section>
+
+          <!-- Panel 2: Direct Create Leadership Room (Manager <-> Manager / Manager <-> Director) -->
+          <section class="admin-panel" aria-labelledby="admin-exec-room-title">
+            <div class="admin-panel-head">
+              <div>
+                <h3 id="admin-exec-room-title" class="admin-panel-title">Khởi tạo phòng chat Quản lí &amp; Giám đốc</h3>
+                <p class="admin-panel-desc">Tạo trực tiếp phòng trao đổi liên quản lí (Quản lí ↔ Quản lí) hoặc phòng họp Quản lí ↔ Giám đốc.</p>
+              </div>
+            </div>
+            <form id="director-exec-room-form" class="admin-form">
+              <div class="form-group">
+                <label for="exec-room-name"><strong>Tên phòng trao đổi lãnh đạo</strong></label>
+                <input type="text" id="exec-room-name" required placeholder="VD: Giao ban Quản lí DevOps ↔ Tài chính Q4" autocomplete="off">
+              </div>
+
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label for="exec-room-scope"><strong>Loại phòng điều hành</strong></label>
+                  <select id="exec-room-scope" class="custom-select">
+                    <option value="manager_director">Quản lí ↔ Giám đốc (Họp Ban Giám Đốc)</option>
+                    <option value="manager_to_manager">Quản lí ↔ Quản lí (Phối hợp liên ban)</option>
+                    <option value="department">Phòng chat theo Ban</option>
+                    <option value="work">Phòng chat Công việc</option>
+                  </select>
+                </div>
+                <div class="form-group" id="exec-room-dept-wrap" style="display: none;">
+                  <label for="exec-room-dept"><strong>Áp dụng cho Ban</strong></label>
+                  <select id="exec-room-dept" class="custom-select">
+                    <option value="devops">Ban DevOps &amp; Hạ tầng</option>
+                    <option value="admin_it">Ban Hành chính &amp; IT</option>
+                    <option value="network">Ban Mạng &amp; An ninh</option>
+                    <option value="finance">Ban Tài chính &amp; Pháp chế</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group" id="exec-room-participants-wrap">
+                <span id="exec-participants-label" class="field-group-label"><strong>Chọn các Quản lí tham gia (bỏ trống = mời tất cả Quản lí):</strong></span>
+                <div id="exec-room-participants" class="participants-check-grid" role="group" aria-labelledby="exec-participants-label"></div>
+              </div>
+
+              <button type="submit" id="create-exec-room-btn" class="primary-btn">Mở phòng chat ngay</button>
+            </form>
+          </section>
+
+          <!-- Panel 3: Add & Coordinate Managers -->
+          <section class="admin-panel" aria-labelledby="admin-managers-title">
+            <div class="admin-panel-head">
+              <div>
+                <h3 id="admin-managers-title" class="admin-panel-title">Thêm mới &amp; Điều phối Quản lí</h3>
+                <p class="admin-panel-desc">Bổ nhiệm tài khoản Quản lí mới hoặc điều chuyển Quản lí phụ trách sang phòng ban khác.</p>
+              </div>
+            </div>
+
+            <form id="director-add-manager-form" class="admin-form admin-subform">
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label for="mgr-name"><strong>Họ và tên Quản lí</strong></label>
+                  <input type="text" id="mgr-name" required placeholder="VD: Nguyễn Minh Hải" autocomplete="off">
+                </div>
+                <div class="form-group">
+                  <label for="mgr-username"><strong>Tên đăng nhập</strong></label>
+                  <input type="text" id="mgr-username" required placeholder="VD: ql.devops2" autocomplete="off">
+                </div>
+              </div>
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label for="mgr-dept"><strong>Phân công phòng ban</strong></label>
+                  <select id="mgr-dept" class="custom-select">
+                    <option value="devops">Ban DevOps &amp; Hạ tầng</option>
+                    <option value="admin_it">Ban Hành chính &amp; IT</option>
+                    <option value="network">Ban Mạng &amp; An ninh</option>
+                    <option value="finance">Ban Tài chính &amp; Pháp chế</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="mgr-password"><strong>Mật khẩu khởi tạo</strong></label>
+                  <input type="text" id="mgr-password" value="123" placeholder="Mặc định: 123" autocomplete="off">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="mgr-title"><strong>Chức danh công việc (tùy chọn)</strong></label>
+                <input type="text" id="mgr-title" placeholder="VD: Phó Trưởng ban DevOps" autocomplete="off">
+              </div>
+              <button type="submit" id="add-manager-btn" class="primary-btn">Thêm Quản lí mới</button>
+            </form>
+
+            <div class="admin-sub-heading">Danh sách Quản lí &amp; Điều phối phòng ban</div>
+            <div id="director-managers-list" class="director-managers-list"></div>
+          </section>
+
+          <!-- Panel 4: Director Oversight Audit Log -->
+          <section class="admin-panel" aria-labelledby="admin-audit-title">
+            <div class="admin-panel-head">
+              <div>
+                <h3 id="admin-audit-title" class="admin-panel-title">Nhật ký giám sát hệ thống khép kín</h3>
+                <p class="admin-panel-desc">Theo dõi thời gian thực mọi đề xuất mở/xóa phòng chat, dự án mới và điều chuyển nhân sự quản lí.</p>
+              </div>
+            </div>
+            <div id="director-audit-log" class="director-audit-log"></div>
+          </section>
+        </div>
+      </div>
+
     </main>
 
     <footer class="vault-footer">
@@ -739,7 +1006,63 @@
 
   <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+  <!-- Create Chat Room Modal Overlay -->
+  <div id="create-room-modal-overlay" class="qr-modal-overlay" style="display: none;">
+    <div class="qr-modal-card bid-modal-card" role="dialog" aria-modal="true" aria-labelledby="create-room-modal-title" tabindex="-1">
+      <div class="qr-modal-header">
+        <h2 id="create-room-modal-title" class="qr-modal-title">Tạo phòng chat nội bộ mới</h2>
+        <button type="button" id="close-create-room-modal-btn" class="close-mask-btn" aria-label="Đóng hộp thoại tạo phòng chat" title="Đóng"><span aria-hidden="true">✕</span></button>
+      </div>
+
+      <form id="create-room-form" class="create-room-form">
+        <div class="form-group">
+          <label for="new-room-name"><strong>Tên phòng chat:</strong></label>
+          <input type="text" id="new-room-name" required placeholder="VD: Phòng Họp Triển Khai Gateway Sprint 15" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="new-room-scope"><strong>Loại phòng chat:</strong></label>
+          <select id="new-room-scope" class="custom-select">
+            <option value="department">Phòng chat Ban của tôi</option>
+            <option value="work">Phòng chat Công việc (theo đầu việc / dự án)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="new-room-dept-group" style="display: none;">
+          <label for="new-room-dept"><strong>Chọn Phòng ban:</strong></label>
+          <select id="new-room-dept" class="custom-select">
+            <option value="devops">Ban DevOps &amp; Hạ tầng</option>
+            <option value="admin_it">Ban Hành chính &amp; IT</option>
+            <option value="network">Ban Mạng &amp; An ninh</option>
+            <option value="finance">Ban Tài chính &amp; Pháp chế</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="new-room-project-group">
+          <label for="new-room-project"><strong>Gắn với dự án (tùy chọn):</strong></label>
+          <select id="new-room-project" class="custom-select">
+            <option value="">-- Không gắn dự án cụ thể --</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="new-room-participants-group" style="display: none;">
+          <span id="modal-participants-label" class="field-group-label"><strong>Chọn Quản lí tham gia (tùy chọn):</strong></span>
+          <div id="modal-room-participants" class="participants-check-grid" role="group" aria-labelledby="modal-participants-label"></div>
+        </div>
+
+        <div id="create-room-approval-note" class="create-room-approval-note">
+          Lưu ý: Phòng chat do <strong>Quản lí</strong> tạo sẽ vào hàng đợi <strong>Chờ Giám đốc phê duyệt</strong> trước khi Nhân viên sử dụng.
+        </div>
+
+        <div class="bid-actions-row">
+          <button type="submit" id="submit-create-room-btn" class="primary-btn">Gửi yêu cầu tạo phòng</button>
+          <button type="button" id="cancel-create-room-btn" class="secondary-btn">Hủy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="./js/peerjs.min.js"></script>
-  <script type="module" src="./js/vault.js?v=6.0"></script>
+  <script type="module" src="./js/vault.js?v=7.0"></script>
 </body>
 </html>
