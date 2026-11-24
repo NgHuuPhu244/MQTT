@@ -5,6 +5,15 @@
  */
 
 import qrcode from './qrcode.mjs';
+import {
+  generateSymmetricKey,
+  exportKeyToBase64Url,
+  importKeyFromBase64Url,
+  bufferToBase64Url,
+  base64UrlToBuffer,
+  encryptPayload,
+  decryptPayload
+} from './crypto-engine.js';
 
 // Volatile in-memory state (Purged completely on page exit / ESC)
 let sessionSeconds = 0;
@@ -511,7 +520,7 @@ async function bazaarApiFetch(path, options = {}) {
         headers: mergedHeaders,
         cache: 'no-store'
       });
-      if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404 || res.status === 409) {
+      if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404 || res.status === 409 || res.status === 429) {
         return res;
       }
       lastErr = new Error(`HTTP ${res.status}`);
@@ -3273,7 +3282,7 @@ function initEncryptedChat() {
   if (copyPgpBtn) {
     copyPgpBtn.addEventListener('click', () => {
       navigator.clipboard.writeText('4A8F C310 998D E21B 77A4 0019 FF45 8891 00C2 91BC').then(() => {
-        showToast('Đã sao chép PGP Fingerprint của shop!', 'success');
+        showToast('Đã sao chép dấu vân tay chứng thư nội bộ!', 'success');
       });
     });
   }
@@ -3326,19 +3335,15 @@ function renderChatMessages() {
 
     let attachmentHtml = '';
     if (thread?.isCompanyRoom && msg.attachment && msg.attachment.id && companyAuthToken) {
-      const attUrl = `/api/company/rooms/${encodeURIComponent(thread.id)}/attachments/${encodeURIComponent(msg.attachment.id)}?token=${encodeURIComponent(companyAuthToken)}`;
       const isImg = (msg.attachment.mimeType || '').startsWith('image/');
       const sizeKb = Math.max(1, Math.round((msg.attachment.size || 0) / 1024));
-      attachmentHtml = isImg
-        ? `<div class="msg-attachment-box is-image">
-             <a href="${attUrl}" target="_blank" rel="noopener noreferrer" download="${escapeHtml(msg.attachment.name)}">
-               <img src="${attUrl}" alt="${escapeHtml(msg.attachment.name)}" class="msg-att-preview-img">
-             </a>
-             <a href="${attUrl}" download="${escapeHtml(msg.attachment.name)}" class="msg-att-dl-link">${escapeHtml(msg.attachment.name)} (${sizeKb} KB)</a>
-           </div>`
-        : `<div class="msg-attachment-box">
-             <a href="${attUrl}" download="${escapeHtml(msg.attachment.name)}" class="msg-att-dl-link">📎 ${escapeHtml(msg.attachment.name)} (${sizeKb} KB)</a>
-           </div>`;
+      attachmentHtml = `
+        <div class="msg-attachment-box ${isImg ? 'is-image' : ''}" data-att-room="${escapeHtml(thread.id)}" data-att-id="${escapeHtml(msg.attachment.id)}" data-att-name="${escapeHtml(msg.attachment.name)}" data-att-mime="${escapeHtml(msg.attachment.mimeType || 'application/octet-stream')}">
+          ${isImg ? `<img alt="${escapeHtml(msg.attachment.name)}" class="msg-att-preview-img msg-att-lazy-img" style="display:none;">` : ''}
+          <button type="button" class="msg-att-dl-btn">
+            <span>${isImg ? '🖼️' : '📎'} ${escapeHtml(msg.attachment.name)} (${sizeKb} KB) — Tải về an toàn</span>
+          </button>
+        </div>`;
     }
 
     const pendingBannerHtml = msg.deleteStatus === 'pending_delete'
@@ -3404,6 +3409,7 @@ function renderChatMessages() {
     });
   });
 
+  hydrateSecureAttachments(container);
   container.scrollTop = container.scrollHeight;
 }
 
@@ -3473,68 +3479,179 @@ function initOrderSystem() {
     });
   });
 
-  // Sample PGP Public Key button
+  // Sample .env secret template button
   if (samplePgpBtn) {
     samplePgpBtn.addEventListener('click', () => {
-      const pubkeyInput = document.getElementById('order-receiver-pubkey');
-      if (pubkeyInput) {
-        pubkeyInput.value = `-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: KeybaseOpenPGP v2.1.13\nComment: https://keybase.io/crypto\n\nxsFNBF7X4zMBEADL...sample_recipient_pubkey_bytes...==\n-----END PGP PUBLIC KEY BLOCK-----`;
-        showToast('Đã dán mẫu PGP Public Key vào trường nhận hàng!', 'info');
+      const secretInput = document.getElementById('order-receiver-pubkey');
+      if (secretInput) {
+        secretInput.value = 'API_GATEWAY_HOST=10.24.0.15:8443\nDB_STAGING_PASS=Nx#92kLm!Prod2026\nHSM_SLOT_PIN=482910';
+        showToast('Đã điền mẫu cấu hình .env để thử nghiệm mã hóa AES-256-GCM!', 'info');
       }
     });
   }
 
-  // Create Order Handler
+  // Real AES-256-GCM Zero-Knowledge RAM Drop Handover Creator
   if (createOrderBtn) {
-    createOrderBtn.addEventListener('click', () => {
-      const pubkeyInput = document.getElementById('order-receiver-pubkey');
+    createOrderBtn.addEventListener('click', async () => {
+      const secretInput = document.getElementById('order-receiver-pubkey');
+      const pinInput = document.getElementById('handover-pin-input');
       const prodId = productSelect?.value;
-      const product = MARKET_PRODUCTS.find(p => p.id === prodId) || MARKET_PRODUCTS[0];
-      const ttl = parseInt(ttlValueInput?.value || '3600', 10);
-      const receiverKey = (pubkeyInput?.value || '').trim();
-
-      // Generate random Monero address & 128-bit Order ID
-      const orderHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-        .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-        .join('');
-      const orderId = `HDV-RAM-${orderHex}`;
-
-      const xmrPrefix = 'TKN-NEXUS-';
-      const xmrSuffix = Array.from(crypto.getRandomValues(new Uint8Array(12)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      const xmrAddress = `${xmrPrefix}${xmrSuffix.slice(0, 12).toUpperCase()}`;
-
-      activeOrder = {
-        orderId,
-        product,
-        xmrAddress,
-        ttl,
-        receiverKey,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + (ttl * 1000)
+      const product = MARKET_PRODUCTS.find(p => p.id === prodId) || MARKET_PRODUCTS[0] || {
+        id: 'internal',
+        name: 'Tài liệu nội bộ',
+        approxUSD: 'Nội bộ công ty',
+        priceXMR: 'Mật'
       };
+      const ttl = parseInt(ttlValueInput?.value || '3600', 10);
+      const secretText = (secretInput?.value || '').trim();
+      const passphrase = (pinInput?.value || '').trim();
 
-      saveActiveOrderToStorage();
-      displayOrderResult(activeOrder);
-      updateRamMonitor();
+      if (!secretText) {
+        showToast('Vui lòng nhập nội dung mật cần mã hóa bàn giao!', 'warning');
+        secretInput?.focus();
+        return;
+      }
 
-      // Automatically connect Buyer <-> Seller Deal Channel & remove bought item from public market
-      startAutoBlindDeal(product.name, product.id).then((deal) => {
-        bazaarApiFetch('/api/lexicon/bazaar-deals', {
+      createOrderBtn.disabled = true;
+      try {
+        const senderLabel = isCompanyAuthActive()
+          ? `${currentCompanyState.user.name} (@${currentCompanyState.user.username})`
+          : (anonymousAlias || 'Thành viên nội bộ');
+
+        const envelopeObj = {
+          projectId: product.id,
+          projectName: product.name,
+          senderName: senderLabel,
+          secretText,
+          createdAt: new Date().toLocaleString('vi-VN')
+        };
+
+        // Client-side AES-256-GCM encryption (Key NEVER sent to server!)
+        const symKey = await generateSymmetricKey();
+        const keyBase64Url = await exportKeyToBase64Url(symKey);
+        const encryptedBytes = await encryptPayload(JSON.stringify(envelopeObj), symKey, {
+          passphrase: passphrase || '',
+          pad: true
+        });
+        const ciphertext = bufferToBase64Url(encryptedBytes);
+
+        const res = await bazaarApiFetch('/api/lexicon/cache-entry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'pay_escrow',
-            dealId: deal?.dealId || '',
-            orderId,
-            productId: product.id,
-            productName: product.name
+            ciphertext,
+            burnAfterReading: true,
+            ttl
           })
-        }).catch(() => {});
-      });
-      removeSoldProductFromMarket(product.id, product.name);
-      showToast(`Đã tạo phiếu tiếp nhận "${product.name}"! Kênh thảo luận nội bộ đã được mở.`, 'success');
+        });
+        const dropData = await res.json().catch(() => ({}));
+        if (!res.ok || !dropData.id) {
+          showToast(dropData.error || 'Không thể lưu bản mã vào RAM máy chủ.', 'error');
+          return;
+        }
+
+        const handoverCode = `${dropData.id}#${keyBase64Url}`;
+        activeOrder = {
+          orderId: dropData.id,
+          product,
+          xmrAddress: handoverCode,
+          hasPin: Boolean(passphrase),
+          ttl,
+          createdAt: Date.now(),
+          expiresAt: dropData.expiresAt || (Date.now() + ttl * 1000)
+        };
+
+        if (secretInput) secretInput.value = '';
+        if (pinInput) pinInput.value = '';
+        displayOrderResult(activeOrder);
+        updateRamMonitor();
+        showToast('Đã mã hóa AES-256-GCM và lưu bản mã tự hủy 1 lần trên RAM!', 'success');
+      } catch (err) {
+        showToast(`Lỗi mã hóa AES-256-GCM: ${err?.message || 'Không xác định'}`, 'error');
+      } finally {
+        createOrderBtn.disabled = false;
+      }
+    });
+  }
+
+  // Real AES-256-GCM Burn-After-Reading Decrypt Form
+  const decryptForm = document.getElementById('handover-decrypt-form');
+  if (decryptForm) {
+    decryptForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawCode = (document.getElementById('decrypt-drop-token-input')?.value || '').trim();
+      const pin = (document.getElementById('decrypt-drop-pin-input')?.value || '').trim();
+      const outBox = document.getElementById('decrypted-secret-box');
+      const outMeta = document.getElementById('decrypted-secret-meta');
+      const outPre = document.getElementById('decrypted-secret-output');
+      const btn = document.getElementById('decrypt-drop-btn');
+
+      let cleanCode = rawCode;
+      if (cleanCode.includes('?token=')) {
+        cleanCode = cleanCode.split('?token=').pop();
+      }
+      const parts = cleanCode.split('#');
+      if (parts.length !== 2 || !/^[a-f0-9]{32}$/i.test(parts[0].trim()) || !parts[1].trim()) {
+        showToast('Mã nhận không đúng định dạng <32-hex-dropId>#<aesKey>!', 'warning');
+        return;
+      }
+
+      const dropId = parts[0].trim().toLowerCase();
+      const keyStr = parts[1].trim();
+
+      if (btn) btn.disabled = true;
+      try {
+        const res = await bazaarApiFetch(`/api/lexicon/cache-entry/${encodeURIComponent(dropId)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' }
+        });
+        if (res.status === 404) {
+          if (outBox) outBox.style.display = 'none';
+          showToast('Bản mã không tồn tại hoặc đã TỰ HỦY khỏi RAM sau lần đọc trước!', 'error');
+          return;
+        }
+        if (!res.ok) {
+          showToast('Không thể lấy bản mã từ RAM máy chủ.', 'error');
+          return;
+        }
+        const data = await res.json();
+        const key = await importKeyFromBase64Url(keyStr);
+        const cipherBytes = base64UrlToBuffer(data.ciphertext);
+        const plainStr = await decryptPayload(cipherBytes, key, {
+          passphrase: pin || ''
+        });
+
+        let displayText = plainStr;
+        let metaText = 'Đã giải mã AES-256-GCM · Bản mã trên RAM đã tự hủy vĩnh viễn!';
+        try {
+          const parsed = JSON.parse(plainStr);
+          if (parsed && parsed.secretText) {
+            displayText = parsed.secretText;
+            metaText = `Dự án: ${parsed.projectName || 'Nội bộ'} · Người gửi: ${parsed.senderName || 'Đồng nghiệp'} · Đã tự hủy khỏi RAM`;
+          }
+        } catch {}
+
+        if (outMeta) outMeta.textContent = metaText;
+        if (outPre) outPre.textContent = displayText;
+        if (outBox) outBox.style.display = 'block';
+        showToast('Giải mã thành công! Bản mã trên máy chủ đã bị xóa vĩnh viễn.', 'success');
+      } catch (err) {
+        showToast('Giải mã thất bại! Kiểm tra lại mã khóa hoặc mã PIN lớp 2 (dữ liệu đã tự hủy khỏi RAM).', 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
+  const copyDecryptedBtn = document.getElementById('copy-decrypted-secret-btn');
+  if (copyDecryptedBtn) {
+    copyDecryptedBtn.addEventListener('click', () => {
+      const txt = document.getElementById('decrypted-secret-output')?.textContent || '';
+      if (txt && navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(() => {
+          showToast('Đã sao chép nội dung đã giải mã!', 'success');
+        });
+      }
     });
   }
 
@@ -3561,7 +3678,13 @@ function initOrderSystem() {
 
   if (completeOrderBurnBtn) {
     completeOrderBurnBtn.addEventListener('click', () => {
-      completeDealAndAutoBurn();
+      const code = document.getElementById('receipt-xmr-address')?.value || '';
+      const targetInput = document.getElementById('decrypt-drop-token-input');
+      if (targetInput && code) {
+        targetInput.value = code;
+        targetInput.focus();
+        showToast('Đã nạp mã nhận vào khung Giải mã bên trên — bấm Giải mã để kiểm chứng tự hủy 1 lần!', 'info');
+      }
     });
   }
 
@@ -3625,7 +3748,7 @@ function displayOrderResult(order) {
 
   if (orderIdEl) orderIdEl.textContent = order.orderId;
   if (prodNameEl) prodNameEl.textContent = `${order.product.name} (${order.product.approxUSD})`;
-  if (amountEl) amountEl.textContent = order.product.priceXMR;
+  if (amountEl) amountEl.textContent = order.hasPin ? 'Có PIN (PBKDF2 100k vòng)' : 'Khóa AES-256-GCM (Không PIN)';
   if (xmrAddrInput) xmrAddrInput.value = order.xmrAddress;
 
   resultBox.style.display = 'block';
@@ -4695,16 +4818,13 @@ function enterAuthenticatedWorkspace(initialState = null) {
   }
   switchTab('tab-market');
 
-  if (companyPollTimer) clearInterval(companyPollTimer);
-  companyPollTimer = setInterval(() => {
-    if (companyAuthToken) {
-      fetchCompanyState(true);
-    }
-  }, 1500);
+  connectCompanyWebSocket();
 }
 
 async function logoutCompanySession(toastText = '') {
   const tokenToRevoke = companyAuthToken;
+  disconnectCompanyWebSocket();
+  revokeAllAttachmentBlobs();
   if (tokenToRevoke) {
     try {
       await bazaarApiFetch('/api/company/logout', { method: 'POST' });
@@ -5764,4 +5884,205 @@ function bindV75ModalAndTeamForms() {
       await fetchCompanyState(true);
     });
   }
+}
+
+
+/* ==========================================================================
+   12. v8.0 REALTIME RFC 6455 WEBSOCKET CLIENT & SECURE BLOB ATTACHMENTS
+   ========================================================================== */
+
+let companyWs = null;
+let companyWsReconnectTimer = null;
+let companyWsBackoffMs = 1000;
+let companyWsSyncDebounce = null;
+const attachmentBlobCache = new Map();
+
+function updateTransportStatusUI(mode) {
+  const label = document.getElementById('ws-transport-label');
+  const dot = document.getElementById('ws-transport-dot');
+  if (label) {
+    label.textContent = mode === 'ws' ? 'WS Realtime' : (mode === 'connecting' ? 'WS Kết nối...' : 'HTTP Sync');
+  }
+  if (dot) {
+    dot.classList.toggle('is-fallback', mode !== 'ws');
+  }
+}
+
+function startSlowFallbackPolling() {
+  if (companyPollTimer) return;
+  companyPollTimer = setInterval(() => {
+    if (companyAuthToken) {
+      fetchCompanyState(true);
+    }
+  }, 10000);
+}
+
+function stopFallbackPolling() {
+  if (companyPollTimer) {
+    clearInterval(companyPollTimer);
+    companyPollTimer = null;
+  }
+}
+
+function disconnectCompanyWebSocket() {
+  if (companyWsReconnectTimer) {
+    clearTimeout(companyWsReconnectTimer);
+    companyWsReconnectTimer = null;
+  }
+  if (companyWsSyncDebounce) {
+    clearTimeout(companyWsSyncDebounce);
+    companyWsSyncDebounce = null;
+  }
+  stopFallbackPolling();
+  if (companyWs) {
+    try {
+      companyWs.onclose = null;
+      companyWs.onerror = null;
+      companyWs.onmessage = null;
+      companyWs.close(1000, 'Logout');
+    } catch {}
+    companyWs = null;
+  }
+}
+
+function connectCompanyWebSocket() {
+  if (!companyAuthToken || typeof WebSocket === 'undefined') {
+    updateTransportStatusUI('http');
+    startSlowFallbackPolling();
+    return;
+  }
+
+  disconnectCompanyWebSocket();
+  updateTransportStatusUI('connecting');
+
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.port === '3000' || !window.location.port
+    ? window.location.host
+    : '127.0.0.1:3000';
+  const wsUrl = `${proto}//${host}/ws/company`;
+
+  let ws;
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch {
+    updateTransportStatusUI('http');
+    startSlowFallbackPolling();
+    return;
+  }
+  companyWs = ws;
+
+  ws.onopen = () => {
+    if (companyAuthToken && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'auth', token: companyAuthToken }));
+    }
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+
+    if (msg.type === 'auth_ok') {
+      companyWsBackoffMs = 1000;
+      stopFallbackPolling();
+      updateTransportStatusUI('ws');
+      return;
+    }
+
+    if (msg.type === 'sync') {
+      if (companyWsSyncDebounce) clearTimeout(companyWsSyncDebounce);
+      companyWsSyncDebounce = setTimeout(() => {
+        if (companyAuthToken) fetchCompanyState(true);
+      }, 120);
+      return;
+    }
+
+    if (msg.type === 'session_revoked' || msg.type === 'auth_error') {
+      const reason = msg.reason || msg.error || 'Phiên đăng nhập đã bị thu hồi hoặc hết hạn.';
+      disconnectCompanyWebSocket();
+      companyAuthToken = null;
+      try { sessionStorage.removeItem(COMPANY_TOKEN_KEY); } catch {}
+      showAuthGate(reason);
+      showToast(reason, 'error');
+    }
+  };
+
+  ws.onerror = () => {
+    updateTransportStatusUI('http');
+  };
+
+  ws.onclose = () => {
+    if (companyWs === ws) companyWs = null;
+    if (!companyAuthToken) return;
+    updateTransportStatusUI('http');
+    startSlowFallbackPolling();
+
+    const delay = companyWsBackoffMs;
+    companyWsBackoffMs = Math.min(5000, companyWsBackoffMs * 2);
+    companyWsReconnectTimer = setTimeout(() => {
+      if (companyAuthToken) connectCompanyWebSocket();
+    }, delay);
+  };
+}
+
+function revokeAllAttachmentBlobs() {
+  for (const url of attachmentBlobCache.values()) {
+    try { URL.revokeObjectURL(url); } catch {}
+  }
+  attachmentBlobCache.clear();
+}
+
+async function fetchAttachmentBlobUrl(roomId, attId) {
+  const cacheKey = `${roomId}:${attId}`;
+  if (attachmentBlobCache.has(cacheKey)) {
+    return attachmentBlobCache.get(cacheKey);
+  }
+  const res = await bazaarApiFetch(`/api/company/rooms/${encodeURIComponent(roomId)}/attachments/${encodeURIComponent(attId)}`, {
+    method: 'GET'
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const objUrl = URL.createObjectURL(blob);
+  attachmentBlobCache.set(cacheKey, objUrl);
+  return objUrl;
+}
+
+function hydrateSecureAttachments(container) {
+  if (!container || !companyAuthToken) return;
+  container.querySelectorAll('.msg-attachment-box[data-att-id]').forEach(box => {
+    const roomId = box.getAttribute('data-att-room');
+    const attId = box.getAttribute('data-att-id');
+    const attName = box.getAttribute('data-att-name') || 'file.bin';
+    const imgEl = box.querySelector('.msg-att-lazy-img');
+    const dlBtn = box.querySelector('.msg-att-dl-btn');
+
+    if (imgEl && roomId && attId) {
+      fetchAttachmentBlobUrl(roomId, attId)
+        .then(blobUrl => {
+          imgEl.src = blobUrl;
+          imgEl.style.display = 'block';
+        })
+        .catch(() => {});
+    }
+
+    if (dlBtn && roomId && attId) {
+      dlBtn.addEventListener('click', async () => {
+        dlBtn.disabled = true;
+        try {
+          const blobUrl = await fetchAttachmentBlobUrl(roomId, attId);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = attName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch {
+          showToast('Không thể tải tệp đính kèm (kiểm tra quyền phòng ban).', 'error');
+        } finally {
+          dlBtn.disabled = false;
+        }
+      });
+    }
+  });
 }

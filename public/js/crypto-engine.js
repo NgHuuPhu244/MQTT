@@ -102,7 +102,7 @@ export async function exportKeyToBase64Url(key) {
  * @param {string} base64UrlKey 
  * @returns {Promise<CryptoKey>}
  */
-export async function importKeyFromBase64Url(base64UrlKey) {
+export async function importKeyFromBase64Url(base64UrlKey, extractable = true) {
   const rawBuffer = base64UrlToBuffer(base64UrlKey);
   const key = await webCrypto.subtle.importKey(
     "raw",
@@ -111,7 +111,7 @@ export async function importKeyFromBase64Url(base64UrlKey) {
       name: "AES-GCM",
       length: 256
     },
-    false, // Non-extractable once imported
+    extractable, // Extractable so deriveCompositeKey can combine with PBKDF2 passphrase when needed
     ["encrypt", "decrypt"]
   );
   wipeMemory(rawBuffer);

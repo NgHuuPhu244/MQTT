@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { attachCompanyWebSocket } from './src/ws-server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -379,7 +380,15 @@ export function setCompanyDataDirForTests(customDir) {
 export function resetCompanyWorkspaceForTests(customDir = null) {
   companyTestDataDir = customDir || null;
   companyAttachmentsRAM.clear();
+  loginAttemptsMap.clear();
   seedCompanyWorkspace({ persist: Boolean(customDir) });
+}
+
+export function expireSessionForTests(token) {
+  if (companySessions.has(token)) {
+    const sess = companySessions.get(token);
+    sess.expiresAt = Date.now() - 1000;
+  }
 }
 
 export function reloadCompanyWorkspaceFromDiskForTests(customDir = null) {
@@ -516,7 +525,66 @@ const companySessions = new Map();
 const companyRooms = new Map();
 const companyAuditLog = [];
 const companyAttachmentsRAM = new Map();
+const loginAttemptsMap = new Map();
+const activeWsHubs = new Set();
 let companyTestDataDir = null;
+
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+const LOGIN_BRUTE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const LOGIN_MAX_FAILURES = 10;
+
+function notifyCompanyWs(reason, predicateFn = null, meta = {}) {
+  for (const hub of activeWsHubs) {
+    hub.notifySync(reason, predicateFn, meta);
+  }
+}
+
+function kickCompanyUserWs(userId, reason = 'Tài khoản đã bị khóa hoặc thu hồi phiên') {
+  for (const hub of activeWsHubs) {
+    hub.kickUser(userId, reason);
+  }
+}
+
+function checkLoginBruteForce(key) {
+  const now = Date.now();
+  const entry = loginAttemptsMap.get(key);
+  if (!entry || now - entry.firstFailAt > LOGIN_BRUTE_WINDOW_MS) {
+    return { allowed: true };
+  }
+  if (entry.count >= LOGIN_MAX_FAILURES) {
+    const retryAfterSec = Math.max(1, Math.ceil((LOGIN_BRUTE_WINDOW_MS - (now - entry.firstFailAt)) / 1000));
+    return { allowed: false, retryAfterSec };
+  }
+  return { allowed: true };
+}
+
+function recordLoginFailure(key) {
+  const now = Date.now();
+  const entry = loginAttemptsMap.get(key);
+  if (!entry || now - entry.firstFailAt > LOGIN_BRUTE_WINDOW_MS) {
+    loginAttemptsMap.set(key, { count: 1, firstFailAt: now });
+  } else {
+    entry.count++;
+  }
+}
+
+function clearLoginFailures(key) {
+  loginAttemptsMap.delete(key);
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, sess] of companySessions.entries()) {
+    if (sess.expiresAt && now >= sess.expiresAt) {
+      companySessions.delete(token);
+    }
+  }
+  for (const [k, entry] of loginAttemptsMap.entries()) {
+    if (now - entry.firstFailAt > LOGIN_BRUTE_WINDOW_MS) {
+      loginAttemptsMap.delete(k);
+    }
+  }
+}, 60000).unref();
 
 function isTestProcess() {
   return Boolean(process.env.NODE_TEST_CONTEXT) || process.argv.some(arg => arg.includes('.test.'));
@@ -558,6 +626,7 @@ function revokeUserSessions(userId) {
       companySessions.delete(token);
     }
   }
+  kickCompanyUserWs(userId, 'Tài khoản đã bị khóa bởi Quản lí/Giám đốc');
 }
 
 function persistCompanyWorkspace() {
@@ -866,15 +935,28 @@ function sanitizeUser(u) {
   };
 }
 
-function getAuthSession(req, parsedUrl) {
-  const headerToken = req.headers['x-session-token'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
-  const queryToken = parsedUrl?.searchParams ? parsedUrl.searchParams.get('token') : '';
-  const token = (headerToken || queryToken || '').trim();
+function verifySessionToken(rawToken) {
+  const token = String(rawToken || '').trim();
   if (!token || !companySessions.has(token)) return null;
   const sess = companySessions.get(token);
+  if (sess.expiresAt && Date.now() >= sess.expiresAt) {
+    companySessions.delete(token);
+    return null;
+  }
   const user = companyUsers.get(sess.userId);
-  if (!user || user.active === false) return null;
+  if (!user || user.active === false) {
+    companySessions.delete(token);
+    return null;
+  }
+  sess.lastActiveAt = Date.now();
   return { token, user };
+}
+
+function getAuthSession(req, parsedUrl, { allowQueryToken = false } = {}) {
+  const headerToken = req.headers['x-session-token'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  const queryToken = allowQueryToken && parsedUrl?.searchParams ? parsedUrl.searchParams.get('token') : '';
+  const token = (headerToken || queryToken || '').trim();
+  return verifySessionToken(token);
 }
 
 function canViewProject(user, project) {
@@ -1212,22 +1294,45 @@ const MIME_TYPES = {
  * Standard Security Headers applied to EVERY response.
  * Completely disables caching, suppresses identifying fingerprints, enforces strict CSP.
  */
-function applySecurityHeaders(res) {
+const ALLOWED_COMPANY_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500'
+]);
+if (process.env.ALLOWED_ORIGIN) {
+  ALLOWED_COMPANY_ORIGINS.add(process.env.ALLOWED_ORIGIN.trim());
+}
+
+function applySecurityHeaders(res, req = null) {
   res.removeHeader('X-Powered-By');
-  res.setHeader('Server', 'LexiconServer/2.4'); // Camouflaged benign server header
+  res.setHeader('Server', 'LexiconServer/2.4');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const reqPath = req && req.url ? String(req.url) : '';
+  const origin = req && req.headers ? req.headers.origin : '';
+  if (reqPath.startsWith('/api/company/')) {
+    if (origin && ALLOWED_COMPANY_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    } else if (!origin) {
+      res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    }
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Session-Token');
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://upload.wikimedia.org https://*.wikipedia.org; connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 https://*.wikipedia.org https://*.peerjs.com wss://*.peerjs.com;"
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://upload.wikimedia.org https://*.wikipedia.org; connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000 ws://127.0.0.1:3000 ws: wss: https://*.wikipedia.org;"
   );
 }
 
@@ -1321,9 +1426,9 @@ function readRequestBody(req, maxBytes = MAX_PAYLOAD_SIZE) {
  * Core HTTP Request Handler (ZERO-LOG: Does NOT log client IP, paths, or headers)
  */
 export function createServer() {
-  return http.createServer(async (req, res) => {
+  const httpServer = http.createServer(async (req, res) => {
     // Zero-Log: Deliberately NO console.log(req.ip, req.headers, req.url)
-    applySecurityHeaders(res);
+    applySecurityHeaders(res, req);
 
     const clientKey = req.socket.remoteAddress || '127.0.0.1';
     if (!checkRateLimit(clientKey)) {
@@ -1955,11 +2060,21 @@ export function createServer() {
 
         const uname = String(body.username || '').trim().toLowerCase();
         const pwd = String(body.password || '');
+        const bruteKey = `${clientKey}:${uname || 'anon'}`;
+        const bruteCheck = checkLoginBruteForce(bruteKey);
+        if (!bruteCheck.allowed) {
+          res.setHeader('Retry-After', String(bruteCheck.retryAfterSec));
+          res.writeHead(429, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Nhập sai quá nhiều lần. Vui lòng thử lại sau ${bruteCheck.retryAfterSec} giây!` }));
+          return;
+        }
+
         const candidate = Array.from(companyUsers.values()).find(
           u => u.username.toLowerCase() === uname
         );
 
         if (!candidate) {
+          recordLoginFailure(bruteKey);
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Sai tên đăng nhập hoặc mật khẩu nội bộ!' }));
           return;
@@ -1973,10 +2088,12 @@ export function createServer() {
         const storedCred = candidate.passwordHash || candidate.password;
         const pwdCheck = verifyPassword(pwd, storedCred);
         if (!pwdCheck.valid) {
+          recordLoginFailure(bruteKey);
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Sai tên đăng nhập hoặc mật khẩu nội bộ!' }));
           return;
         }
+        clearLoginFailures(bruteKey);
         if (pwdCheck.needsUpgrade) {
           candidate.passwordHash = hashPassword(pwd);
           delete candidate.password;
@@ -1985,7 +2102,13 @@ export function createServer() {
         const matched = candidate;
 
         const token = crypto.randomBytes(24).toString('hex');
-        companySessions.set(token, { userId: matched.id, createdAt: Date.now() });
+        const nowTs = Date.now();
+        companySessions.set(token, {
+          userId: matched.id,
+          createdAt: nowTs,
+          lastActiveAt: nowTs,
+          expiresAt: nowTs + SESSION_TTL_MS
+        });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -2106,6 +2229,7 @@ export function createServer() {
         addBazaarItem(newProject);
         addAuditEntry(auth.user, 'Tạo dự án', `Tạo "${newProject.name}" thuộc ${deptName}`);
         persistCompanyWorkspace();
+        notifyCompanyWs('project_created', u => u.role === 'director' || u.department === assignedDept, { projectId: newProject.id });
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', project: newProject }));
@@ -2192,6 +2316,7 @@ export function createServer() {
           companyRooms.set(roomId, newRoom);
           addAuditEntry(auth.user, 'Yêu cầu mở phòng chat', `Đề xuất mở "${name}" (${scope}) — Chờ Giám đốc duyệt`);
           persistCompanyWorkspace();
+          notifyCompanyWs('room_pending_create', u => u.role === 'director' || (u.role === 'manager' && u.department === auth.user.department), { roomId });
 
           res.writeHead(201, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'pending_approval', room: newRoom }));
@@ -2241,6 +2366,7 @@ export function createServer() {
         companyRooms.set(roomId, newRoom);
         addAuditEntry(auth.user, 'Tạo phòng chat trực tiếp', `Mở phòng "${name}" (${chosenScope})`);
         persistCompanyWorkspace();
+        notifyCompanyWs('room_created', u => canViewRoom(u, newRoom), { roomId });
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'active', room: newRoom }));
@@ -2277,6 +2403,7 @@ export function createServer() {
           companyRooms.delete(roomId);
           addAuditEntry(auth.user, 'Xóa phòng chat', `Giám đốc đã xóa trực tiếp phòng "${room.name}"`);
           persistCompanyWorkspace();
+          notifyCompanyWs('room_deleted', u => canViewRoom(u, room), { roomId });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'deleted', roomId }));
           return;
@@ -2305,6 +2432,7 @@ export function createServer() {
 
         addAuditEntry(auth.user, 'Yêu cầu xóa phòng chat', `Đề xuất xóa "${room.name}" — Chờ Giám đốc duyệt`);
         persistCompanyWorkspace();
+        notifyCompanyWs('room_pending_delete', u => canViewRoom(u, room), { roomId });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'pending_delete', room }));
@@ -2356,6 +2484,7 @@ export function createServer() {
             });
             addAuditEntry(auth.user, 'Phê duyệt mở phòng chat', `Đã duyệt mở phòng "${room.name}"`);
             persistCompanyWorkspace();
+            notifyCompanyWs('room_approved', u => canViewRoom(u, room), { roomId });
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'approved', room }));
             return;
@@ -2363,6 +2492,7 @@ export function createServer() {
             companyRooms.delete(roomId);
             addAuditEntry(auth.user, 'Từ chối mở phòng chat', `Từ chối mở phòng "${room.name}"`);
             persistCompanyWorkspace();
+            notifyCompanyWs('room_rejected', u => u.role === 'director' || u.department === room.department, { roomId });
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'rejected_removed', roomId }));
             return;
@@ -2375,6 +2505,7 @@ export function createServer() {
             companyRooms.delete(roomId);
             addAuditEntry(auth.user, 'Phê duyệt xóa phòng chat', `Đã duyệt xóa vĩnh viễn phòng "${room.name}"`);
             persistCompanyWorkspace();
+            notifyCompanyWs('room_deleted', u => canViewRoom(u, room), { roomId });
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'deleted', roomId }));
             return;
@@ -2391,6 +2522,7 @@ export function createServer() {
             });
             addAuditEntry(auth.user, 'Từ chối xóa phòng chat', `Giữ lại phòng "${room.name}"`);
             persistCompanyWorkspace();
+            notifyCompanyWs('room_restored', u => canViewRoom(u, room), { roomId });
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'restored', room }));
             return;
@@ -2497,6 +2629,7 @@ export function createServer() {
           deleteAttachmentBinary(evicted?.attachment?.id);
         }
         persistCompanyWorkspace();
+        notifyCompanyWs('room_message', u => canViewRoom(u, room), { roomId, msgId: newMsg.id });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', message: newMsg, room }));
@@ -2587,6 +2720,7 @@ export function createServer() {
           room.messages.splice(msgIdx, 1);
           addAuditEntry(auth.user, 'Xóa tin nhắn', `Giám đốc xóa trực tiếp tin nhắn trong "${room.name}"`);
           persistCompanyWorkspace();
+          notifyCompanyWs('message_deleted', u => canViewRoom(u, room), { roomId, msgId });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'deleted', roomId, msgId }));
           return;
@@ -2604,6 +2738,7 @@ export function createServer() {
         targetMsg.deleteRequestedAt = Date.now();
         addAuditEntry(auth.user, 'Yêu cầu xóa đoạn chat', `Đề xuất xóa tin nhắn của ${targetMsg.senderName} trong "${room.name}" — Chờ Giám đốc duyệt`);
         persistCompanyWorkspace();
+        notifyCompanyWs('message_pending_delete', u => canViewRoom(u, room), { roomId, msgId });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'pending_delete', message: targetMsg }));
@@ -2655,6 +2790,7 @@ export function createServer() {
           room.messages.splice(msgIdx, 1);
           addAuditEntry(auth.user, 'Duyệt xóa tin nhắn', `Đã xóa đoạn chat trong phòng "${room.name}"`);
           persistCompanyWorkspace();
+          notifyCompanyWs('message_deleted', u => canViewRoom(u, room), { roomId, msgId });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'deleted', roomId, msgId }));
           return;
@@ -2665,6 +2801,7 @@ export function createServer() {
           delete targetMsg.deleteRequestedAt;
           addAuditEntry(auth.user, 'Từ chối xóa tin nhắn', `Giữ lại tin nhắn trong phòng "${room.name}"`);
           persistCompanyWorkspace();
+          notifyCompanyWs('message_restored', u => canViewRoom(u, room), { roomId, msgId });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'restored', message: targetMsg }));
           return;
@@ -2728,6 +2865,7 @@ export function createServer() {
         companyUsers.set(newMgr.id, newMgr);
         addAuditEntry(auth.user, 'Thêm Quản lí mới', `Bổ nhiệm ${newMgr.name} (${newMgr.username}) phụ trách ${deptObj?.name || department}`);
         persistCompanyWorkspace();
+        notifyCompanyWs('hr_updated', u => u.role === 'director' || u.role === 'manager');
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', manager: sanitizeUser(newMgr) }));
@@ -2780,6 +2918,7 @@ export function createServer() {
         const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === target.department);
         addAuditEntry(auth.user, 'Điều phối Quản lí', `Cập nhật ${target.name} (${deptObj?.name || target.department}, ${target.active ? 'Hoạt động' : 'Đã khóa'})`);
         persistCompanyWorkspace();
+        notifyCompanyWs('hr_updated', u => u.role === 'director' || u.role === 'manager');
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', manager: sanitizeUser(target) }));
@@ -2873,6 +3012,7 @@ export function createServer() {
         companyUsers.set(newEmp.id, newEmp);
         addAuditEntry(auth.user, 'Thêm Nhân viên', `Tạo ${newEmp.name} (@${newEmp.username}) thuộc ${deptObj?.name || department}`);
         persistCompanyWorkspace();
+        notifyCompanyWs('hr_updated', u => u.role === 'director' || u.department === department);
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', employee: sanitizeUser(newEmp) }));
         return;
@@ -2927,6 +3067,7 @@ export function createServer() {
         const deptObj = COMPANY_DEPARTMENTS.find(d => d.id === target.department);
         addAuditEntry(auth.user, 'Cập nhật Nhân viên', `Cập nhật ${target.name} (${deptObj?.name || target.department}, ${target.active ? 'Hoạt động' : 'Đã khóa'})`);
         persistCompanyWorkspace();
+        notifyCompanyWs('hr_updated', u => u.role === 'director' || u.department === target.department);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', employee: sanitizeUser(target) }));
         return;
@@ -2964,6 +3105,7 @@ export function createServer() {
         inMemorySoldOrRevokedIds.add(projectId);
         addAuditEntry(auth.user, 'Thu hồi dự án', `Gỡ bỏ dự án "${proj.name}" khỏi bảng tin`);
         persistCompanyWorkspace();
+        notifyCompanyWs('project_deleted', u => u.role === 'director' || u.department === projDept, { projectId });
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'deleted', projectId }));
         return;
@@ -3028,6 +3170,7 @@ export function createServer() {
         }
         addAuditEntry(auth.user, 'Cập nhật công việc', `"${proj.name}" · Tiến độ: ${proj.taskStatus || 'todo'}${proj.assigneeName ? ' · Phụ trách: ' + proj.assigneeName : ''}`);
         persistCompanyWorkspace();
+        notifyCompanyWs('project_task_updated', u => u.role === 'director' || u.department === projDept, { projectId });
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'success', project: { ...proj, department: projDept } }));
         return;
@@ -3052,6 +3195,19 @@ export function createServer() {
       }
     }
   });
+
+  const wsHub = attachCompanyWebSocket(httpServer, {
+    wsPath: '/ws/company',
+    verifyToken: verifySessionToken,
+    getUserById: (id) => companyUsers.get(id) || null
+  });
+  activeWsHubs.add(wsHub);
+  httpServer.on('close', () => {
+    activeWsHubs.delete(wsHub);
+  });
+  httpServer.wsHub = wsHub;
+
+  return httpServer;
 }
 
 // Auto-start when executed directly

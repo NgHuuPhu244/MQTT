@@ -9,8 +9,18 @@ import {
   storeDrop,
   retrieveDrop,
   resetCompanyWorkspaceForTests,
-  reloadCompanyWorkspaceFromDiskForTests
+  reloadCompanyWorkspaceFromDiskForTests,
+  expireSessionForTests
 } from '../server.js';
+import {
+  generateSymmetricKey,
+  exportKeyToBase64Url,
+  importKeyFromBase64Url,
+  bufferToBase64Url,
+  base64UrlToBuffer,
+  encryptPayload,
+  decryptPayload
+} from '../public/js/crypto-engine.js';
 
 describe('Server RAM-Only & Ephemeral Drop Tests', () => {
   let server;
@@ -823,6 +833,175 @@ describe('Closed-Company 3-Role RBAC Tests (Employee / Manager / Director)', () 
       headers: { 'X-Session-Token': mgrDevops.data.token }
     });
     assert.strictEqual(mgrDelProj.statusCode, 200);
+  });
+
+  it('should push realtime WebSocket RFC 6455 events strictly within RBAC scope and kick locked users instantly', async () => {
+    resetCompanyWorkspaceForTests();
+    const empDevops = await loginAs('nv.devops1');
+    const empIt = await loginAs('nv.it1');
+    const mgrDevops = await loginAs('ql.devops');
+    const wsUrl = baseUrl.replace('http://', 'ws://') + '/ws/company';
+
+    const openAuthWs = (token) => new Promise((resolve, reject) => {
+      const ws = new WebSocket(wsUrl);
+      const received = [];
+      ws.addEventListener('open', () => {
+        ws.send(JSON.stringify({ type: 'auth', token }));
+      });
+      ws.addEventListener('message', (ev) => {
+        const parsed = JSON.parse(String(ev.data));
+        received.push(parsed);
+        if (parsed.type === 'auth_ok') {
+          resolve({ ws, received });
+        }
+      });
+      ws.addEventListener('error', reject);
+    });
+
+    const devopsConn = await openAuthWs(empDevops.data.token);
+    const itConn = await openAuthWs(empIt.data.token);
+
+    try {
+      assert.strictEqual(devopsConn.received[0].protocol, 'RFC6455-WS');
+
+      // Manager posts a message in DevOps room -> DevOps WS gets sync, IT WS gets NOTHING
+      const syncPromise = new Promise((resolve) => {
+        devopsConn.ws.addEventListener('message', (ev) => {
+          const msg = JSON.parse(String(ev.data));
+          if (msg.type === 'sync' && msg.reason === 'room_message') resolve(msg);
+        });
+      });
+
+      const postRes = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+        body: JSON.stringify({ text: 'Realtime WS test message' })
+      });
+      assert.strictEqual(postRes.statusCode, 200);
+
+      const syncEvent = await Promise.race([
+        syncPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('WS sync timeout')), 1500))
+      ]);
+      assert.strictEqual(syncEvent.roomId, 'room-devops-main');
+
+      await new Promise(r => setTimeout(r, 80));
+      assert.strictEqual(itConn.received.filter(m => m.type === 'sync').length, 0);
+
+      // Manager locks nv.devops1 -> DevOps WS immediately receives session_revoked
+      const kickPromise = new Promise((resolve) => {
+        devopsConn.ws.addEventListener('message', (ev) => {
+          const msg = JSON.parse(String(ev.data));
+          if (msg.type === 'session_revoked') resolve(msg);
+        });
+      });
+
+      const lockRes = await makeRequest(`${baseUrl}/api/company/employees/u-emp-devops`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+        body: JSON.stringify({ active: false })
+      });
+      assert.strictEqual(lockRes.statusCode, 200);
+
+      const kickEvent = await Promise.race([
+        kickPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('WS kick timeout')), 1500))
+      ]);
+      assert.strictEqual(kickEvent.type, 'session_revoked');
+    } finally {
+      try { devopsConn.ws.close(); } catch {}
+      try { itConn.ws.close(); } catch {}
+    }
+  });
+
+  it('should enforce login brute-force throttling, session TTL expiry, header-only attachment auth, and strict company CORS', async () => {
+    resetCompanyWorkspaceForTests();
+
+    // 1. Brute-force guard returns 429 on 11th failed attempt
+    for (let i = 0; i < 10; i++) {
+      const failRes = await loginAs('nv.fin1', 'wrong-pwd');
+      assert.strictEqual(failRes.status, 401);
+    }
+    const throttled = await makeRequest(`${baseUrl}/api/company/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'nv.fin1', password: '123' })
+    });
+    assert.strictEqual(throttled.statusCode, 429);
+    assert.ok(throttled.headers['retry-after']);
+
+    // 2. Attachment rejects query-string ?token= and requires X-Session-Token header
+    const emp = await loginAs('nv.devops1');
+    const upRes = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': emp.data.token },
+      body: JSON.stringify({
+        text: 'File test',
+        attachment: { name: 'note.txt', mimeType: 'text/plain', dataBase64: Buffer.from('SECRET').toString('base64') }
+      })
+    });
+    const attId = JSON.parse(upRes.body).message.attachment.id;
+
+    const queryTokenAtt = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/attachments/${attId}?token=${emp.data.token}`, {
+      method: 'GET'
+    });
+    assert.strictEqual(queryTokenAtt.statusCode, 401);
+
+    const headerTokenAtt = await makeRequest(`${baseUrl}/api/company/rooms/room-devops-main/attachments/${attId}`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': emp.data.token }
+    });
+    assert.strictEqual(headerTokenAtt.statusCode, 200);
+    assert.strictEqual(headerTokenAtt.body, 'SECRET');
+
+    // 3. Strict CORS on /api/company/* rejects untrusted origin header echo
+    const evilCors = await makeRequest(`${baseUrl}/api/company/state`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': emp.data.token, Origin: 'https://evil.example' }
+    });
+    assert.strictEqual(evilCors.headers['access-control-allow-origin'], undefined);
+
+    const localCors = await makeRequest(`${baseUrl}/api/company/state`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': emp.data.token, Origin: 'http://localhost:3000' }
+    });
+    assert.strictEqual(localCors.headers['access-control-allow-origin'], 'http://localhost:3000');
+
+    // 4. Expired session returns 401
+    expireSessionForTests(emp.data.token);
+    const expiredRes = await makeRequest(`${baseUrl}/api/company/state`, {
+      method: 'GET',
+      headers: { 'X-Session-Token': emp.data.token }
+    });
+    assert.strictEqual(expiredRes.statusCode, 401);
+  });
+
+  it('should execute real AES-256-GCM + PBKDF2 zero-knowledge RAM drop handover and burn on first read', async () => {
+    const key = await generateSymmetricKey();
+    const keyStr = await exportKeyToBase64Url(key);
+    const secretPayload = JSON.stringify({ projectName: 'Gateway API', secretText: 'DB_PASS=UltraSecret#2026' });
+    const encryptedBytes = await encryptPayload(secretPayload, key, { passphrase: 'pin-888', pad: true });
+    const ciphertext = bufferToBase64Url(encryptedBytes);
+
+    const createRes = await makeRequest(`${baseUrl}/api/lexicon/cache-entry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ciphertext, burnAfterReading: true, ttl: 300 })
+    });
+    assert.strictEqual(createRes.statusCode, 201);
+    const dropId = JSON.parse(createRes.body).id;
+
+    // First read succeeds and decrypts cleanly with imported key + PIN
+    const read1 = await makeRequest(`${baseUrl}/api/lexicon/cache-entry/${dropId}`, { method: 'GET' });
+    assert.strictEqual(read1.statusCode, 200);
+    const importedKey = await importKeyFromBase64Url(keyStr);
+    const cipherBytes = base64UrlToBuffer(JSON.parse(read1.body).ciphertext);
+    const decrypted = await decryptPayload(cipherBytes, importedKey, { passphrase: 'pin-888' });
+    assert.strictEqual(decrypted, secretPayload);
+
+    // Second read returns 404 (burned from RAM)
+    const read2 = await makeRequest(`${baseUrl}/api/lexicon/cache-entry/${dropId}`, { method: 'GET' });
+    assert.strictEqual(read2.statusCode, 404);
   });
 });
 
