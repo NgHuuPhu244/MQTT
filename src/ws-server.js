@@ -77,9 +77,45 @@ export function computeWsAcceptKey(secWebSocketKey) {
  * @param {(token: string) => ({ token: string, user: object } | null)} hooks.verifyToken
  * @param {(userId: string) => (object | null)} hooks.getUserById
  */
-export function attachCompanyWebSocket(httpServer, { wsPath = '/ws/company', verifyToken, getUserById }) {
+export function attachCompanyWebSocket(httpServer, { wsPath = '/ws/company', verifyToken, getUserById, canViewPresence = null }) {
   /** @type {Set<{ socket: any, token: string|null, userId: string|null, isAlive: boolean, authTimer: any }>} */
   const clients = new Set();
+
+  function getUniqueOnlineUsers() {
+    const map = new Map();
+    for (const c of clients) {
+      if (!c.userId || map.has(c.userId)) continue;
+      const u = getUserById ? getUserById(c.userId) : null;
+      if (u && u.active !== false) map.set(u.id, u);
+    }
+    return Array.from(map.values());
+  }
+
+  function getVisibleOnlineIdsForUser(viewer) {
+    if (!viewer) return [];
+    const onlineUsers = getUniqueOnlineUsers();
+    return onlineUsers
+      .filter(target => (typeof canViewPresence === 'function' ? canViewPresence(viewer, target) : true))
+      .map(target => target.id);
+  }
+
+  function broadcastPresence() {
+    const onlineUsers = getUniqueOnlineUsers();
+    for (const client of Array.from(clients)) {
+      if (!client.userId || !client.token) continue;
+      const viewer = getUserById ? getUserById(client.userId) : null;
+      if (!viewer || viewer.active === false) continue;
+      const visibleIds = onlineUsers
+        .filter(target => (typeof canViewPresence === 'function' ? canViewPresence(viewer, target) : true))
+        .map(target => target.id);
+      sendJson(client, {
+        type: 'presence',
+        onlineCount: visibleIds.length,
+        onlineUserIds: visibleIds,
+        ts: Date.now()
+      });
+    }
+  }
 
   function safeWrite(socket, buf) {
     if (!socket || socket.destroyed || !socket.writable) return;
@@ -258,13 +294,17 @@ export function attachCompanyWebSocket(httpServer, { wsPath = '/ws/company', ver
     });
 
     socket.on('close', () => {
+      const hadUser = Boolean(client.userId);
       if (client.authTimer) clearTimeout(client.authTimer);
       clients.delete(client);
+      if (hadUser) broadcastPresence();
     });
 
     socket.on('error', () => {
+      const hadUser = Boolean(client.userId);
       if (client.authTimer) clearTimeout(client.authTimer);
       clients.delete(client);
+      if (hadUser) broadcastPresence();
     });
   });
 
@@ -290,13 +330,17 @@ export function attachCompanyWebSocket(httpServer, { wsPath = '/ws/company', ver
         clearTimeout(client.authTimer);
         client.authTimer = null;
       }
+      const visibleIds = getVisibleOnlineIdsForUser(verified.user);
       sendJson(client, {
         type: 'auth_ok',
         userId: verified.user.id,
         role: verified.user.role,
         department: verified.user.department,
-        protocol: 'RFC6455-WS'
+        protocol: 'RFC6455-WS',
+        onlineCount: visibleIds.length,
+        onlineUserIds: visibleIds
       });
+      broadcastPresence();
     }
   }
 
@@ -330,12 +374,15 @@ export function attachCompanyWebSocket(httpServer, { wsPath = '/ws/company', ver
    * Immediately kick all active WebSocket connections for a revoked/locked user.
    */
   function kickUser(userId, reason = 'Tài khoản đã bị khóa hoặc thu hồi phiên') {
+    let kicked = false;
     for (const client of Array.from(clients)) {
       if (client.userId === userId) {
+        kicked = true;
         sendJson(client, { type: 'session_revoked', reason });
         closeClient(client, 4001, 'Session revoked');
       }
     }
+    if (kicked) broadcastPresence();
   }
 
   function getActiveConnectionCount() {
@@ -358,6 +405,8 @@ export function attachCompanyWebSocket(httpServer, { wsPath = '/ws/company', ver
   return {
     notifySync,
     kickUser,
+    broadcastPresence,
+    getVisibleOnlineIdsForUser,
     getActiveConnectionCount,
     closeAll
   };

@@ -1383,27 +1383,29 @@ function initMarketCatalog() {
   });
 }
 
+const DEPT_DISPLAY_META = {
+  devops: { badge: 'Ban DevOps', category: 'hardware' },
+  admin_it: { badge: 'Hành chính IT', category: 'physical' },
+  network: { badge: 'Mạng & An ninh', category: 'network' },
+  finance: { badge: 'Tài chính', category: 'audit' }
+};
+
+function getPriorityBadgeClass(secLevel) {
+  const s = String(secLevel || '').toLowerCase();
+  if (s.includes('khẩn')) return 'prio-urgent';
+  if (s.includes('cao')) return 'prio-high';
+  if (s.includes('mật')) return 'prio-secret';
+  return 'prio-normal';
+}
+
 function updateCategoryPillCounts() {
   const countAll = document.getElementById('count-all');
   if (countAll) countAll.textContent = MARKET_PRODUCTS.length;
 
-  const countAuction = document.getElementById('count-auction');
-  if (countAuction) countAuction.textContent = MARKET_PRODUCTS.filter(p => p.isAuction !== false).length;
-
-  const countPhysical = document.getElementById('count-physical');
-  if (countPhysical) countPhysical.textContent = MARKET_PRODUCTS.filter(p => p.category === 'physical').length;
-
-  const countDigital = document.getElementById('count-digital');
-  if (countDigital) countDigital.textContent = MARKET_PRODUCTS.filter(p => p.category === 'digital' || p.category === 'service').length;
-
-  const countHw = document.getElementById('count-hardware');
-  if (countHw) countHw.textContent = MARKET_PRODUCTS.filter(p => p.category === 'hardware').length;
-
-  const countNet = document.getElementById('count-network');
-  if (countNet) countNet.textContent = MARKET_PRODUCTS.filter(p => p.category === 'network').length;
-
-  const countCrypto = document.getElementById('count-crypto');
-  if (countCrypto) countCrypto.textContent = MARKET_PRODUCTS.filter(p => p.category === 'crypto' || p.category === 'audit' || p.category === 'zeroday').length;
+  ['devops', 'admin_it', 'network', 'finance'].forEach(deptId => {
+    const el = document.getElementById(`count-${deptId}`);
+    if (el) el.textContent = MARKET_PRODUCTS.filter(p => p.department === deptId).length;
+  });
 }
 
 function filterAndRenderProducts() {
@@ -1419,33 +1421,29 @@ function filterAndRenderProducts() {
     filtered = filtered.filter(p => (p.taskStatus || 'todo') === taskFilter);
   }
 
-  if (category === 'auction') {
-    filtered = filtered.filter(p => p.isAuction !== false);
-  } else if (category === 'digital') {
-    filtered = filtered.filter(p => p.category === 'digital' || p.category === 'service');
-  } else if (category === 'crypto') {
-    filtered = filtered.filter(p => p.category === 'crypto' || p.category === 'audit' || p.category === 'zeroday');
-  } else if (category !== 'all') {
-    filtered = filtered.filter(p => p.category === category);
+  if (category !== 'all') {
+    filtered = filtered.filter(p => p.department === category || p.category === category);
   }
 
   if (query) {
-    filtered = filtered.filter(p => 
+    filtered = filtered.filter(p =>
       p.name.toLowerCase().includes(query) ||
       p.desc.toLowerCase().includes(query) ||
       (p.badge && p.badge.toLowerCase().includes(query)) ||
-      p.securityLevel.toLowerCase().includes(query) ||
-      Object.values(p.specs).some(val => val.toLowerCase().includes(query))
+      (p.assigneeName && p.assigneeName.toLowerCase().includes(query)) ||
+      (p.securityLevel && p.securityLevel.toLowerCase().includes(query)) ||
+      Object.values(p.specs || {}).some(val => String(val).toLowerCase().includes(query))
     );
   }
 
   // Sorting
-  if (sort === 'price-asc') {
-    filtered.sort((a, b) => a.rawPriceXMR - b.rawPriceXMR);
+  if (sort === 'status') {
+    const rank = { in_progress: 0, review: 1, todo: 2, done: 3 };
+    filtered.sort((a, b) => (rank[a.taskStatus || 'todo'] ?? 9) - (rank[b.taskStatus || 'todo'] ?? 9));
+  } else if (sort === 'price-asc') {
+    filtered.sort((a, b) => (a.rawPriceXMR || 0) - (b.rawPriceXMR || 0));
   } else if (sort === 'price-desc') {
-    filtered.sort((a, b) => b.rawPriceXMR - a.rawPriceXMR);
-  } else if (sort === 'bids-desc') {
-    filtered.sort((a, b) => (b.bidCount || 0) - (a.bidCount || 0));
+    filtered.sort((a, b) => (b.rawPriceXMR || 0) - (a.rawPriceXMR || 0));
   } else if (sort === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -1472,8 +1470,8 @@ function renderProducts(products) {
     grid.innerHTML = `
       <div class="empty-recovery-box" style="grid-column: 1 / -1;">
         <div class="empty-icon">${SVG_ICONS.search}</div>
-        <h3 class="empty-title">Không tìm thấy hạng mục phù hợp</h3>
-        <p class="empty-desc">Thử từ khóa khác hoặc nhấn "+ Tạo thông báo" ở góc trên để chia sẻ tài liệu mới với đồng nghiệp.</p>
+        <h3 class="empty-title">Không tìm thấy dự án phù hợp</h3>
+        <p class="empty-desc">Thử thay đổi từ khóa tìm kiếm, bộ lọc trạng thái hoặc khởi tạo dự án mới trong phòng ban.</p>
       </div>
     `;
     return;
@@ -1481,23 +1479,27 @@ function renderProducts(products) {
 
   grid.innerHTML = products.map(item => {
     const currency = item.currency || 'Giờ';
-    const badgeCategory = escapeHtml(item.category || 'auction');
-    const badgeText = escapeHtml(item.badge || 'Nội bộ công ty');
+    const deptMeta = DEPT_DISPLAY_META[item.department] || null;
+    const badgeCategory = escapeHtml(item.category || deptMeta?.category || 'hardware');
+    const badgeText = escapeHtml(item.badge || deptMeta?.badge || 'Nội bộ công ty');
+    const priorityText = item.securityLevel || 'Ưu tiên Trung bình';
+    const priorityClass = getPriorityBadgeClass(priorityText);
 
-    const endAttr = item.auctionEndTime !== undefined ? item.auctionEndTime : (Date.now() + 3600000);
-    const topRightBadge = endAttr === 0
-      ? `<span class="auction-countdown-pill open" data-end="0">${SVG_ICONS.clock} <span class="countdown-val">Mở liên tục</span></span>`
-      : `<span class="auction-countdown-pill" data-end="${endAttr}">${SVG_ICONS.clock} <span class="countdown-val">01:29:45</span></span>`;
+    const topRightBadge = `
+      <div class="project-priority-group">
+        <span class="project-priority-pill ${priorityClass}">${escapeHtml(priorityText)}</span>
+        ${item.dueDate ? `<span class="project-due-pill">${SVG_ICONS.clock} ${escapeHtml(item.dueDate)}</span>` : ''}
+      </div>
+    `;
 
-    const currentVal = item.currentBidXMR ?? item.rawPriceXMR ?? 0;
-    const buyNowVal = item.buyNowPrice ?? item.rawPriceXMR ?? currentVal;
-    const priceDisplay = `${formatPriceNum(currentVal)} ${escapeHtml(currency)}`;
-    const priceMeta = `${item.bidCount || 0} đề xuất · Hạn mức ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}`;
+    const workloadVal = item.rawPriceXMR ?? item.currentBidXMR ?? 0;
+    const priceDisplay = `${formatPriceNum(workloadVal)} ${escapeHtml(currency)}`;
+    const priceMeta = 'Khối lượng ước lượng';
     const specValues = Object.values(item.specs || {}).slice(0, 2).map(v => escapeHtml(v)).join(' · ');
     const taskStateKey = item.taskStatus || 'todo';
     const taskStateLabel = TASK_STATUS_LABELS_VI[taskStateKey] || 'Mới';
     const assigneeLine = item.assigneeName
-      ? `<span>Phụ trách: <strong>${escapeHtml(item.assigneeName)}</strong>${item.dueDate ? ' · Hạn ' + escapeHtml(item.dueDate) : ''}</span>`
+      ? `<span>Phụ trách: <strong>${escapeHtml(item.assigneeName)}</strong></span>`
       : '<span>Chưa phân công người phụ trách</span>';
 
     const taskStatusBar = isCompanyAuthActive()
@@ -1512,9 +1514,7 @@ function renderProducts(products) {
       ? `<button type="button" class="assign-task-btn" data-id="${escapeHtml(item.id)}" title="${canManageProj ? 'Giao việc & cập nhật tiến độ' : 'Cập nhật tiến độ công việc'}">
            ${SVG_ICONS.edit} <span>${canManageProj ? 'Giao việc' : 'Tiến độ'}</span>
          </button>`
-      : `<button type="button" class="bid-btn" data-id="${escapeHtml(item.id)}" title="Gửi đề xuất khối lượng">
-           ${SVG_ICONS.edit} <span>Đề xuất</span>
-         </button>`;
+      : '';
     const deleteProjHtml = canManageProj
       ? `<button type="button" class="delete-proj-btn" data-id="${escapeHtml(item.id)}" aria-label="Thu hồi dự án ${escapeHtml(item.name)}" title="Thu hồi dự án khỏi bảng tin">
            ${SVG_ICONS.trash}
@@ -1523,8 +1523,8 @@ function renderProducts(products) {
 
     const actionButtons = `
       ${taskBtnHtml}
-      <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Tạo phiếu tiếp nhận bàn giao tài nguyên / đầu việc này">
-        ${SVG_ICONS.check} <span>Tiếp nhận</span>
+      <button type="button" class="buy-btn" data-id="${escapeHtml(item.id)}" title="Mở bàn giao thông tin mật AES-256-GCM cho dự án này">
+        ${SVG_ICONS.check} <span>Bàn giao</span>
       </button>
       <button type="button" class="chat-btn" data-id="${escapeHtml(item.id)}" data-name="${escapeHtml(item.name)}" aria-label="Mở kênh thảo luận nội bộ cho ${escapeHtml(item.name)}" title="Thảo luận nội bộ">
         ${SVG_ICONS.chat}
@@ -1540,7 +1540,6 @@ function renderProducts(products) {
               <span class="dept-dot" aria-hidden="true"></span>
               ${badgeText}
             </span>
-            <span class="security-scope-text">${escapeHtml(item.securityLevel)}</span>
           </div>
           ${topRightBadge}
         </div>
@@ -1568,18 +1567,11 @@ function renderProducts(products) {
     `;
   }).join('');
 
-  // Bind Buy, Bid & Chat buttons
+  // Bind Handover, Chat, Assign Task & Delete Project buttons
   grid.querySelectorAll('.buy-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const prodId = btn.getAttribute('data-id');
       initiateOrderForProduct(prodId);
-    });
-  });
-
-  grid.querySelectorAll('.bid-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const prodId = btn.getAttribute('data-id');
-      openBidModal(prodId);
     });
   });
 
@@ -1613,8 +1605,6 @@ function renderProducts(products) {
       await fetchCompanyState(true);
     });
   });
-
-  updateAuctionCountdowns();
 }
 
 function populateOrderProductSelect(products) {
@@ -4110,38 +4100,16 @@ const CATEGORY_DEFAULT_BADGES = {
 };
 
 function initVendorDesk() {
-  // Restore persisted vendor listings from localStorage / sessionStorage if present
-  try {
-    const saved = localStorage.getItem(STORAGE_KEYS.MY_LISTINGS) || sessionStorage.getItem(STORAGE_KEYS.MY_LISTINGS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        myVendorListings = parsed.filter(item => item && !revokedProductIds.has(item.id));
-        MARKET_PRODUCTS = mergeProductCatalogs(myVendorListings, MARKET_PRODUCTS);
-        syncMyVendorListingsWithMarket();
-        saveMyVendorListingsToStorage();
-      }
-    }
-  } catch {}
-
-  const modeHybridBtn = document.getElementById('mode-hybrid-btn');
-  const modeAuctionBtn = document.getElementById('mode-auction-btn');
-  const modeFixedBtn = document.getElementById('mode-fixed-btn');
-  const fixedSection = document.getElementById('section-fixed-pricing');
-  const auctionSection = document.getElementById('section-auction-pricing');
   const emojiPicker = document.getElementById('emoji-quick-picker');
   const iconInput = document.getElementById('listing-icon-val');
-  const ttlPills = document.getElementById('vendor-ttl-pills');
-  const ttlValInput = document.getElementById('listing-ttl-val');
   const publishBtn = document.getElementById('publish-listing-btn');
   const resetBtn = document.getElementById('reset-listing-btn');
 
   // Input listeners for real-time live preview
   const liveInputs = [
-    'listing-name', 'listing-category', 'listing-custom-badge',
-    'listing-icon-val', 'listing-currency', 'listing-price-xmr',
-    'listing-stock', 'listing-start-bid', 'listing-min-step',
-    'listing-security-tag', 'listing-desc', 'listing-spec1-v', 'listing-spec2-v'
+    'listing-department', 'listing-name', 'listing-security-tag',
+    'listing-due-date', 'listing-price-xmr', 'listing-currency',
+    'listing-icon-val', 'listing-desc', 'listing-spec1-v', 'listing-spec2-v'
   ];
 
   liveInputs.forEach(id => {
@@ -4151,35 +4119,6 @@ function initVendorDesk() {
       el.addEventListener('change', updateVendorLivePreview);
     }
   });
-
-  const setListingMode = (mode) => {
-    currentListingMode = mode;
-    [modeHybridBtn, modeAuctionBtn, modeFixedBtn].forEach(b => {
-      b?.classList.remove('active');
-      b?.setAttribute('aria-selected', 'false');
-    });
-    if (mode === 'hybrid') {
-      modeHybridBtn?.classList.add('active');
-      modeHybridBtn?.setAttribute('aria-selected', 'true');
-      if (fixedSection) fixedSection.style.display = 'block';
-      if (auctionSection) auctionSection.style.display = 'block';
-    } else if (mode === 'auction') {
-      modeAuctionBtn?.classList.add('active');
-      modeAuctionBtn?.setAttribute('aria-selected', 'true');
-      if (fixedSection) fixedSection.style.display = 'none';
-      if (auctionSection) auctionSection.style.display = 'block';
-    } else {
-      modeFixedBtn?.classList.add('active');
-      modeFixedBtn?.setAttribute('aria-selected', 'true');
-      if (fixedSection) fixedSection.style.display = 'block';
-      if (auctionSection) auctionSection.style.display = 'none';
-    }
-    updateVendorLivePreview();
-  };
-
-  if (modeHybridBtn) modeHybridBtn.addEventListener('click', () => setListingMode('hybrid'));
-  if (modeAuctionBtn) modeAuctionBtn.addEventListener('click', () => setListingMode('auction'));
-  if (modeFixedBtn) modeFixedBtn.addEventListener('click', () => setListingMode('fixed'));
 
   // Emoji picker + custom emoji input
   if (emojiPicker && iconInput) {
@@ -4197,33 +4136,21 @@ function initVendorDesk() {
     });
   }
 
-  // TTL Pills
-  if (ttlPills && ttlValInput) {
-    ttlPills.querySelectorAll('.ttl-pill').forEach(pill => {
-      pill.setAttribute('aria-pressed', pill.classList.contains('active') ? 'true' : 'false');
-      pill.addEventListener('click', () => {
-        ttlPills.querySelectorAll('.ttl-pill').forEach(p => {
-          p.classList.remove('active');
-          p.setAttribute('aria-pressed', 'false');
-        });
-        pill.classList.add('active');
-        pill.setAttribute('aria-pressed', 'true');
-        ttlValInput.value = pill.getAttribute('data-ttl') || '604800';
-      });
-    });
-  }
-
   // Reset Button
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       const nameInp = document.getElementById('listing-name');
-      const customBadgeInp = document.getElementById('listing-custom-badge');
+      const dueInp = document.getElementById('listing-due-date');
       const descInp = document.getElementById('listing-desc');
+      const priceInp = document.getElementById('listing-price-xmr');
+      const prioSel = document.getElementById('listing-security-tag');
       if (nameInp) nameInp.value = '';
-      if (customBadgeInp) customBadgeInp.value = '';
+      if (dueInp) dueInp.value = '';
       if (descInp) descInp.value = '';
+      if (priceInp) priceInp.value = '16';
+      if (prioSel) prioSel.value = 'Ưu tiên Trung bình';
       updateVendorLivePreview();
-      showToast('Đã làm mới biểu mẫu đăng thông báo nội bộ', 'info');
+      showToast('Đã làm mới biểu mẫu tạo dự án', 'info');
     });
   }
 
@@ -4240,34 +4167,34 @@ function updateVendorLivePreview() {
   const previewContainer = document.getElementById('live-vendor-preview');
   if (!previewContainer) return;
 
-  const name = (document.getElementById('listing-name')?.value || '').trim() || 'Tiêu đề thông báo / Tài nguyên công ty';
-  const category = document.getElementById('listing-category')?.value || 'physical';
-  const customBadge = (document.getElementById('listing-custom-badge')?.value || '').trim();
+  const deptVal = isCompanyAuthActive() && currentCompanyState.user.role !== 'director'
+    ? currentCompanyState.user.department
+    : (document.getElementById('listing-department')?.value || 'devops');
+  const deptMeta = DEPT_DISPLAY_META[deptVal] || { badge: 'Ban DevOps', category: 'hardware' };
+  const name = (document.getElementById('listing-name')?.value || '').trim() || 'Tên dự án / Đầu việc nội bộ';
   const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '📌';
   const currency = document.getElementById('listing-currency')?.value || 'Giờ';
-  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Nội bộ • Ưu tiên Trung bình';
-  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mô tả chi tiết nội dung công việc, tài liệu chia sẻ hoặc yêu cầu phối hợp giữa các phòng ban...';
-  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Phòng Kỹ Thuật / IT';
-  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Token RAM / Thảo luận trực tiếp';
-
-  const fixedPrice = parseFloat(document.getElementById('listing-price-xmr')?.value || '1.00') || 0;
-  const startBid = parseFloat(document.getElementById('listing-start-bid')?.value || '0.50') || 0;
-
-  const displayPrice = currentListingMode === 'fixed' ? fixedPrice : startBid;
-  const buyNowVal = currentListingMode === 'auction' ? (startBid * 1.5) : fixedPrice;
-  const badgeTitle = customBadge || CATEGORY_DEFAULT_BADGES[category] || 'Tự Do';
+  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Ưu tiên Trung bình';
+  const dueDate = (document.getElementById('listing-due-date')?.value || '').trim();
+  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Mô tả mục tiêu, phạm vi kỹ thuật và tiêu chí nghiệm thu của dự án trong phòng ban...';
+  const spec1 = (document.getElementById('listing-spec1-v')?.value || '').trim() || 'Trưởng ban phụ trách';
+  const spec2 = (document.getElementById('listing-spec2-v')?.value || '').trim() || 'Phòng chat ban & Bàn giao AES-256';
+  const workload = parseFloat(document.getElementById('listing-price-xmr')?.value || '16') || 0;
+  const prioClass = getPriorityBadgeClass(secTag);
 
   previewContainer.innerHTML = `
     <article class="product-card" style="box-shadow: none; margin: 0;">
       <div class="product-card-top">
         <div class="product-badge-group">
-          <span class="dept-chip ${escapeHtml(category)}">
+          <span class="dept-chip ${escapeHtml(deptMeta.category)}">
             <span class="dept-dot" aria-hidden="true"></span>
-            ${escapeHtml(badgeTitle)}
+            ${escapeHtml(deptMeta.badge)}
           </span>
-          <span class="security-scope-text">${escapeHtml(secTag)}</span>
         </div>
-        <span class="auction-countdown-pill open" data-end="0">${SVG_ICONS.clock} <span class="countdown-val">Phối hợp nội bộ</span></span>
+        <div class="project-priority-group">
+          <span class="project-priority-pill ${prioClass}">${escapeHtml(secTag)}</span>
+          ${dueDate ? `<span class="project-due-pill">${SVG_ICONS.clock} ${escapeHtml(dueDate)}</span>` : ''}
+        </div>
       </div>
 
       <div class="product-main-body">
@@ -4276,17 +4203,21 @@ function updateVendorLivePreview() {
           <h4 class="product-title">${escapeHtml(name)}</h4>
         </div>
         <p class="product-desc">${escapeHtml(desc)}</p>
+        <div class="project-task-meta-row">
+          <span class="task-status-badge status-todo">Chưa giao</span>
+          <span class="task-assignee-text"><span>Chưa phân công người phụ trách</span></span>
+        </div>
         <p class="product-specs-inline">${escapeHtml(spec1)} · ${escapeHtml(spec2)}</p>
       </div>
 
       <div class="product-card-footer">
         <div class="product-price-block">
-          <span class="product-price auction-price">${formatPriceNum(displayPrice)} ${escapeHtml(currency)}</span>
-          <span class="product-bid-meta">Hạn mức ${formatPriceNum(buyNowVal)} ${escapeHtml(currency)}</span>
+          <span class="product-price auction-price">${formatPriceNum(workload)} ${escapeHtml(currency)}</span>
+          <span class="product-bid-meta">Khối lượng ước lượng</span>
         </div>
         <div class="product-actions">
-          <button type="button" class="bid-btn" tabindex="-1" style="pointer-events: none;">${SVG_ICONS.edit} <span>Đề xuất</span></button>
-          <button type="button" class="buy-btn" tabindex="-1" style="pointer-events: none;">${SVG_ICONS.check} <span>Tiếp nhận</span></button>
+          <button type="button" class="assign-task-btn" tabindex="-1" style="pointer-events: none;">${SVG_ICONS.edit} <span>Giao việc</span></button>
+          <button type="button" class="buy-btn" tabindex="-1" style="pointer-events: none;">${SVG_ICONS.check} <span>Bàn giao</span></button>
         </div>
       </div>
     </article>
@@ -4294,90 +4225,58 @@ function updateVendorLivePreview() {
 }
 
 async function handlePublishListing() {
-  const randHex = Array.from(crypto.getRandomValues(new Uint8Array(4)))
-    .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-    .join('');
+  const nameEl = document.getElementById('listing-name');
+  const rawName = (nameEl?.value || '').trim();
+  if (!rawName) {
+    showToast('Vui lòng nhập tên dự án / đầu việc trước khi khởi tạo.', 'warning');
+    nameEl?.focus();
+    return;
+  }
 
-  const rawName = (document.getElementById('listing-name')?.value || '').trim();
-  const name = rawName || `Thông Báo Nội Bộ #${randHex.slice(0, 4)}`;
+  const deptSelect = document.getElementById('listing-department');
+  const chosenDept = isCompanyAuthActive()
+    ? (currentCompanyState.user.role === 'director' ? (deptSelect?.value || 'devops') : currentCompanyState.user.department)
+    : (deptSelect?.value || 'devops');
+  const deptMeta = DEPT_DISPLAY_META[chosenDept] || { badge: 'Ban DevOps', category: 'hardware' };
 
-  const category = document.getElementById('listing-category')?.value || 'physical';
-  const customBadge = (document.getElementById('listing-custom-badge')?.value || '').trim();
   const icon = (document.getElementById('listing-icon-val')?.value || '').trim() || '📌';
   const currency = document.getElementById('listing-currency')?.value || 'Giờ';
-  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Nội bộ • Ưu tiên Trung bình';
-  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Thông báo hoặc tài nguyên nội bộ chia sẻ trực tiếp trên RAM công ty — các thành viên có thể thảo luận và tiếp nhận ngay.';
-  const spec1 = document.getElementById('listing-spec1-v')?.value || 'Phòng Kỹ Thuật / IT';
-  const spec2 = document.getElementById('listing-spec2-v')?.value || 'Token RAM / Thảo luận trực tiếp';
-  const vendorPubkey = (document.getElementById('listing-vendor-pubkey')?.value || '').trim();
+  const secTag = (document.getElementById('listing-security-tag')?.value || '').trim() || 'Ưu tiên Trung bình';
+  const dueDate = (document.getElementById('listing-due-date')?.value || '').trim();
+  const desc = (document.getElementById('listing-desc')?.value || '').trim() || 'Dự án nội bộ được khởi tạo trong hệ thống Nexus Workspace.';
+  const spec1 = (document.getElementById('listing-spec1-v')?.value || '').trim() || 'Trưởng ban phụ trách';
+  const spec2 = (document.getElementById('listing-spec2-v')?.value || '').trim() || 'Phòng chat ban & Bàn giao AES-256';
+  const workloadInput = parseFloat(document.getElementById('listing-price-xmr')?.value || '16');
+  const workload = isNaN(workloadInput) ? 16 : Math.max(0, workloadInput);
 
-  const productId = `usr-${category}-${randHex}`;
-  const killTokenHex = Array.from(crypto.getRandomValues(new Uint8Array(6)))
-    .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-    .join('-');
-  const vendorKillToken = `KILL-${killTokenHex}`;
-
-  const fixedPriceInput = parseFloat(document.getElementById('listing-price-xmr')?.value || '1.00');
-  const startBidInput = parseFloat(document.getElementById('listing-start-bid')?.value || '0.50');
-  const minStepInput = parseFloat(document.getElementById('listing-min-step')?.value || '0');
-  const duration = parseInt(document.getElementById('listing-auction-duration')?.value || '14400', 10);
-  const stockText = (document.getElementById('listing-stock')?.value || '').trim() || 'Sẵn sàng phối hợp';
-
-  const fixedPrice = isNaN(fixedPriceInput) ? 1.00 : Math.max(0, fixedPriceInput);
-  const startBid = isNaN(startBidInput) ? fixedPrice : Math.max(0, startBidInput);
-  const minStep = isNaN(minStepInput) ? 0 : Math.max(0, minStepInput);
-
-  const initialPrice = currentListingMode === 'fixed' ? fixedPrice : startBid;
-  const buyNowPrice = currentListingMode === 'auction' ? Math.max(startBid, fixedPrice || startBid) : fixedPrice;
-  const badgeTitle = customBadge || CATEGORY_DEFAULT_BADGES[category] || 'Nội Bộ Công Ty';
-
-  let newProduct = {
-    id: productId,
-    name,
-    category,
-    badge: badgeTitle,
+  let payload = {
+    name: rawName,
+    department: chosenDept,
+    category: deptMeta.category,
+    badge: deptMeta.badge,
     icon,
     securityLevel: secTag,
+    dueDate,
     currency,
-    isAuction: true,
-    allowBid: true,
-    allowBuyNow: true,
-    startingBidXMR: initialPrice,
-    currentBidXMR: initialPrice,
-    buyNowPrice,
-    minBidIncrement: minStep,
-    bidCount: 0,
-    highestBidder: 'Chưa phân công',
-    bids: [],
-    auctionEndTime: duration === 0 ? 0 : (Date.now() + (duration * 1000)),
-    priceXMR: `${formatPriceNum(initialPrice)} ${currency}`,
-    rawPriceXMR: initialPrice,
-    approxUSD: estimateUSDString(initialPrice, currency),
-    stock: stockText,
+    isAuction: false,
+    auctionEndTime: 0,
+    rawPriceXMR: workload,
+    currentBidXMR: workload,
+    buyNowPrice: workload,
+    priceXMR: `${formatPriceNum(workload)} ${currency}`,
     desc,
     specs: {
       'Phụ trách': spec1,
-      'Bàn giao': spec2,
-      'Hình thức': minStep > 0 ? `Điều chỉnh tối thiểu +${minStep} ${currency}` : 'Đề xuất tự do & Bàn giao ngay',
-      'Người tạo': vendorPubkey ? `${vendorPubkey.slice(0, 14)}...` : (anonymousAlias || 'Thành viên Nội bộ')
-    },
-    vendorKillToken,
-    isUserCreated: true,
-    createdAt: Date.now()
+      'Kênh bàn giao': spec2
+    }
   };
 
-  // Synchronize new item with volatile RAM server (RBAC enforced when logged in)
   if (isCompanyAuthActive()) {
-    const deptSelect = document.getElementById('listing-department');
-    const chosenDept = currentCompanyState.user.role === 'director'
-      ? (deptSelect?.value || 'devops')
-      : currentCompanyState.user.department;
-    newProduct.department = chosenDept;
     try {
       const res = await bazaarApiFetch('/api/company/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct)
+        body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -4385,81 +4284,27 @@ async function handlePublishListing() {
         return;
       }
       if (data && data.project) {
-        newProduct = data.project;
+        payload = data.project;
       }
       await fetchCompanyState(true);
-    } catch (err) {
-      showToast('Không thể kết nối máy chủ để đăng dự án.', 'error');
+    } catch {
+      showToast('Không thể kết nối máy chủ để khởi tạo dự án.', 'error');
       return;
     }
   } else {
-    try {
-      const res = await bazaarApiFetch('/api/lexicon/bazaar-items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.product) {
-          newProduct = data.product;
-        }
-      }
-    } catch (err) {
-      console.warn('Bazaar sync offline, saving to volatile memory:', err);
-    }
+    showToast('Vui lòng đăng nhập tài khoản Quản lí hoặc Giám đốc để tạo dự án.', 'warning');
+    return;
   }
-
-  // Prepend to catalog inventory
-  const existingIdx = MARKET_PRODUCTS.findIndex(p => p.id === newProduct.id);
-  if (existingIdx !== -1) {
-    MARKET_PRODUCTS[existingIdx] = newProduct;
-  } else {
-    MARKET_PRODUCTS.unshift(newProduct);
-  }
-
-  // Broadcast in real-time across tabs / virtual desktops
-  if (bazaarSyncChannel) {
-    try {
-      bazaarSyncChannel.postMessage({
-        type: 'NEW_PRODUCT',
-        product: newProduct
-      });
-    } catch {}
-  }
-
-  // Broadcast to P2P connected remote peer
-  if (isP2PConnected && activePeerConnection) {
-    try {
-      activePeerConnection.send({
-        type: 'market_item_created',
-        product: newProduct
-      });
-    } catch {}
-  }
-
-  myVendorListings.unshift(newProduct);
-  saveMyVendorListingsToStorage();
-  saveMarketProductsToStorage();
-
-  // Update product select in order tab
-  populateOrderProductSelect(MARKET_PRODUCTS);
-
-  // Refresh catalogs & counts
-  filterAndRenderProducts();
-  renderMyListings();
-  updateRamMonitor();
 
   // Reset form inputs
-  const nameEl = document.getElementById('listing-name');
   if (nameEl) nameEl.value = '';
-  const customBadgeEl = document.getElementById('listing-custom-badge');
-  if (customBadgeEl) customBadgeEl.value = '';
+  const dueEl = document.getElementById('listing-due-date');
+  if (dueEl) dueEl.value = '';
   const descEl = document.getElementById('listing-desc');
   if (descEl) descEl.value = '';
   updateVendorLivePreview();
 
-  showToast(`📢 Đã đăng thông báo "${name}" lên Bảng Tin Nội Bộ! Mã thu hồi: ${newProduct.vendorKillToken || vendorKillToken}`, 'success');
+  showToast(`Đã khởi tạo dự án "${payload.name}" và đồng bộ realtime qua WebSocket!`, 'success');
 }
 
 function renderMyListings() {
@@ -4467,12 +4312,15 @@ function renderMyListings() {
   if (!container) return;
 
   if (myVendorListings.length === 0) {
-    container.innerHTML = '<p class="empty-listings-note">Bạn chưa tạo thông báo hay chia sẻ tài nguyên nào trong phiên này.</p>';
+    container.innerHTML = '<p class="empty-listings-note">Bạn chưa khởi tạo dự án nào trong phòng ban này.</p>';
     return;
   }
 
   container.innerHTML = myVendorListings.map(item => {
     const currency = item.currency || 'Giờ';
+    const deptMeta = DEPT_DISPLAY_META[item.department] || { badge: item.badge || 'Nội bộ', category: item.category || 'hardware' };
+    const prioClass = getPriorityBadgeClass(item.securityLevel);
+    const workloadVal = item.rawPriceXMR ?? item.currentBidXMR ?? 0;
     return `
       <div class="my-listing-card" id="my-item-${escapeHtml(item.id)}">
         <div class="my-listing-top">
@@ -4480,40 +4328,25 @@ function renderMyListings() {
             <span class="my-listing-icon">${escapeHtml(item.icon)}</span>
             <span class="my-listing-name">${escapeHtml(item.name)}</span>
           </div>
-          <span class="product-badge ${escapeHtml(item.category)}">
-            ${escapeHtml(item.badge || '⚡ Bán & Đấu Giá')}
+          <span class="dept-chip ${escapeHtml(deptMeta.category)}">
+            <span class="dept-dot" aria-hidden="true"></span>
+            ${escapeHtml(item.badge || deptMeta.badge)}
           </span>
         </div>
 
-        <div style="font-size: 0.8rem; font-family: var(--font-mono); color: #cbd5e1;">
-          Ước lượng: <strong style="color: #38bdf8;">${formatPriceNum(item.currentBidXMR)} ${escapeHtml(currency)}</strong> (${item.bidCount || 0} phản hồi) • Hạn mức: <strong style="color: #34d399;">${formatPriceNum(item.buyNowPrice)} ${escapeHtml(currency)}</strong>
-        </div>
-
-        <div class="kill-token-box">
-          <span>Mã Thu Hồi Nội Bộ: <strong class="kill-token-val">${escapeHtml(item.vendorKillToken)}</strong></span>
-          <button type="button" class="copy-mini-btn" data-token="${escapeHtml(item.vendorKillToken)}">Chép</button>
+        <div class="my-listing-meta-row">
+          <span>Ước lượng: <strong style="color: #38bdf8;">${formatPriceNum(workloadVal)} ${escapeHtml(currency)}</strong></span>
+          <span class="project-priority-pill ${prioClass}">${escapeHtml(item.securityLevel || 'Ưu tiên Trung bình')}</span>
+          ${item.dueDate ? `<span class="project-due-pill">${SVG_ICONS.clock} ${escapeHtml(item.dueDate)}</span>` : ''}
         </div>
 
         <button type="button" class="revoke-listing-btn" data-id="${escapeHtml(item.id)}">
-          ${SVG_ICONS.trash} <span>Thu hồi & Xóa khỏi RAM</span>
+          ${SVG_ICONS.trash} <span>Thu hồi dự án</span>
         </button>
       </div>
     `;
   }).join('');
 
-  // Bind copy token buttons
-  container.querySelectorAll('.copy-mini-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const token = btn.getAttribute('data-token');
-      if (token) {
-        navigator.clipboard.writeText(token).then(() => {
-          showToast(`Đã sao chép Mã Thu Hồi Nội Bộ: ${token}`, 'success');
-        });
-      }
-    });
-  });
-
-  // Bind revoke buttons
   container.querySelectorAll('.revoke-listing-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const prodId = btn.getAttribute('data-id');
@@ -4525,50 +4358,43 @@ function renderMyListings() {
 async function revokeUserListing(productId) {
   const itemInVendor = myVendorListings.find(p => p.id === productId);
   const itemInMarket = MARKET_PRODUCTS.find(p => p.id === productId);
+  const prodName = itemInVendor?.name || itemInMarket?.name || 'Dự án';
+
+  if (isCompanyAuthActive()) {
+    if (!window.confirm(`Thu hồi dự án "${prodName}" khỏi hệ thống phòng ban?`)) return;
+    try {
+      const res = await bazaarApiFetch(`/api/company/projects/${encodeURIComponent(productId)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Bạn không có quyền thu hồi dự án này.', 'error');
+        return;
+      }
+      showToast(`Đã thu hồi dự án "${prodName}" thành công!`, 'success');
+      await fetchCompanyState(true);
+    } catch {
+      showToast('Lỗi kết nối máy chủ khi thu hồi dự án.', 'error');
+    }
+    return;
+  }
+
   const killToken = itemInVendor?.vendorKillToken || itemInMarket?.vendorKillToken || '';
-  const prodName = itemInVendor?.name || itemInMarket?.name || 'Vật phẩm';
-
   addRevokedProductId(productId);
-
   try {
     await bazaarApiFetch(`/api/lexicon/bazaar-items/${encodeURIComponent(productId)}/revoke`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vendorKillToken: killToken })
     });
-  } catch (err) {
-    console.warn('Revoke sync failed, removing locally:', err);
-  }
+  } catch {}
 
   MARKET_PRODUCTS = MARKET_PRODUCTS.filter(p => p.id !== productId);
   myVendorListings = myVendorListings.filter(p => p.id !== productId);
-  saveMyVendorListingsToStorage();
-  saveMarketProductsToStorage();
-
-  if (bazaarSyncChannel) {
-    try {
-      bazaarSyncChannel.postMessage({
-        type: 'REVOKE_PRODUCT',
-        productId
-      });
-    } catch {}
-  }
-
-  if (isP2PConnected && activePeerConnection) {
-    try {
-      activePeerConnection.send({
-        type: 'market_item_revoked',
-        productId
-      });
-    } catch {}
-  }
-
   populateOrderProductSelect(MARKET_PRODUCTS);
   filterAndRenderProducts();
   renderMyListings();
-  updateRamMonitor();
-
-  showToast(`Đã thu hồi và gỡ bỏ thông báo "${prodName}" khỏi RAM!`, 'info');
+  showToast(`Đã thu hồi dự án "${prodName}"!`, 'info');
 }
 
 
@@ -4973,6 +4799,24 @@ function applyCompanyState(state) {
     if (kpiRooms) kpiRooms.textContent = String((state.rooms || []).filter(r => r.status === 'active').length);
     if (kpiPending) kpiPending.textContent = String(pendingApprovals.length);
     if (kpiMgrs) kpiMgrs.textContent = String((state.managers || []).length);
+  }
+
+  if (typeof state.onlineCount === 'number') {
+    updateOnlinePresenceUI(state.onlineCount);
+  }
+
+  const deptPillsWrap = document.getElementById('market-category-pills');
+  if (deptPillsWrap) {
+    if (user.role === 'director') {
+      deptPillsWrap.style.display = '';
+    } else {
+      deptPillsWrap.style.display = 'none';
+      deptPillsWrap.querySelectorAll('.market-pill').forEach(p => {
+        const isAll = p.getAttribute('data-category') === 'all';
+        p.classList.toggle('active', isAll);
+        p.setAttribute('aria-pressed', isAll ? 'true' : 'false');
+      });
+    }
   }
 
   if (adminPendingBadge) {
@@ -5897,6 +5741,13 @@ let companyWsBackoffMs = 1000;
 let companyWsSyncDebounce = null;
 const attachmentBlobCache = new Map();
 
+function updateOnlinePresenceUI(count) {
+  const el = document.getElementById('ws-online-count');
+  if (!el) return;
+  const safeCount = Math.max(0, Number(count) || 0);
+  el.textContent = `${safeCount} trực tuyến`;
+}
+
 function updateTransportStatusUI(mode) {
   const label = document.getElementById('ws-transport-label');
   const dot = document.getElementById('ws-transport-dot');
@@ -5985,6 +5836,16 @@ function connectCompanyWebSocket() {
       companyWsBackoffMs = 1000;
       stopFallbackPolling();
       updateTransportStatusUI('ws');
+      if (typeof msg.onlineCount === 'number') {
+        updateOnlinePresenceUI(msg.onlineCount);
+      }
+      return;
+    }
+
+    if (msg.type === 'presence') {
+      if (typeof msg.onlineCount === 'number') {
+        updateOnlinePresenceUI(msg.onlineCount);
+      }
       return;
     }
 

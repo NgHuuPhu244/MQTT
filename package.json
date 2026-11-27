@@ -1,7 +1,7 @@
 {
   "name": "tu-dien-da-ngon-ngu",
-  "version": "1.0.0",
-  "description": "Zero-Knowledge Ephemeral Drop & Anonymous In-Memory Messaging camouflaged as a Multilingual Dictionary",
+  "version": "8.5.0",
+  "description": "Nexus Workspace — Hệ thống giao tiếp, quản lý dự án và điều hành nội bộ khép kín với RBAC 3 cấp, WebSocket RFC 6455 thuần và bàn giao mật AES-256-GCM",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -9,12 +9,13 @@
     "test": "node --test tests/*.test.js"
   },
   "keywords": [
-    "zero-knowledge",
-    "ephemeral",
-    "in-memory",
+    "nexus-workspace",
+    "rbac",
+    "websocket-rfc6455",
     "aes-256-gcm",
     "web-crypto",
-    "zero-trust"
+    "enterprise-chat",
+    "closed-company-system"
   ],
   "author": "Senior Network & Security Engineer",
   "license": "MIT",

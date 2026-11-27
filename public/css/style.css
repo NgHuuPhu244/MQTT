@@ -7364,3 +7364,120 @@ body.vault-page.obsidian-studio #handover-pin-input:focus-visible {
   outline: 2px solid #38bdf8;
   outline-offset: 2px;
 }
+
+/* ==========================================================================
+   24. v8.5 STANDARDIZED ENTERPRISE UI & REALTIME ONLINE PRESENCE
+   ========================================================================== */
+
+body.vault-page.obsidian-studio .ws-online-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.5rem;
+  margin-left: 0.2rem;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.34);
+  color: #6ee7b7;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.project-priority-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.project-priority-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+}
+
+.project-priority-pill.prio-urgent {
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.38);
+  color: #fca5a5;
+}
+
+.project-priority-pill.prio-high {
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fde68a;
+}
+
+.project-priority-pill.prio-secret {
+  background: rgba(167, 139, 250, 0.14);
+  border-color: rgba(167, 139, 250, 0.38);
+  color: #ddd6fe;
+}
+
+.project-priority-pill.prio-normal {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.32);
+  color: #7dd3fc;
+}
+
+.project-due-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.my-listing-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: #cbd5e1;
+}
+
+body.vault-page.obsidian-studio #listing-due-date {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #090b10;
+  color: #f8fafc;
+  font-size: 0.88rem;
+}
+
+body.vault-page.obsidian-studio #listing-due-date:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+body.vault-page.obsidian-studio .covert-nav-tabs {
+  gap: 0.25rem;
+}
+
+body.vault-page.obsidian-studio .covert-nav-tabs .nav-tab {
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+}

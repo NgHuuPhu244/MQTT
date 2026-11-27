@@ -1065,6 +1065,16 @@ function formatCompanyStateForUser(user) {
     return u.department === user.department;
   });
 
+  const onlineSet = new Set();
+  for (const hub of activeWsHubs) {
+    if (typeof hub.getVisibleOnlineIdsForUser === 'function') {
+      for (const uid of hub.getVisibleOnlineIdsForUser(user)) {
+        onlineSet.add(uid);
+      }
+    }
+  }
+  const onlineUserIds = Array.from(onlineSet);
+
   return {
     user: safeUser,
     departments: COMPANY_DEPARTMENTS,
@@ -1075,6 +1085,8 @@ function formatCompanyStateForUser(user) {
     employees: user.role === 'director' ? employees : [],
     departmentEmployees,
     mentionCandidates,
+    onlineUserIds,
+    onlineCount: onlineUserIds.length,
     auditLog: user.role === 'director' ? companyAuditLog.slice(0, 30) : []
   };
 }
@@ -2198,20 +2210,24 @@ export function createServer() {
           department: assignedDept,
           badge: body.badge || `Ban ${deptName}`,
           icon: body.icon || '📌',
-          securityLevel: body.securityLevel || 'Nội bộ • Ban',
+          securityLevel: String(body.securityLevel || 'Ưu tiên Trung bình').slice(0, 64),
           currency: body.currency || 'Giờ',
-          isAuction: body.isAuction !== false,
-          allowBid: true,
+          isAuction: false,
+          allowBid: false,
           allowBuyNow: true,
-          startingBidXMR: Number(body.startingBidXMR || body.priceXMR || 8),
-          currentBidXMR: Number(body.currentBidXMR || body.startingBidXMR || body.priceXMR || 8),
-          buyNowPrice: Number(body.buyNowPrice || body.priceXMR || 16),
-          minBidIncrement: Number(body.minBidIncrement || 0),
+          startingBidXMR: Number(body.startingBidXMR || body.rawPriceXMR || body.priceXMR || 8),
+          currentBidXMR: Number(body.currentBidXMR || body.rawPriceXMR || body.startingBidXMR || body.priceXMR || 8),
+          buyNowPrice: Number(body.buyNowPrice || body.rawPriceXMR || body.priceXMR || 16),
+          minBidIncrement: 0,
           bidCount: 0,
           highestBidder: 'Chưa phân công',
           bids: [],
-          auctionEndTime: body.auctionEndTime !== undefined ? Number(body.auctionEndTime) : (Date.now() + 21600 * 1000),
-          priceXMR: body.priceXMR || `${Number(body.currentBidXMR || body.startingBidXMR || 8)} ${body.currency || 'Giờ'}`,
+          auctionEndTime: 0,
+          taskStatus: 'todo',
+          assigneeId: '',
+          assigneeName: '',
+          dueDate: String(body.dueDate || '').slice(0, 32),
+          priceXMR: body.priceXMR || `${Number(body.rawPriceXMR || body.currentBidXMR || body.startingBidXMR || 8)} ${body.currency || 'Giờ'}`,
           rawPriceXMR: Number(body.rawPriceXMR || body.currentBidXMR || 8),
           approxUSD: `Ban ${deptName}`,
           stock: body.stock || 'Đang mở phối hợp',
@@ -3199,7 +3215,8 @@ export function createServer() {
   const wsHub = attachCompanyWebSocket(httpServer, {
     wsPath: '/ws/company',
     verifyToken: verifySessionToken,
-    getUserById: (id) => companyUsers.get(id) || null
+    getUserById: (id) => companyUsers.get(id) || null,
+    canViewPresence: (viewer, target) => Boolean(viewer && target && (viewer.role === 'director' || viewer.department === target.department))
   });
   activeWsHubs.add(wsHub);
   httpServer.on('close', () => {
@@ -3215,7 +3232,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const server = createServer();
   server.listen(PORT, HOST, () => {
     // Intentionally minimalistic initialization message (No telemetry / No sensitive info)
-    process.stdout.write(`[System Ready] Ephemeral RAM Lexicon Service active on http://${HOST}:${PORT}\n`);
+    process.stdout.write(`[Nexus Workspace Ready] HTTP/1.1 + WebSocket RFC 6455 active on http://${HOST}:${PORT}\n`);
   });
 
   // Graceful shutdown with RAM purge

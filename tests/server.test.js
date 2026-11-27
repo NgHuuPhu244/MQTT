@@ -1003,6 +1003,105 @@ describe('Closed-Company 3-Role RBAC Tests (Employee / Manager / Director)', () 
     const read2 = await makeRequest(`${baseUrl}/api/lexicon/cache-entry/${dropId}`, { method: 'GET' });
     assert.strictEqual(read2.statusCode, 404);
   });
+
+  it('should broadcast RBAC-scoped WebSocket online presence and persist project dueDate on create and delete', async () => {
+    resetCompanyWorkspaceForTests();
+    const empDevops = await loginAs('nv.devops1');
+    const mgrDevops = await loginAs('ql.devops');
+    const empIt = await loginAs('nv.it1');
+    const dir = await loginAs('giamdoc');
+    const wsUrl = baseUrl.replace('http://', 'ws://') + '/ws/company';
+
+    const openAuthWs = (token) => new Promise((resolve, reject) => {
+      const ws = new WebSocket(wsUrl);
+      const received = [];
+      ws.addEventListener('open', () => {
+        ws.send(JSON.stringify({ type: 'auth', token }));
+      });
+      ws.addEventListener('message', (ev) => {
+        const parsed = JSON.parse(String(ev.data));
+        received.push(parsed);
+        if (parsed.type === 'auth_ok') {
+          resolve({ ws, received });
+        }
+      });
+      ws.addEventListener('error', reject);
+    });
+
+    const empDevopsWs = await openAuthWs(empDevops.data.token);
+    const mgrDevopsWs = await openAuthWs(mgrDevops.data.token);
+    const empItWs = await openAuthWs(empIt.data.token);
+    const dirWs = await openAuthWs(dir.data.token);
+
+    try {
+      await new Promise(r => setTimeout(r, 80));
+
+      // Verify RBAC-scoped onlineCount via REST /api/company/state
+      const devopsState = JSON.parse((await makeRequest(`${baseUrl}/api/company/state`, {
+        method: 'GET',
+        headers: { 'X-Session-Token': empDevops.data.token }
+      })).body);
+      const itState = JSON.parse((await makeRequest(`${baseUrl}/api/company/state`, {
+        method: 'GET',
+        headers: { 'X-Session-Token': empIt.data.token }
+      })).body);
+      const dirState = JSON.parse((await makeRequest(`${baseUrl}/api/company/state`, {
+        method: 'GET',
+        headers: { 'X-Session-Token': dir.data.token }
+      })).body);
+
+      assert.strictEqual(devopsState.onlineCount, 2);
+      assert.strictEqual(itState.onlineCount, 1);
+      assert.strictEqual(dirState.onlineCount, 4);
+
+      // Closing mgrDevopsWs pushes realtime presence update (onlineCount === 1) to empDevopsWs
+      const dropPresencePromise = new Promise((resolve) => {
+        empDevopsWs.ws.addEventListener('message', (ev) => {
+          const msg = JSON.parse(String(ev.data));
+          if (msg.type === 'presence' && msg.onlineCount === 1) resolve(msg);
+        });
+      });
+
+      mgrDevopsWs.ws.close(1000, 'Done');
+      const dropPresence = await Promise.race([
+        dropPresencePromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('WS presence drop timeout')), 1500))
+      ]);
+      assert.strictEqual(dropPresence.onlineCount, 1);
+      assert.deepStrictEqual(dropPresence.onlineUserIds, ['u-emp-devops']);
+
+      // Standardized project creation with dueDate and zero auction countdown
+      const createRes = await makeRequest(`${baseUrl}/api/company/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': mgrDevops.data.token },
+        body: JSON.stringify({
+          name: 'Triển khai CI/CD chuẩn v8.5',
+          securityLevel: 'Ưu tiên Cao',
+          dueDate: '2026-12-31',
+          rawPriceXMR: 24,
+          currency: 'Giờ',
+          desc: 'Chuẩn hóa quy trình kiểm thử và đóng gói tự động.'
+        })
+      });
+      assert.strictEqual(createRes.statusCode, 201);
+      const createdProj = JSON.parse(createRes.body).project;
+      assert.strictEqual(createdProj.dueDate, '2026-12-31');
+      assert.strictEqual(createdProj.isAuction, false);
+      assert.strictEqual(createdProj.auctionEndTime, 0);
+
+      // Verify project is listed and can be revoked via DELETE /api/company/projects/:id
+      const delRes = await makeRequest(`${baseUrl}/api/company/projects/${encodeURIComponent(createdProj.id)}`, {
+        method: 'DELETE',
+        headers: { 'X-Session-Token': mgrDevops.data.token }
+      });
+      assert.strictEqual(delRes.statusCode, 200);
+    } finally {
+      try { empDevopsWs.ws.close(); } catch {}
+      try { mgrDevopsWs.ws.close(); } catch {}
+      try { empItWs.ws.close(); } catch {}
+      try { dirWs.ws.close(); } catch {}
+    }
+  });
 });
 
 /**

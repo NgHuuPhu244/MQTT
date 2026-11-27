@@ -1,107 +1,98 @@
-# TỪ ĐIỂN ĐA NGÔN NGỮ (DECOY VENEER)
-## Zero-Knowledge Ephemeral Drop & Anonymous In-Memory Messaging System
+# Nexus Workspace — Hệ Thống Giao Tiếp & Điều Hành Nội Bộ Khép Kín (v8.5)
 
-Hệ thống truyền tin bảo mật cao cấp tuân thủ nghiêm ngặt mô hình **Zero-Trust (Không Tin Cậy Máy Chủ)**, lưu trữ hoàn toàn trên **bộ nhớ đệm (RAM-Only)**, tích hợp thuật toán mã hóa **AES-256-GCM**, bắt tay khóa **ECDH P-256 + HKDF-SHA256**, cơ chế **Tự hủy (Burn-After-Reading)**, và được ngụy trang (Steganography) hoàn hảo dưới dạng **Từ Điển Đa Ngôn Ngữ**.
-
----
-
-### 1. Kiến Trúc Mật Mã Học & Luồng Dữ Liệu (Cryptographic Flow)
-
-```
-[ NGƯỜI GỬI (CLIENT A) ]                           [ MÁY CHỦ TRUNG CHUYỂN (RAM BUFFER) ]               [ NGƯỜI NHẬN (CLIENT B) ]
-       │                                                              │                                       │
-       ├─ Sinh Khóa AES-256-GCM (K)                                   │                                       │
-       ├─ Sinh IV 96-bit ngẫu nhiên                                    │                                       │
-       ├─ Mã hóa: C = AES-GCM(K, IV, Plaintext)                       │                                       │
-       ├─ Ghép gói: Package = [IV: 12B] + [Ciphertext + Tag: 16B]      │                                       │
-       │                                                              │                                       │
-       ├──── POST /api/lexicon/cache-entry (Chỉ gửi Package, KHÔNG K) ───► [Lưu Package vào RAM Map]          │
-       │     ◄─── Trả về Drop ID (128-bit hex) ───────────────────────┤ (Không ghi Disk, Không lưu Log)       │
-       │                                                              │                                       │
-       ├─ Tạo URL: https://domain/#entry?id=<DropID>&k=<KeyB64>       │                                       │
-       │  (Key nằm sau dấu '#' nên KHÔNG BAO GIỜ gửi lên Server)       │                                       │
-       │                                                              │                                       │
-       └──── (Gửi URL qua kênh bảo mật ngoài) ───────────────────────────────────────────────────────────────►│
-                                                                      │                                       ├─ Nhận URL: #entry?id=...&k=...
-                                                                      │                                       ├─ Tách Key (K) từ hash (URL bar)
-                                                                      │◄── GET /api/lexicon/cache-entry/<ID> ─┤
-                                                                      │    (Chỉ hỏi ID, Server không biết K)  │
-                                                                      ├─ Trả về Package                       │
-                                                                      ├─ [ATOMIC BURN]: Xóa ngay khỏi RAM ────┤
-                                                                      │                                       ├─ Trích xuất IV (12B đầu)
-                                                                      │                                       ├─ Web Crypto: Giải mật C bằng K
-                                                                      │                                       ├─ Hiển thị Plaintext (RAM only)
-                                                                      │                                       ├─ Xóa URL Fragment (replaceState)
-                                                                      │                                       └─ Đếm lùi tự hủy trên màn hình
-```
+Nền tảng web giao tiếp, điều phối dự án, quản trị nhân sự và bàn giao thông tin mật nội bộ cho doanh nghiệp, áp dụng mô hình **kiểm soát truy cập theo vai trò 3 cấp (RBAC)**, giao tiếp thời gian thực bằng **WebSocket chuẩn RFC 6455 thuần (0 thư viện ngoài)**, bảo vệ mật khẩu bằng **`scrypt`** và bàn giao thông tin mật **AES-256-GCM + PBKDF2-HMAC-SHA256 tự hủy 1 lần trên RAM**.
 
 ---
 
-### 2. Các Trụ Cột Kỹ Thuật Cốt Lõi (Core Technical Pillars)
+## 1. Kiến Trúc Giao Thức & Bảo Mật
 
-#### A. Zero-Knowledge Proof & Client-Side Encryption
-- **Mã hóa nguyên bản:** Sử dụng tiêu chuẩn chuẩn hóa **W3C Web Crypto API** (`window.crypto.subtle`), không phụ thuộc vào thư viện bên ngoài để tránh tấn công chuỗi cung ứng (Supply Chain Attack).
-- **Thuật toán đối xứng:** **AES-256-GCM** (Galois/Counter Mode). Mỗi thông điệp sử dụng một IV (Initialization Vector) 96-bit sinh từ CSPRNG (`crypto.getRandomValues`). Thẻ xác thực tính toàn vẹn (GCM Authentication Tag) 128-bit đảm bảo chống mọi hình thức can thiệp (Tamper-Resistant / AEAD).
-- **Bắt tay P2P ẩn danh:** Hỗ trợ trao đổi khóa **ECDH NIST P-256** kết hợp hàm dẫn xuất khóa **HKDF-SHA256 (RFC 5869)** giúp thiết lập phiên trò chuyện hai chiều hoàn toàn trong RAM, bảo đảm thuộc tính **Bí mật Chuyển tiếp Hoàn hảo (Perfect Forward Secrecy - PFS)**.
+```
+[ TRÌNH DUYỆT (CLIENT - MỖI TAB 1 PHIÊN ĐỘC LẬP) ]
+   ├── Giao diện Obsidian Studio (WCAG 2.1 AA) — public/index.html, vault.js, style.css
+   ├── Web Crypto API (public/js/crypto-engine.js) — AES-256-GCM + PBKDF2 (100k vòng) + Padding 256B
+   ├── WebSocket Client (ws://host/ws/company) — Xác thực gói tin đầu, nhận Sync & Online Presence < 50ms
+   └── HTTP/1.1 REST Client — Header X-Session-Token + tải tệp đính kèm qua Blob URL (không lộ token trên URL)
+                                      │
+                                      ▼
+[ MÁY CHỦ NODE.JS (server.js + src/ws-server.js) ]
+   ├── Tầng WebSocket RFC 6455 (src/ws-server.js) — SHA-1 Handshake, Masked Frames, Ping/Pong Heartbeat, RBAC Pub/Sub
+   ├── Tầng Xác thực & Chống lạm dụng — Scrypt + Salt 16B, Session TTL 8h, Anti-Brute-Force 429, CORS Whitelist, CSP
+   ├── Bộ Lưu Trữ Bền Vững Nội Bộ (data/company-state.json & data/company-attachments/) — Ghi nguyên tử (Atomic Write)
+   └── Bộ Đệm RAM Tự Hủy 1 Lần (/api/lexicon/cache-entry) — Zero-Knowledge Drop, buf.fill(0) ngay sau lần đọc đầu tiên
+```
 
-#### B. Ephemeral Storage (Bộ nhớ RAM Khả biến)
-- **Tuyệt đối không ghi đĩa:** Máy chủ quản lý các Drop bằng `Map` trên bộ nhớ Heap/RAM của Node.js process. Không có bất kỳ lệnh ghi tập tin, SQLite, Redis hay Persistence Adapter nào.
-- **Atomic Burn-After-Reading:** Thao tác đọc dữ liệu là một hàm nguyên tử (atomic read-and-delete). Ngay khi client nhận được bytes ciphertext, đối tượng sẽ bị xóa khỏi `Map`, và bộ nhớ `Buffer` được ghi đè bằng `0` (`buf.fill(0)`) trước khi trả lại cho V8 Garbage Collector.
-- **Bộ quét TTL (Active Sweeper):** Chạy ngầm mỗi 5 giây, tự động dọn dẹp các bản ghi hết hạn (Time-To-Live) kể cả khi chưa có người truy cập.
-- **Chống tràn RAM (DoS Shield):** Giới hạn mỗi gói Drop tối đa **5 MB**, tổng dung lượng lưu trữ tối đa **100 MB**.
-
-#### C. Lưu lượng Mạng & Triệt tiêu Dấu vết (Traffic & Anti-Forensics)
-- **Bảo vệ chống phân tích lưu lượng (Traffic Analysis Defense):** Áp dụng kỹ thuật độn dữ liệu ngẫu nhiên CSPRNG theo bội số 256 bytes (`Constant-Boundary Random Length Padding`). Kẻ quan sát lưu lượng mạng hoặc bộ nhớ RAM không thể suy đoán độ dài thực tế của thông điệp.
-- **Bảo vệ 2 Lớp (Dual-Factor Passphrase):** Tùy chọn mật khẩu cấp 2 kết hợp hàm băm dẫn xuất khóa **PBKDF2-HMAC-SHA256 (100.000 vòng lặp)** hòa trộn cùng khóa URL ngẫu nhiên qua HKDF.
-- **Chống tấn công từ chối dịch vụ (Anti-DoS Rate Limiter):** Bộ giới hạn tần suất truy vấn trượt hoàn toàn trong RAM (150 req/phút).
-- **Tự động xóa Clipboard (Clipboard Auto-Wiping):** Tự hủy làm sạch dữ liệu trong clipboard hệ điều hành sau 30 giây khi sao chép link hoặc bản tin.
-- **Màn che học thuật (Academic Decoy Mask - F2):** Nhấn `F2` để lập tức biến màn hình bí mật thành một bài báo nghiên cứu ngôn ngữ học vô hại chống nhìn trộm (Anti-Shoulder Surfing).
-- **Zero-Log:** Toàn bộ access log, IP logging, User-Agent, và Referer bị vô hiệu hóa hoàn toàn trên tầng HTTP Server.
-- **Bảo mật phân đoạn URL (RFC 3986 §3.5):** Khóa giải mã được định vị tại Fragment Identifier (`#entry?id=...&k=...`). Trình duyệt không bao giờ gửi phân đoạn sau dấu '#' trong request headers đến server.
-
-#### D. Ngụy trang (Steganography / Decoy Veneer) & Thanh Tìm Kiếm Đa Nền Tảng (Omnibox)
-- Giao diện mặc định hoạt động như một công cụ **Từ Điển Đa Ngôn Ngữ & Tra Cứu Bách Khoa Toàn Thư (Wikipedia)** với đầy đủ tính năng tra cứu từ vựng thật.
-- **Tích hợp tìm kiếm đa nền tảng trực tiếp ngay trên thanh tìm kiếm (Omnibox):**
-  1. **Nút chuyển đổi nền tảng tích hợp trong thanh:** Ngay bên trái ô nhập liệu, người dùng có thể chuyển đổi linh hoạt giữa: `Wikipedia (VI)`, `Wikipedia (EN)`, `Wiktionary`, `Google` và `Từ Điển`.
-  2. **Gợi ý tự động thời gian thực (Live OpenSearch Dropdown):** Khi gõ từ vựng vào thanh tìm kiếm, một menu gợi ý thông minh đổ xuống ngay dưới thanh tìm kiếm hiển thị các bài viết liên quan trực tiếp từ Wikipedia.
-  3. **Thực thi tìm kiếm tức thì:** Nhấn `Enter` hoặc nút `[🔍 Tìm kiếm]` để truy vấn trực tiếp bài viết tương ứng trên nền tảng đã chọn.
-  4. **Cơ chế kích hoạt chuyển hướng bí mật:** Khi gõ đúng từ khóa bí mật (**`:drop`**, **`vault`**, **`//drop`**, **`:secure`**, **`matrix`**, **`mật mã`**), ô tìm kiếm sẽ phát tín hiệu bảo mật (viền xanh) và lập tức **chuyển hướng (Redirect)** trình duyệt sang trang bảng điều khiển chuyên biệt độc lập: **`/vault.html`** (hoặc route `/vault`).
-  5. Trên trang Vault, tích hợp phím nóng **`ESC`** hoặc nút **`[🚨 THOÁT KHẨN CẤP]`** để ngay lập tức ghi đè xóa sạch dữ liệu trong RAM trình duyệt và quay trở lại trang từ điển vô hại.
+### Tách bạch Ranh Giới Lưu Trữ
+- **Lưu bền vững cục bộ (`data/` — được loại trừ khỏi Git qua `.gitignore`):** Tài khoản nhân sự (chỉ lưu chuỗi băm `scrypt:<salt>:<hash>`), dự án phòng ban, phòng chat, lịch sử tin nhắn, tệp đính kèm (`<= 2MB`), hàng đợi phê duyệt và nhật ký giám sát.
+- **Lưu 100% RAM khả biến (không ghi đĩa):** Token phiên đăng nhập (`companySessions`) và các bản mã bàn giao mật tự hủy 1 lần (`inMemoryStore`).
 
 ---
 
-### 3. Cấu Trúc Mã Nguồn
+## 2. Ma Trận Phân Quyền 3 Cấp (Closed-Company RBAC)
 
-```
+| Chức năng | Nhân viên (`employee`) | Quản lí (`manager`) | Giám đốc (`director`) |
+| :--- | :---: | :---: | :---: |
+| Xem dự án & tài nguyên | Chỉ ban mình | Chỉ ban mình | Toàn công ty (lọc theo 4 ban) |
+| Tạo / Thu hồi dự án & Giao việc | Chặn (`403`) *(chỉ cập nhật tiến độ)* | Trong ban mình | Toàn công ty |
+| Vào phòng chat ban & công việc | Chỉ phòng `active` thuộc ban mình | Ban mình + phòng lãnh đạo được mời | Giám sát toàn bộ các phòng |
+| Tạo phòng chat mới | Chặn (`403`) | Đề xuất phòng Ban / Công việc (`pending_create` — chờ Giám đốc duyệt) | Tạo trực tiếp (`active`), gồm cả phòng **QL ↔ QL** & **QL ↔ GĐ** |
+| Xóa phòng chat / Xóa từng tin nhắn | Chặn (`403`) | Gửi yêu cầu xóa (`pending_delete` — chờ Giám đốc duyệt) | Phê duyệt/Từ chối hoặc xóa trực tiếp |
+| Quản lý nhân sự (`Nhân Sự & Ban`) | Chặn (`403`) | Thêm & khóa/mở khóa Nhân viên trong ban mình | Thêm, điều chuyển ban & khóa/mở khóa cả Quản lí và Nhân viên |
+| Đổi mật khẩu & Bàn giao mật AES-256-GCM | Có | Có | Có |
+
+---
+
+## 3. Đặc Tả API Chính & Kênh WebSocket
+
+### WebSocket Thời Gian Thực (`/ws/company` — RFC 6455)
+- **Client → Server:** `{"type":"auth","token":"<sessionToken>"}` (xác thực ngay sau `onopen`, không truyền token qua query string), `{"type":"ping"}`.
+- **Server → Client:**
+  - `{"type":"auth_ok","protocol":"RFC6455-WS","onlineCount":N,"onlineUserIds":[...]}`
+  - `{"type":"presence","onlineCount":N,"onlineUserIds":[...]}` *(phân phạm vi theo RBAC)*
+  - `{"type":"sync","reason":"room_message | room_approved | project_created | ..."}`
+  - `{"type":"session_revoked","reason":"..."}` *(đẩy tức thì khi tài khoản bị khóa và đóng socket mã `4001`)*
+
+### REST API Công Ty (`/api/company/*`)
+- **Xác thực:** `POST /api/company/login`, `POST /api/company/logout`, `POST /api/company/change-password`, `GET /api/company/accounts-directory`, `GET /api/company/state`.
+- **Dự án & Công việc:** `POST /api/company/projects`, `DELETE /api/company/projects/:id`, `PATCH /api/company/projects/:id/task`.
+- **Phòng chat, Tin nhắn & Phê duyệt:** `POST /api/company/rooms/request-create`, `POST /api/company/rooms/:id/request-delete`, `POST /api/company/approvals/:roomId/decide`, `POST /api/company/rooms/:id/messages`, `GET /api/company/rooms/:id/attachments/:attId` *(header-only auth)*, `POST /api/company/rooms/:id/messages/:msgId/request-delete`, `POST /api/company/approvals/messages/:roomId/:msgId/decide`.
+- **Nhân sự:** `POST /api/company/managers`, `PATCH /api/company/managers/:userId`, `POST /api/company/employees`, `PATCH /api/company/employees/:userId`.
+- **Bàn giao mật RAM-Only:** `POST /api/lexicon/cache-entry`, `GET /api/lexicon/cache-entry/:id` *(tự hủy nguyên tử sau 1 lần đọc)*.
+
+---
+
+## 4. Tài Khoản Kiểm Thử Khởi Tạo (Mật khẩu mặc định: `123`)
+
+Mỗi tab trình duyệt lưu token phiên riêng trong `sessionStorage`, cho phép mở song song 3 tab để đối chiếu trực tiếp 3 vai trò:
+
+| Vai trò | Tên đăng nhập | Phòng ban |
+| :--- | :--- | :--- |
+| **Giám đốc** | `giamdoc` | Toàn Công Ty |
+| **Quản lí** | `ql.devops`, `ql.it`, `ql.net`, `ql.fin` | DevOps · Hành chính IT · Mạng & An ninh · Tài chính |
+| **Nhân viên** | `nv.devops1`, `nv.it1`, `nv.net1`, `nv.fin1` | DevOps · Hành chính IT · Mạng & An ninh · Tài chính |
+
+---
+
+## 5. Cấu Trúc Mã Nguồn & Chạy Kiểm Thử
+
+```text
 d:\Tu_Dien_Da_Ngon_Ngu\
-├── package.json                   # Cấu hình dự án & kịch bản kiểm thử
-├── server.js                      # HTTP Server RAM-Only, Zero-Log, Lexicon API & Drop Store
-├── public\
-│   ├── index.html                 # Giao diện Dual-Mode (Từ điển + Modal Drop bảo mật)
-│   ├── css\
-│   │   └── style.css              # Giao diện tra cứu học thuật & Stealth Crypto Theme
-│   └── js\
-│       ├── crypto-engine.js       # Module Mật mã học thuần Web Crypto API (AES-GCM, ECDH, HKDF)
-│       ├── decoy-dictionary.js    # Dữ liệu từ vựng đa ngôn ngữ ngụy trang
-│       └── app.js                 # Bộ điều khiển chính, xử lý URL Fragment & phiên P2P
-└── tests\
-    ├── crypto-engine.test.js      # Kiểm thử mã hóa/giải mã, chống giả mạo, dẫn xuất khóa
-    └── server.test.js             # Kiểm thử RAM-only, Burn-After-Reading, TTL, DoS limits
+├── server.js                      # HTTP/1.1 Server, RBAC Engine, Scrypt Auth, Atomic JSON Store & RAM Drops
+├── src/
+│   └── ws-server.js               # RFC 6455 WebSocket Server thuần & RBAC Presence/Event Hub
+├── public/
+│   ├── index.html                 # Giao diện đơn trang thống nhất Nexus Workspace
+│   ├── css/style.css              # Hệ thống thiết kế Obsidian Studio (WCAG 2.1 AA)
+│   └── js/
+│       ├── vault.js               # Bộ điều khiển Client (RBAC UI, WS Client, Blob Attachments, Handover)
+│       ├── crypto-engine.js       # Web Crypto API (AES-256-GCM, PBKDF2-HMAC-SHA256, ECDH, HKDF)
+│       └── qrcode.mjs             # Tạo mã QR nội bộ không gọi dịch vụ ngoài
+└── tests/
+    ├── crypto-engine.test.js      # Kiểm thử mật mã học (8 tests)
+    └── server.test.js             # Kiểm thử RAM Drop, RBAC 3 cấp, Persistence, WebSocket & Bảo mật (22 tests)
 ```
 
----
-
-### 4. Hướng Dẫn Vận Hành & Kiểm Thử
-
-#### Khởi chạy máy chủ:
+### Khởi chạy & Kiểm thử
 ```powershell
-cd d:\Tu_Dien_Da_Ngon_Ngu
-npm start
-```
-Dịch vụ sẽ hoạt động tại `http://localhost:3000`.
-
-#### Chạy toàn bộ Test Suite (11/11 tests pass):
-```powershell
-cd d:\Tu_Dien_Da_Ngon_Ngu
-npm test
+npm start        # Chạy máy chủ tại http://localhost:3000 (HTTP/1.1 + WebSocket)
+npm test         # Chạy toàn bộ bộ kiểm thử tự động Node Test Runner
 ```

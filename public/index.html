@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css?v=8.0">
+  <link rel="stylesheet" href="./css/style.css?v=8.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%222%22><rect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%224%22/><path d=%22M8 16V8l8 8V8%22/></svg>">
 </head>
 <body class="vault-page flat-workspace obsidian-studio">
@@ -28,7 +28,7 @@
         </div>
         <div>
           <h1 class="auth-brand-title">Nexus Workspace</h1>
-          <p class="auth-brand-sub">Hệ Thống Giao Tiếp &amp; Điều Hành Khép Kín Nội Bộ · ZERO-KNOWLEDGE EPHEMERAL VAULT</p>
+          <p class="auth-brand-sub">Cổng Giao Tiếp, Quản Lý Dự Án &amp; Điều Hành Nội Bộ Khép Kín · WebSocket RFC 6455 &amp; AES-256-GCM</p>
         </div>
       </div>
 
@@ -119,6 +119,8 @@
             <span class="status-live-dot" id="ws-transport-dot" aria-hidden="true"></span>
             <span class="status-meta-label" id="ws-transport-label">WS Realtime</span>
             <span class="status-sep" aria-hidden="true">·</span>
+            <span id="ws-online-count" class="ws-online-badge" title="Số tài khoản đang trực tuyến trong phạm vi phòng ban">1 trực tuyến</span>
+            <span class="status-sep" aria-hidden="true">·</span>
             <span id="session-timer" class="status-timer-val" title="Thời lượng phiên làm việc">00:00</span>
           </div>
 
@@ -176,13 +178,13 @@
               <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
               <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
             </svg>
-            <span>Bảng Tin & Tài Nguyên</span>
+            <span>Dự Án &amp; Tài Nguyên</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" data-tab="tab-chat">
             <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
-            <span>Thảo Luận Nội Bộ</span>
+            <span>Thảo Luận</span>
             <span id="chat-badge" class="chat-unread-badge" style="display:none;" aria-label="Tin nhắn chưa đọc">1</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-order" role="tab" aria-selected="false" aria-controls="tab-order" data-tab="tab-order">
@@ -190,14 +192,14 @@
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
-            <span>Bàn Giao & Cấp Phát Mật</span>
+            <span>Bàn Giao Mật</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-vendor" role="tab" aria-selected="false" aria-controls="tab-vendor" data-tab="tab-vendor">
             <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="9"></circle>
               <path d="M12 8v8M8 12h8"></path>
             </svg>
-            <span>Đăng Dự Án / Thông Báo</span>
+            <span>Tạo Dự Án</span>
           </button>
           <button type="button" class="nav-tab" id="nav-tab-team" role="tab" aria-selected="false" aria-controls="tab-team" data-tab="tab-team" style="display: none;">
             <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -283,12 +285,12 @@
               <span>Làm mới</span>
             </button>
 
-            <button type="button" id="quick-open-vendor-btn" class="primary-btn quick-list-cta" title="Đăng thông báo, tài nguyên hoặc đầu việc mới cho công ty">
+            <button type="button" id="quick-open-vendor-btn" class="primary-btn quick-list-cta" title="Tạo dự án hoặc đầu việc mới trong phòng ban">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span>Tạo thông báo</span>
+              <span>Tạo dự án</span>
             </button>
           </div>
         </div>
@@ -320,23 +322,21 @@
               </select>
               <label for="market-sort-select" class="sr-only">Sắp xếp theo</label>
               <select id="market-sort-select" class="custom-select mini-select">
-                <option value="default">Mới nhất / Nổi bật</option>
-                <option value="price-asc">Khối lượng: Thấp → Cao</option>
+                <option value="default">Mới nhất</option>
+                <option value="status">Tiến độ (Đang làm trước)</option>
                 <option value="price-desc">Khối lượng: Cao → Thấp</option>
-                <option value="bids-desc">Nhiều đề xuất nhất</option>
+                <option value="price-asc">Khối lượng: Thấp → Cao</option>
                 <option value="name">Tiêu đề A-Z</option>
               </select>
             </div>
           </div>
 
-          <div class="market-category-pills" id="market-category-pills" role="group" aria-label="Lọc theo phòng ban và danh mục">
-            <button type="button" class="market-pill active" aria-pressed="true" data-category="all">Tất cả <span class="pill-count" id="count-all">9</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="auction">Đang phối hợp <span class="pill-count" id="count-auction">9</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="physical">Thiết bị & VP <span class="pill-count" id="count-physical">1</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="digital">Cloud & Số <span class="pill-count" id="count-digital">1</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="hardware">DevOps & Phần cứng <span class="pill-count" id="count-hardware">2</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="network">Mạng & Hạ tầng <span class="pill-count" id="count-network">2</span></button>
-            <button type="button" class="market-pill" aria-pressed="false" data-category="crypto">Tài liệu & API <span class="pill-count" id="count-crypto">3</span></button>
+          <div class="market-category-pills" id="market-category-pills" role="group" aria-label="Lọc dự án theo phòng ban">
+            <button type="button" class="market-pill active" aria-pressed="true" data-category="all">Tất cả Ban <span class="pill-count" id="count-all">9</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="devops">Ban DevOps <span class="pill-count" id="count-devops">0</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="admin_it">Hành chính IT <span class="pill-count" id="count-admin_it">0</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="network">Mạng &amp; An ninh <span class="pill-count" id="count-network">0</span></button>
+            <button type="button" class="market-pill" aria-pressed="false" data-category="finance">Tài chính <span class="pill-count" id="count-finance">0</span></button>
           </div>
         </div>
 
@@ -405,45 +405,17 @@
                   <div class="peer-meta-row">
                     <span class="p2p-status-indicator" id="p2p-status-indicator">
                       <span class="p2p-pulse-dot" id="p2p-pulse-dot"></span>
-                      <span class="p2p-status-text" id="p2p-status-text">Trợ lý nội bộ (Chưa nối máy P2P)</span>
+                      <span class="p2p-status-text" id="p2p-status-text">Kênh phòng ban khép kín</span>
                     </span>
-                    <span class="peer-divider">·</span>
-                    <button type="button" id="copy-pgp-fingerprint" class="pgp-fingerprint-btn" aria-label="Sao chép dấu vân tay chứng thư PGP nội bộ" title="Bấm để sao chép dấu vân tay chứng thư nội bộ">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
-                      <span>PGP: 4A8F...91BC</span>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    </button>
                   </div>
                 </div>
               </div>
 
               <!-- Right: Integrated Inline Action Pills -->
               <div class="chat-header-actions">
-                <div class="p2p-setup-row" id="p2p-setup-row">
-                  <button type="button" id="btn-p2p-host" class="p2p-pill-btn host" title="Tạo phòng họp/trao đổi P2P trực tiếp giữa 2 máy">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Phòng P2P</span>
-                  </button>
-                  <div class="p2p-compact-join">
-                    <input type="text" id="input-p2p-code" aria-label="Nhập mã phòng họp P2P" class="p2p-compact-input" placeholder="Mã phòng..." autocomplete="off">
-                    <button type="button" id="btn-p2p-join" class="p2p-pill-btn join">Vào</button>
-                  </div>
-                </div>
-
-                <div class="p2p-active-row" id="p2p-active-row" style="display: none;">
-                  <span class="p2p-room-code-pill" id="display-room-code">TEAM-XXXX</span>
-                  <button type="button" id="btn-p2p-copy-link" class="p2p-pill-btn copy" title="Sao chép link mời đồng nghiệp">Mời đồng nghiệp</button>
-                  <button type="button" id="btn-p2p-disconnect" class="p2p-pill-btn disconnect" title="Rời phòng họp P2P">Ngắt P2P</button>
-                </div>
-
                 <button type="button" id="room-request-delete-btn" class="p2p-pill-btn purge" style="display: none;" title="Yêu cầu Giám đốc phê duyệt xóa phòng chat hoặc đoạn chat này">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                   <span id="room-request-delete-label">Yêu cầu xóa phòng</span>
-                </button>
-
-                <button type="button" id="purge-chat-btn" class="p2p-pill-btn purge" title="Xóa sạch lịch sử hội thoại của kênh này trong RAM">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                  <span>Xóa lịch sử</span>
                 </button>
               </div>
             </div>
@@ -460,26 +432,13 @@
               </div>
             </div>
 
-            <!-- Active Task/Handover Strip -->
-            <div id="auto-deal-banner" class="auto-deal-banner" style="display: none;">
-              <div class="auto-deal-meta">
-                <span class="auto-deal-code" id="auto-deal-code-badge">DEAL-XXXX</span>
-                <span class="auto-deal-title" id="auto-deal-product-label">Đang kết nối trao đổi công việc...</span>
-                <span class="auto-deal-relay-tag" id="auto-deal-blind-badge">Kênh RAM E2EE Nội Bộ</span>
-              </div>
-              <div class="auto-deal-actions">
-                <button type="button" id="btn-deal-confirm-pay" class="p2p-pill-btn join">1. Xác nhận tiếp nhận</button>
-                <button type="button" id="btn-deal-complete-burn" class="p2p-pill-btn host">2. Hoàn tất bàn giao (Tự hủy chat)</button>
-              </div>
-            </div>
-
             <!-- Quick Reply Chips -->
             <div class="chat-quick-inquiries flat-chips-row">
               <span class="quick-inquiry-label">Mẫu nhanh:</span>
-              <button type="button" class="quick-q-btn" data-q="Xác nhận tiến độ bàn giao và người phụ trách hạng mục này?">Xác nhận tiến độ?</button>
-              <button type="button" class="quick-q-btn" data-q="Vui lòng gửi thông tin cấu hình hoặc mật khẩu qua mã Drop tự hủy 1 lần.">Gửi qua Drop tự hủy?</button>
-              <button type="button" class="quick-q-btn" data-q="Cần xác minh chữ ký PGP hoặc quyền truy cập GitLab/Server của bộ phận?">Xác minh quyền?</button>
-              <button type="button" class="quick-q-btn" data-q="Dữ liệu trao đổi trên kênh này có lưu log trên máy chủ không?">Kiểm tra Zero-Log?</button>
+              <button type="button" class="quick-q-btn" data-q="Cập nhật tiến độ hạng mục công việc hôm nay nhé!">Báo cáo tiến độ?</button>
+              <button type="button" class="quick-q-btn" data-q="Mình vừa gửi thông tin mật qua Tab Bàn Giao AES-256-GCM, bạn kiểm tra mã nhận nhé.">Gửi qua Bàn giao mật</button>
+              <button type="button" class="quick-q-btn" data-q="Nhờ Quản lí xem xét và xác nhận đầu việc này giúp nhóm.">Nhờ Quản lí xác nhận</button>
+              <button type="button" class="quick-q-btn" data-q="Đầu việc đã hoàn thành và kiểm thử xong, mời mọi người review!">Đã hoàn thành</button>
             </div>
 
             <!-- Messages Stream Canvas -->
@@ -673,26 +632,20 @@
       </div>
 
       <!-- ============================================================= -->
-      <!-- TAB 4: ĐĂNG THÔNG BÁO / TÀI LIỆU MỚI (INTERNAL PUBLISHER)      -->
+      <!-- TAB 4: TẠO DỰ ÁN / ĐẦU VIỆC MỚI (STANDARDIZED ENTERPRISE FORM) -->
       <!-- ============================================================= -->
       <div id="tab-vendor" class="tab-pane" role="tabpanel" aria-labelledby="nav-tab-vendor">
         <div class="tab-page-head">
           <div>
-            <h2 class="tab-page-title">Đăng thông báo & Tài liệu mới</h2>
-            <p class="tab-page-subtitle">Chia sẻ tài liệu, thiết bị điều chuyển hoặc đề xuất công việc mới tới toàn bộ các phòng ban.</p>
+            <h2 class="tab-page-title">Tạo Dự Án &amp; Đầu Việc Nội Bộ</h2>
+            <p class="tab-page-subtitle">Khởi tạo dự án hoặc tài nguyên công việc chuẩn hóa theo phòng ban, lưu bền vững và đồng bộ realtime qua WebSocket.</p>
           </div>
         </div>
 
         <!-- Two-Column Flat Split Publisher Layout -->
         <div class="vendor-desk-layout">
           <section class="vendor-form-col">
-            <h3 class="checkout-col-title">Thông tin hạng mục / thông báo mới</h3>
-
-            <div class="listing-mode-toggle" role="tablist">
-              <button type="button" class="mode-toggle-btn active" role="tab" aria-selected="true" data-mode="hybrid" id="mode-hybrid-btn">Thảo luận & Bàn giao</button>
-              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="auction" id="mode-auction-btn">Mở đề xuất / Ước lượng</button>
-              <button type="button" class="mode-toggle-btn" role="tab" aria-selected="false" data-mode="fixed" id="mode-fixed-btn">Cấp phát cố định</button>
-            </div>
+            <h3 class="checkout-col-title">Thông tin dự án / đầu việc mới</h3>
 
             <div class="form-group" id="vendor-dept-group">
               <label for="listing-department"><strong>Phòng ban áp dụng dự án:</strong></label>
@@ -706,163 +659,96 @@
             </div>
 
             <div class="form-group">
-              <label for="listing-name"><strong>Tiêu đề dự án / Tên tài nguyên công việc:</strong></label>
-              <input type="text" id="listing-name" placeholder="VD: Tài liệu API thanh toán v3, Cấp phát 3 màn hình Dell, Lịch bảo trì Server..." autocomplete="off">
+              <label for="listing-name"><strong>Tên dự án / Đầu việc:</strong></label>
+              <input type="text" id="listing-name" placeholder="VD: Nâng cấp Gateway API v3, Triển khai VPN WireGuard, Kiểm toán bảo mật Q4..." autocomplete="off">
             </div>
 
             <div class="form-row-2col">
               <div class="form-group">
-                <label for="listing-category"><strong>Phòng ban / Lĩnh vực:</strong></label>
-                <select id="listing-category" class="custom-select">
-                  <option value="physical">Thiết bị Văn phòng & Tài sản IT</option>
-                  <option value="digital">Tài nguyên Cloud, Tên miền & Dịch vụ</option>
-                  <option value="service">Hỗ trợ Kỹ thuật & Phối hợp Liên phòng ban</option>
-                  <option value="hardware">DevOps, Phần cứng & Máy chủ</option>
-                  <option value="network">Hạ tầng Mạng, VPN & Bảo mật</option>
-                  <option value="crypto">API Key, Token & Mật khẩu Nội bộ</option>
-                  <option value="audit">Hồ sơ, Báo cáo & Tài liệu Nghiệp vụ</option>
+                <label for="listing-security-tag"><strong>Mức độ ưu tiên:</strong></label>
+                <select id="listing-security-tag" class="custom-select">
+                  <option value="Ưu tiên Trung bình" selected>Ưu tiên Trung bình</option>
+                  <option value="Ưu tiên Cao">Ưu tiên Cao</option>
+                  <option value="Khẩn cấp">Khẩn cấp</option>
+                  <option value="Nội bộ • Mật">Nội bộ • Mật</option>
                 </select>
               </div>
-
               <div class="form-group">
-                <label for="listing-custom-badge"><strong>Nhãn phòng ban / Dự án hiển thị:</strong></label>
-                <input type="text" id="listing-custom-badge" placeholder="VD: Phòng Kỹ Thuật, Dự án Alpha, Khẩn Cấp...">
+                <label for="listing-due-date"><strong>Hạn hoàn thành dự kiến (Tùy chọn):</strong></label>
+                <input type="date" id="listing-due-date">
+              </div>
+            </div>
+
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label for="listing-price-xmr"><strong>Ước lượng khối lượng / Quy mô:</strong></label>
+                <input type="number" id="listing-price-xmr" step="any" min="0" value="16" placeholder="VD: 16">
+              </div>
+              <div class="form-group">
+                <label for="listing-currency"><strong>Đơn vị đo lường:</strong></label>
+                <select id="listing-currency" class="custom-select">
+                  <option value="Giờ" selected>Giờ công (Hours)</option>
+                  <option value="Ngày">Ngày làm việc (Days)</option>
+                  <option value="Thiết bị">Thiết bị / Chiếc</option>
+                  <option value="Tài liệu">Tài liệu / Hồ sơ</option>
+                  <option value="Điểm">Story Points</option>
+                </select>
               </div>
             </div>
 
             <div class="form-group">
-              <span id="emoji-picker-label" class="field-group-label"><strong>Chọn biểu tượng đại diện:</strong></span>
+              <span id="emoji-picker-label" class="field-group-label"><strong>Biểu tượng nhận diện:</strong></span>
               <div class="emoji-picker-row">
                 <div class="emoji-quick-picker" id="emoji-quick-picker" role="group" aria-labelledby="emoji-picker-label">
-                  <button type="button" class="emoji-opt active" aria-pressed="true" aria-label="Chọn biểu tượng ghim thông báo" data-icon="📌"><span aria-hidden="true">📌</span></button>
+                  <button type="button" class="emoji-opt active" aria-pressed="true" aria-label="Chọn biểu tượng ghim dự án" data-icon="📌"><span aria-hidden="true">📌</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng laptop" data-icon="💻"><span aria-hidden="true">💻</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng máy chủ" data-icon="🖥️"><span aria-hidden="true">🖥️</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng đám mây" data-icon="☁️"><span aria-hidden="true">☁️</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng tài liệu" data-icon="📑"><span aria-hidden="true">📑</span></button>
-                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng khóa xác thực" data-icon="🔑"><span aria-hidden="true">🔑</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng mạng lưới" data-icon="🌐"><span aria-hidden="true">🌐</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng khiên bảo mật" data-icon="🛡️"><span aria-hidden="true">🛡️</span></button>
-                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng container Docker" data-icon="🐳"><span aria-hidden="true">🐳</span></button>
                   <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng biểu đồ" data-icon="📊"><span aria-hidden="true">📊</span></button>
-                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng cấu hình" data-icon="⚙️"><span aria-hidden="true">⚙️</span></button>
-                  <button type="button" class="emoji-opt" aria-pressed="false" aria-label="Chọn biểu tượng gói tài nguyên" data-icon="📦"><span aria-hidden="true">📦</span></button>
                 </div>
                 <input type="text" id="listing-icon-val" class="custom-emoji-input" aria-label="Tự nhập biểu tượng Emoji đại diện" value="📌" maxlength="4" title="Tự nhập Emoji bất kỳ">
               </div>
             </div>
 
-            <!-- Unit & Availability Row -->
-            <div class="form-row-2col">
-              <div class="form-group">
-                <label for="listing-currency"><strong>Đơn vị đo lường / Quy mô:</strong></label>
-                <select id="listing-currency" class="custom-select">
-                  <option value="Giờ" selected>Giờ công (Effort Hours)</option>
-                  <option value="Ngày">Ngày làm việc (Days)</option>
-                  <option value="Thiết bị">Thiết bị / Chiếc</option>
-                  <option value="Tài liệu">Bản / Tài liệu</option>
-                  <option value="Điểm">Story Points</option>
-                  <option value="VNĐ">VNĐ (Dự toán ngân sách)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="listing-stock"><strong>Tình trạng tiếp nhận:</strong></label>
-                <input type="text" id="listing-stock" value="Sẵn sàng phối hợp" placeholder="VD: Cần xử lý gấp / Sẵn sàng cấp phát">
-              </div>
-            </div>
-
-            <!-- Dynamic Mode Fields: Standard / Target Estimate -->
-            <div id="section-fixed-pricing">
-              <div class="form-row-2col">
-                <div class="form-group">
-                  <label for="listing-price-xmr"><strong>Hạn mức / Số lượng tiêu chuẩn:</strong></label>
-                  <input type="number" id="listing-price-xmr" step="any" min="0" value="8" placeholder="VD: 8">
-                </div>
-                <div class="form-group">
-                  <label for="listing-security-tag"><strong>Phân quyền / Mức độ ưu tiên:</strong></label>
-                  <input type="text" id="listing-security-tag" value="Nội bộ · Ưu tiên Trung bình" placeholder="VD: Toàn công ty / Nội bộ IT / Khẩn cấp">
-                </div>
-              </div>
-            </div>
-
-            <!-- Dynamic Mode Fields: Collaborative Estimation -->
-            <div id="section-auction-pricing">
-              <div class="form-row-2col">
-                <div class="form-group">
-                  <label for="listing-start-bid"><strong>Mức đề xuất ban đầu:</strong></label>
-                  <input type="number" id="listing-start-bid" step="any" min="0" value="4" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label for="listing-min-step"><strong>Bước điều chỉnh tối thiểu (0 = Tự do):</strong></label>
-                  <input type="number" id="listing-min-step" step="any" min="0" value="0" placeholder="0 (Tự do)">
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="listing-auction-duration"><strong>Thời hạn mở tiếp nhận phản hồi:</strong></label>
-                <select id="listing-auction-duration" class="custom-select">
-                  <option value="900">15 phút (Xử lý nhanh)</option>
-                  <option value="1800">30 phút</option>
-                  <option value="3600">1 giờ</option>
-                  <option value="21600" selected>6 giờ (Trong ngày)</option>
-                  <option value="86400">24 giờ (1 ngày)</option>
-                  <option value="604800">7 ngày (Theo Sprint)</option>
-                  <option value="31536000">Mở liên tục không giới hạn</option>
-                </select>
-              </div>
-            </div>
-
             <div class="form-group">
-              <label for="listing-desc"><strong>Nội dung chi tiết & Yêu cầu phối hợp:</strong></label>
-              <textarea id="listing-desc" rows="3" placeholder="Mô tả rõ mục tiêu công việc, thông tin tài nguyên cần chia sẻ hoặc hướng dẫn thực hiện..."></textarea>
+              <label for="listing-desc"><strong>Mô tả mục tiêu &amp; Yêu cầu phối hợp:</strong></label>
+              <textarea id="listing-desc" rows="3" placeholder="Mô tả rõ mục tiêu, phạm vi kỹ thuật và tiêu chí nghiệm thu của dự án..."></textarea>
             </div>
 
             <div class="form-row-2col">
               <div class="form-group">
                 <label for="listing-spec1-v"><strong>Đầu mối phụ trách:</strong></label>
-                <input type="text" id="listing-spec1-v" value="Phòng Kỹ Thuật / IT" placeholder="VD: Nhóm Backend / Hành chính Nhân sự...">
+                <input type="text" id="listing-spec1-v" value="Trưởng ban phụ trách" placeholder="VD: Nhóm DevOps / Phòng IT...">
               </div>
               <div class="form-group">
-                <label for="listing-spec2-v"><strong>Hình thức bàn giao:</strong></label>
-                <input type="text" id="listing-spec2-v" value="Mã Token RAM / Thảo luận trực tiếp" placeholder="VD: Kênh chat nội bộ / Drop ID tự hủy">
+                <label for="listing-spec2-v"><strong>Kênh bàn giao &amp; Tài liệu:</strong></label>
+                <input type="text" id="listing-spec2-v" value="Phòng chat ban &amp; Bàn giao AES-256" placeholder="VD: GitLab nội bộ / Drop AES-256">
               </div>
-            </div>
-
-            <div class="form-group">
-              <label for="listing-vendor-pubkey"><strong>Thông tin liên hệ nội bộ / Email hoặc Kênh Slack (Tùy chọn):</strong></label>
-              <input type="text" id="listing-vendor-pubkey" placeholder="Nhập mã nhân viên, kênh liên hệ hoặc để trống...">
-            </div>
-
-            <div class="form-group">
-              <span id="vendor-ttl-label" class="field-group-label"><strong>Thời gian lưu trên RAM máy chủ (TTL):</strong></span>
-              <div class="ttl-pills-row" id="vendor-ttl-pills" role="group" aria-labelledby="vendor-ttl-label">
-                <button type="button" class="ttl-pill" data-ttl="3600">1 giờ</button>
-                <button type="button" class="ttl-pill" data-ttl="14400">4 giờ</button>
-                <button type="button" class="ttl-pill" data-ttl="86400">24 giờ</button>
-                <button type="button" class="ttl-pill active" data-ttl="604800">Suốt phiên làm việc</button>
-              </div>
-              <input type="hidden" id="listing-ttl-val" value="604800">
             </div>
 
             <div class="action-row">
-              <button type="button" id="publish-listing-btn" class="primary-btn">Đăng lên bảng tin nội bộ</button>
-              <button type="button" id="reset-listing-btn" class="secondary-btn">Xóa Form</button>
+              <button type="button" id="publish-listing-btn" class="primary-btn">Tạo dự án mới</button>
+              <button type="button" id="reset-listing-btn" class="secondary-btn">Làm mới biểu mẫu</button>
             </div>
           </section>
 
           <div class="vendor-preview-col">
-            <h3 class="checkout-col-title">Xem trước & Quản lý bài đăng</h3>
+            <h3 class="checkout-col-title">Xem trước &amp; Dự án đã tạo</h3>
 
             <section class="vendor-card-shell">
-              <div class="preview-section-title">Xem trước hiển thị trên bảng tin</div>
+              <div class="preview-section-title">Xem trước hiển thị trên bảng dự án</div>
               <div id="live-vendor-preview" class="live-vendor-preview">
                 <!-- Dynamically rendered -->
               </div>
             </section>
 
             <section class="vendor-card-shell">
-              <div class="preview-section-title">Hạng mục bạn đã tạo trong phiên này</div>
+              <div class="preview-section-title">Dự án bạn đã khởi tạo</div>
               <div id="my-listings-list" class="my-listings-list">
-                <p class="empty-listings-note">Bạn chưa đăng thông báo hay tài nguyên nào trong phiên này.</p>
+                <p class="empty-listings-note">Bạn chưa khởi tạo dự án nào trong phòng ban này.</p>
               </div>
             </section>
           </div>
@@ -1093,56 +979,6 @@
     </div>
   </div>
 
-  <!-- Collaborative Estimate / Response Modal Overlay -->
-  <div id="bid-modal-overlay" class="qr-modal-overlay" style="display: none;">
-    <div class="qr-modal-card bid-modal-card" role="dialog" aria-modal="true" aria-labelledby="bid-modal-title" tabindex="-1">
-      <div class="qr-modal-header">
-        <h2 id="bid-modal-title" class="qr-modal-title">Gửi đề xuất / Ước lượng khối lượng</h2>
-        <button type="button" id="close-bid-modal-btn" class="close-mask-btn" aria-label="Đóng hộp thoại gửi đề xuất" title="Đóng"><span aria-hidden="true">✕</span></button>
-      </div>
-
-      <div class="bid-modal-item-info" id="bid-modal-item-info">
-        <!-- Rendered dynamically -->
-      </div>
-
-      <div class="bid-input-wrap">
-        <label for="bid-amount-input"><strong>Nhập mức ước lượng / số lượng bạn đề xuất:</strong></label>
-        <div class="bid-input-row">
-          <input type="number" id="bid-amount-input" step="any" min="0" placeholder="Nhập con số đề xuất...">
-          <span class="currency-tag" id="bid-currency-tag">Giờ</span>
-        </div>
-        <div class="bid-quick-steps" id="bid-quick-steps">
-          <button type="button" class="quick-bid-step-btn" data-mult="1.05">+5%</button>
-          <button type="button" class="quick-bid-step-btn" data-mult="1.10">+10%</button>
-          <button type="button" class="quick-bid-step-btn" data-mult="1.25">+25%</button>
-          <button type="button" class="quick-bid-step-btn" data-mult="1.50">+50%</button>
-          <button type="button" class="quick-bid-step-btn" data-mult="2.00">x2</button>
-        </div>
-        <div class="bid-hints-row">
-          <span class="label-desc" id="bid-min-hint">Nhập mức ước lượng thời gian, số lượng hoặc ngân sách</span>
-          <span class="bid-usd-approx" id="bid-usd-approx">Nội bộ công ty</span>
-        </div>
-      </div>
-
-      <div class="bid-alias-notice">
-        <span>Thành viên gửi đề xuất: <strong id="bid-client-alias">NV-XXXX</strong> (Xác thực nội bộ)</span>
-      </div>
-
-      <div class="bid-actions-row">
-        <button type="button" id="submit-bid-btn" class="primary-btn">Gửi đề xuất ngay</button>
-        <button type="button" id="buyout-from-bid-btn" class="buy-btn">Tiếp nhận bàn giao</button>
-        <button type="button" id="cancel-bid-modal-btn" class="secondary-btn">Đóng</button>
-      </div>
-
-      <div class="bid-history-feed-box">
-        <div class="bid-history-title">Lịch sử phản hồi & đề xuất từ thành viên:</div>
-        <div class="bid-history-feed" id="bid-history-feed">
-          <!-- Dynamically populated entries -->
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Floating Chat Dock Button -->
   <div class="floating-messenger-dock" id="floating-messenger-dock">
     <button type="button" class="floating-messenger-btn" id="floating-messenger-btn" title="Mở nhanh kênh thảo luận nội bộ">
@@ -1277,6 +1113,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/vault.js?v=8.0"></script>
+  <script type="module" src="./js/vault.js?v=8.5"></script>
 </body>
 </html>
