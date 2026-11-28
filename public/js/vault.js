@@ -1176,8 +1176,9 @@ function initMarketCatalog() {
   populateOrderProductSelect(MARKET_PRODUCTS);
   updateOrderPreviewCard();
 
-  // Cross-tab storage event listener (guarantees sync across tabs on same browser)
+  // Cross-tab storage event listener (disabled in closed-company RBAC mode to prevent cross-role tab leakage)
   window.addEventListener('storage', (e) => {
+    if (isCompanyAuthActive()) return;
     if (
       e.key === STORAGE_KEYS.MARKET_PRODUCTS ||
       e.key === STORAGE_KEYS.REVOKED_IDS ||
@@ -1208,9 +1209,10 @@ function initMarketCatalog() {
     }
   });
 
-  // Cross-tab real-time sync listener (Desktops, Windows & Tabs)
+  // Cross-tab real-time sync listener (disabled in closed-company RBAC mode; WS /ws/company handles scoped sync)
   if (bazaarSyncChannel) {
     bazaarSyncChannel.onmessage = (event) => {
+      if (isCompanyAuthActive()) return;
       const msg = event.data;
       if (!msg || !msg.type) return;
 
